@@ -1,30 +1,59 @@
 'use client';
 
-import { Box, Toolbar } from '@mui/material';
+import { Box } from '@mui/material';
 import WorkspaceHeader from './WorkspaceHeader';
+import WorkspaceShell from '../workspace/WorkspaceShell';
+import { ReactNode } from 'react';
 
-interface WorkspaceLayoutProps {
-  children: React.ReactNode;
-  showAdminToggle?: boolean;
+interface BreadcrumbItem {
+  label: string;
+  href?: string;
+  folderId?: string;
 }
 
-export default function WorkspaceLayout({ children, showAdminToggle = false }: WorkspaceLayoutProps) {
+interface WorkspaceLayoutProps {
+  children: ReactNode;
+  showAdminToggle?: boolean;
+  leftPanel?: ReactNode;
+  rightPanel?: ReactNode;
+  breadcrumb?: BreadcrumbItem[];
+  onDropOnBreadcrumb?: (folderId: string, event: React.DragEvent) => void;
+}
+
+/**
+ * WorkspaceLayout - Shell for all workspace pages.
+ *
+ * Renders a fixed header with optional breadcrumb navigation,
+ * plus a 3-panel body (left/main/right) via WorkspaceShell.
+ *
+ * The entire layout fills the viewport with no global scroll.
+ * Only individual panels scroll.
+ */
+export default function WorkspaceLayout({
+  children,
+  showAdminToggle = false,
+  leftPanel,
+  rightPanel,
+  breadcrumb,
+  onDropOnBreadcrumb,
+}: WorkspaceLayoutProps) {
   return (
-    <Box sx={{ backgroundColor: 'background.default', minHeight: '100vh' }}>
-      <WorkspaceHeader showAdminToggle={showAdminToggle} />
-      <Box
-        component="main"
-        sx={{
-          flexGrow: 1,
-          p: 3,
-          mt: 8, // Space for AppBar
-          minHeight: '100vh',
-          backgroundColor: 'background.default',
-        }}
-      >
-        <Toolbar /> {/* Spacer for AppBar */}
+    <Box
+      sx={{
+        height: '100vh',
+        display: 'flex',
+        flexDirection: 'column',
+        overflow: 'hidden',
+      }}
+    >
+      <WorkspaceHeader
+        showAdminToggle={showAdminToggle}
+        breadcrumb={breadcrumb}
+        onDropOnBreadcrumb={onDropOnBreadcrumb}
+      />
+      <WorkspaceShell leftPanel={leftPanel} rightPanel={rightPanel}>
         {children}
-      </Box>
+      </WorkspaceShell>
     </Box>
   );
 }

@@ -181,7 +181,7 @@ function SettingsContent() {
           Theme Preview
         </Typography>
         <Grid container spacing={2}>
-          <Grid size={{ xs: 12, md: 4 }}>
+          <Grid item xs={12} md={4}>
             <Paper variant="outlined" sx={{ p: 2, textAlign: 'center' }}>
               <Typography variant="subtitle2" color="text.secondary" gutterBottom>
                 Primary Button
@@ -191,7 +191,7 @@ function SettingsContent() {
               </Button>
             </Paper>
           </Grid>
-          <Grid size={{ xs: 12, md: 4 }}>
+          <Grid item xs={12} md={4}>
             <Paper variant="outlined" sx={{ p: 2, textAlign: 'center' }}>
               <Typography variant="subtitle2" color="text.secondary" gutterBottom>
                 Secondary Button
@@ -201,7 +201,7 @@ function SettingsContent() {
               </Button>
             </Paper>
           </Grid>
-          <Grid size={{ xs: 12, md: 4 }}>
+          <Grid item xs={12} md={4}>
             <Paper variant="outlined" sx={{ p: 2, textAlign: 'center' }}>
               <Typography variant="subtitle2" color="text.secondary" gutterBottom>
                 Text Colors

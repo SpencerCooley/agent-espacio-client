@@ -1,4 +1,4 @@
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL;
+export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL;
 
 if (!API_BASE_URL) {
   throw new Error('NEXT_PUBLIC_API_URL environment variable is not defined');
@@ -36,7 +36,7 @@ export interface ApiKey {
 }
 
 // Helper to get token from localStorage
-const getToken = (): string | null => {
+export const getToken = (): string | null => {
   if (typeof window !== 'undefined') {
     return localStorage.getItem('accessToken');
   }
@@ -51,9 +51,9 @@ async function request<T>(method: string, path: string, data?: unknown): Promise
     method,
     headers: {
       'Content-Type': 'application/json',
-      ...(token && { 'Authorization': `Bearer ${token}` }),
+      ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
     },
-    ...(data && { body: JSON.stringify(data) }),
+    ...(data ? { body: JSON.stringify(data) } : {}),
   });
 
   if (!response.ok) {
