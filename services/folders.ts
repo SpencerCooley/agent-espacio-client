@@ -5,6 +5,7 @@ export interface FileMeta {
   height?: number;
   has_alpha?: boolean;
   thumbnails?: Record<string, { w: number; h: number; size_bytes: number }>;
+  preview?: string;
 }
 
 export interface Folder {
@@ -27,6 +28,7 @@ export interface FolderItem {
   mime_type?: string;
   size_bytes?: number;
   is_image?: boolean;
+  is_markdown?: boolean;
   file_meta?: FileMeta | null;
   created_at: string;
   updated_at: string;

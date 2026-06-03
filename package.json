@@ -15,15 +15,27 @@
     "@mui/icons-material": "^6.4.6",
     "@mui/material": "^6.4.6",
     "@mui/material-nextjs": "^6.4.6",
+    "@tiptap/core": "^3.24.0",
+    "@tiptap/extension-table": "^3.24.0",
+    "@tiptap/extension-table-cell": "^3.24.0",
+    "@tiptap/extension-table-header": "^3.24.0",
+    "@tiptap/extension-table-row": "^3.24.0",
+    "@tiptap/react": "^3.24.0",
+    "@tiptap/starter-kit": "^3.24.0",
+    "marked": "^18.0.4",
     "next": "^15.1.0",
+    "prosemirror-markdown": "^1.13.4",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "react-hook-form": "^7.54.2"
+    "react-hook-form": "^7.54.2",
+    "turndown": "^7.2.4",
+    "turndown-plugin-gfm": "^1.0.2"
   },
   "devDependencies": {
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@types/turndown": "^5.0.6",
     "typescript": "^5"
   }
 }

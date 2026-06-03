@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import {
   Box,
@@ -10,11 +10,12 @@ import {
   Paper,
   Button,
   Divider,
-  Chip,
+  Snackbar,
 } from '@mui/material';
 import { Download } from '@mui/icons-material';
 import ProtectedRoute from '../../../../components/auth/ProtectedRoute';
 import WorkspaceLayout from '../../../../components/layout/WorkspaceLayout';
+import MarkdownEditor from '../../../../components/workspace/MarkdownEditor';
 import { assetService, Asset, getAssetDownloadUrl } from '../../../../services/assets';
 import { folderService } from '../../../../services/folders';
 import { useAuthImage } from '../../../../hooks/useAuthImage';
@@ -28,11 +29,17 @@ function AssetViewerContent() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Markdown state
+  const [markdownContent, setMarkdownContent] = useState<string | null>(null);
+  const [loadingContent, setLoadingContent] = useState(false);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
   useEffect(() => {
     if (!assetId) return;
 
     setLoading(true);
     setError(null);
+    setMarkdownContent(null);
 
     assetService.getAsset(assetId)
       .then((response) => {
@@ -52,12 +59,32 @@ function AssetViewerContent() {
               setAncestors([]);
             });
         }
+
+        // Fetch content if markdown
+        if (response.is_markdown) {
+          setLoadingContent(true);
+          assetService.getContent(assetId)
+            .then((content) => {
+              setMarkdownContent(content);
+              setLoadingContent(false);
+            })
+            .catch(() => {
+              setLoadingContent(false);
+            });
+        }
+
         setLoading(false);
       })
       .catch((err) => {
         setError(err.message || 'Failed to load asset');
         setLoading(false);
       });
+  }, [assetId]);
+
+  const handleSaveMarkdown = useCallback(async (content: string) => {
+    if (!assetId) return;
+    await assetService.updateContent(assetId, content);
+    setSuccessMessage('File saved');
   }, [assetId]);
 
   const breadcrumb = asset
@@ -120,7 +147,7 @@ function AssetViewerContent() {
         </Typography>
         <Typography variant="body2">{asset.mime_type}</Typography>
       </Box>
-      {dims && (
+      {dims && asset.is_image && (
         <Box sx={{ mb: 2 }}>
           <Typography variant="caption" color="text.secondary" display="block">
             Dimensions
@@ -143,7 +170,7 @@ function AssetViewerContent() {
         </Typography>
       </Box>
 
-      {thumbSizes.length > 0 && (
+      {asset.is_image && thumbSizes.length > 0 && (
         <>
           <Divider sx={{ my: 2 }} />
           <Typography variant="subtitle2" sx={{ mb: 1.5, fontWeight: 600 }}>
@@ -199,8 +226,8 @@ function AssetViewerContent() {
 
   return (
     <WorkspaceLayout breadcrumb={breadcrumb} leftPanel={leftPanel}>
-      <Box>
-        <Typography variant="h5" sx={{ fontWeight: 600, mb: 2 }}>
+      <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+        <Typography variant="h5" sx={{ fontWeight: 600, mb: 2, flexShrink: 0 }}>
           {asset.name}
         </Typography>
         {asset.is_image ? (
@@ -231,6 +258,23 @@ function AssetViewerContent() {
               <Typography color="text.secondary">Loading image...</Typography>
             )}
           </Paper>
+        ) : asset.is_markdown ? (
+          loadingContent ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
+              <CircularProgress />
+            </Box>
+          ) : markdownContent !== null ? (
+            <Box sx={{ flex: 1, minHeight: 0 }}>
+              <MarkdownEditor
+                content={markdownContent}
+                onSave={handleSaveMarkdown}
+              />
+            </Box>
+          ) : (
+            <Paper sx={{ p: 4, textAlign: 'center', minHeight: 300, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <Typography color="text.secondary">Failed to load content</Typography>
+            </Paper>
+          )
         ) : (
           <Paper sx={{ p: 4, textAlign: 'center', minHeight: 300, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <Typography color="text.secondary">
@@ -239,6 +283,13 @@ function AssetViewerContent() {
           </Paper>
         )}
       </Box>
+      <Snackbar
+        open={!!successMessage}
+        autoHideDuration={3000}
+        onClose={() => setSuccessMessage(null)}
+        message={successMessage}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      />
     </WorkspaceLayout>
   );
 }

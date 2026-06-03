@@ -40,24 +40,25 @@ export default function WorkspaceShell({ leftPanel, rightPanel, children }: Work
             borderRight: 1,
             borderColor: 'divider',
             bgcolor: 'background.paper',
+            display: { xs: 'none', md: 'block' },
           }}
         >
           {leftPanel}
         </Box>
       )}
 
-      {/* Main Content Panel */}
-      <Box
-        sx={{
-          flex: 1,
-          overflowY: 'auto',
-          overflowX: 'hidden',
-          minWidth: 0,
-          p: 3,
-        }}
-      >
-        {children}
-      </Box>
+        {/* Main Content Panel */}
+        <Box
+          sx={{
+            flex: 1,
+            overflowY: 'auto',
+            overflowX: 'hidden',
+            minWidth: 0,
+            p: { xs: 1.5, md: 3 },
+          }}
+        >
+          {children}
+        </Box>
 
       {/* Right Panel */}
       {rightPanel && (

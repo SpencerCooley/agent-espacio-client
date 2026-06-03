@@ -112,15 +112,19 @@ export default function WorkspaceHeader({
 
           {breadcrumb && breadcrumb.length > 0 && (
             <Breadcrumbs
-              separator={<ChevronRight sx={{ fontSize: 16, color: 'text.secondary' }} />}
+              separator={<ChevronRight sx={{ fontSize: { xs: 12, md: 16 }, color: 'text.secondary' }} />}
               sx={{
-                ml: 2,
+                ml: { xs: 1, md: 2 },
+                minWidth: 0,
                 '& .MuiBreadcrumbs-ol': {
                   flexWrap: 'nowrap',
                   overflow: 'hidden',
                 },
                 '& .MuiBreadcrumbs-li': {
                   whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  minWidth: 0,
                 },
               }}
             >
@@ -164,6 +168,11 @@ export default function WorkspaceHeader({
                           textDecoration: 'none',
                           color: isActiveDrop ? 'primary.contrastText' : 'inherit',
                           '&:hover': { textDecoration: 'underline' },
+                          fontSize: { xs: '0.75rem', md: '0.875rem' },
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          display: 'block',
+                          maxWidth: { xs: 100, sm: 150, md: 'none' },
                         }}
                       >
                         {item.label}
@@ -179,14 +188,29 @@ export default function WorkspaceHeader({
                       component={Link}
                       href={item.href}
                       color="inherit"
-                      sx={{ textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}
+                      sx={{
+                        textDecoration: 'none',
+                        '&:hover': { textDecoration: 'underline' },
+                        fontSize: { xs: '0.75rem', md: '0.875rem' },
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        display: 'block',
+                        maxWidth: { xs: 100, sm: 150, md: 'none' },
+                      }}
                     >
                       {item.label}
                     </MuiLink>
                   );
                 }
                 return (
-                  <Typography key={index} color={isLast ? 'text.primary' : 'text.secondary'} variant="body2">
+                  <Typography key={index} color={isLast ? 'text.primary' : 'text.secondary'}
+                    sx={{
+                      fontSize: { xs: '0.75rem', md: '0.875rem' },
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      maxWidth: { xs: 100, sm: 150, md: 'none' },
+                    }}
+                  >
                     {item.label}
                   </Typography>
                 );

@@ -74,12 +74,37 @@ async function request<T>(method: string, path: string, data?: unknown): Promise
   return response.json();
 }
 
+async function requestText(method: string, path: string): Promise<string> {
+  const token = getToken();
+  
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    method,
+    headers: {
+      ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+    },
+  });
+
+  if (!response.ok) {
+    let errorMessage = `HTTP ${response.status}`;
+    try {
+      const errorData = await response.json();
+      if (errorData.detail) errorMessage = errorData.detail;
+    } catch {
+      // Ignore JSON parse errors
+    }
+    throw new ApiError(errorMessage, response.status);
+  }
+
+  return response.text();
+}
+
 // Generic API client
 export const apiClient = {
   get: <T>(path: string) => request<T>('GET', path),
   post: <T>(path: string, data?: unknown) => request<T>('POST', path, data),
   put: <T>(path: string, data?: unknown) => request<T>('PUT', path, data),
   delete: <T>(path: string) => request<T>('DELETE', path),
+  getText: (path: string) => requestText('GET', path),
 };
 
 // Service objects

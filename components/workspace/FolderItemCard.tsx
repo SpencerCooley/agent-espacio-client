@@ -299,6 +299,7 @@ export default function FolderItemCard({
   };
 
   const isImageWithThumb = item.kind === 'asset' && item.is_image && thumbSrc;
+  const isMarkdownWithPreview = item.kind === 'asset' && item.is_markdown && item.file_meta?.preview;
   const isFolder = item.kind === 'folder';
 
   return (
@@ -350,7 +351,7 @@ export default function FolderItemCard({
             alignItems: 'center',
             position: 'relative',
             overflow: 'hidden',
-            ...(isImageWithThumb
+            ...(isImageWithThumb || isMarkdownWithPreview
               ? { p: 0, aspectRatio: '4/3' }
               : { py: 3 }),
             ...(isRenaming && { pointerEvents: 'none' }),
@@ -435,6 +436,92 @@ export default function FolderItemCard({
                       height: 20,
                       color: 'rgba(255,255,255,0.85)',
                       borderColor: 'rgba(255,255,255,0.4)',
+                      '& .MuiChip-label': { px: 1 },
+                    }}
+                  />
+                </Box>
+              </Box>
+            </>
+          ) : isMarkdownWithPreview ? (
+            <>
+              <Box
+                sx={{
+                  width: '100%',
+                  height: '100%',
+                  position: 'absolute',
+                  inset: 0,
+                  p: 2,
+                  overflow: 'hidden',
+                  fontFamily: '"JetBrains Mono", "Fira Code", monospace',
+                  fontSize: '0.7rem',
+                  lineHeight: 1.5,
+                  color: 'text.secondary',
+                  whiteSpace: 'pre-wrap',
+                  wordBreak: 'break-word',
+                  display: '-webkit-box',
+                  WebkitLineClamp: 8,
+                  WebkitBoxOrient: 'vertical',
+                }}
+              >
+                {item.file_meta!.preview}
+              </Box>
+              <Box
+                sx={{
+                  mt: 'auto',
+                  width: '100%',
+                  position: 'relative',
+                  zIndex: 1,
+                  background: (theme) =>
+                    `linear-gradient(to top, ${theme.palette.background.paper} 0%, transparent 100%)`,
+                  px: 1.5,
+                  pb: 1.5,
+                  pt: 4,
+                }}
+              >
+                {isRenaming ? (
+                  <TextField
+                    inputRef={renameInputRef}
+                    value={renameValue}
+                    onChange={(e) => setRenameValue(e.target.value)}
+                    onKeyDown={handleRenameKeyDown}
+                    onBlur={handleRenameSubmit}
+                    size="small"
+                    fullWidth
+                    autoFocus
+                    sx={{
+                      '& .MuiInputBase-input': {
+                        textAlign: 'center',
+                        fontSize: '0.875rem',
+                        fontWeight: 500,
+                        py: 0.5,
+                      },
+                    }}
+                    onClick={(e) => e.stopPropagation()}
+                  />
+                ) : (
+                  <Typography
+                    variant="body2"
+                    sx={{
+                      fontWeight: 500,
+                      wordBreak: 'break-word',
+                      lineHeight: 1.3,
+                      display: '-webkit-box',
+                      WebkitLineClamp: 2,
+                      WebkitBoxOrient: 'vertical',
+                      overflow: 'hidden',
+                    }}
+                  >
+                    {item.name}
+                  </Typography>
+                )}
+                <Box sx={{ mt: 0.5, display: 'flex' }}>
+                  <Chip
+                    label={getKindLabel()}
+                    size="small"
+                    variant="outlined"
+                    sx={{
+                      fontSize: '0.65rem',
+                      height: 20,
                       '& .MuiChip-label': { px: 1 },
                     }}
                   />

@@ -5,6 +5,7 @@ export interface FileMeta {
   height?: number;
   has_alpha?: boolean;
   thumbnails?: Record<string, { w: number; h: number; size_bytes: number }>;
+  preview?: string;
 }
 
 export interface Asset {
@@ -40,6 +41,12 @@ export function getAssetDownloadUrl(assetId: string, size?: number): string {
 export const assetService = {
   getAsset: (assetId: string) =>
     apiClient.get<Asset>(`/assets/${assetId}`),
+
+  getContent: (assetId: string) =>
+    apiClient.getText(`/assets/${assetId}/content`),
+
+  updateContent: (assetId: string, content: string) =>
+    apiClient.put<Asset>(`/assets/${assetId}`, { content }),
 
   listAssets: (folderId?: string, mimeType?: string) => {
     const params = new URLSearchParams();
