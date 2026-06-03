@@ -96,11 +96,11 @@ export default function WorkspaceHeader({
   return (
     <AppBar
       position="fixed"
+      color="inherit"
       sx={{
         backgroundColor: 'background.paper',
         borderBottom: 1,
         borderColor: 'divider',
-        color: 'text.primary',
       }}
     >
       <Toolbar sx={{ justifyContent: 'space-between' }}>

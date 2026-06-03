@@ -16,7 +16,6 @@ import {
 } from '@mui/material';
 import {
   Folder as FolderIcon,
-  Image as ImageIcon,
   Article as ArticleIcon,
   Description as DescriptionIcon,
   DataObject as DataObjectIcon,
@@ -29,6 +28,8 @@ import {
 } from '@mui/icons-material';
 import { useRouter } from 'next/navigation';
 import { FolderItem } from '../../services/folders';
+import { getAssetDownloadUrl } from '../../services/assets';
+import { useAuthImage } from '../../hooks/useAuthImage';
 
 interface FolderItemCardProps {
   item: FolderItem;
@@ -61,6 +62,9 @@ export default function FolderItemCard({
   const [isRenaming, setIsRenaming] = useState(false);
   const [renameValue, setRenameValue] = useState(item.name);
   const renameInputRef = useRef<HTMLInputElement>(null);
+
+  const thumbUrl = item.is_image ? getAssetDownloadUrl(item.id, 256) : null;
+  const thumbSrc = useAuthImage(thumbUrl);
 
   // Drag state for folders (drop targets)
   const [isDragOver, setIsDragOver] = useState(false);
@@ -276,9 +280,6 @@ export default function FolderItemCard({
     }
 
     if (item.kind === 'asset') {
-      if (item.is_image) {
-        return <ImageIcon sx={{ fontSize: 48, color: 'text.secondary' }} />;
-      }
       if (item.mime_type === 'text/markdown' || item.mime_type === 'text/x-markdown') {
         return <DescriptionIcon sx={{ fontSize: 48, color: 'text.secondary' }} />;
       }
@@ -297,6 +298,7 @@ export default function FolderItemCard({
     return item.mime_type ? item.mime_type.split('/')[1]?.toUpperCase() : 'File';
   };
 
+  const isImageWithThumb = item.kind === 'asset' && item.is_image && thumbSrc;
   const isFolder = item.kind === 'folder';
 
   return (
@@ -346,63 +348,156 @@ export default function FolderItemCard({
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
-            py: 3,
+            position: 'relative',
+            overflow: 'hidden',
+            ...(isImageWithThumb
+              ? { p: 0, aspectRatio: '4/3' }
+              : { py: 3 }),
             ...(isRenaming && { pointerEvents: 'none' }),
           }}
         >
-          <Box sx={{ mb: 1.5 }}>
-            {getIcon()}
-          </Box>
-          <CardContent sx={{ pt: 0, pb: 1, textAlign: 'center', width: '100%' }}>
-            {isRenaming ? (
-              <TextField
-                inputRef={renameInputRef}
-                value={renameValue}
-                onChange={(e) => setRenameValue(e.target.value)}
-                onKeyDown={handleRenameKeyDown}
-                onBlur={handleRenameSubmit}
-                size="small"
-                fullWidth
-                autoFocus
+          {isImageWithThumb ? (
+            <>
+              <Box
+                component="img"
+                src={thumbSrc}
+                alt={item.name}
                 sx={{
-                  '& .MuiInputBase-input': {
-                    textAlign: 'center',
-                    fontSize: '0.875rem',
-                    fontWeight: 500,
-                    py: 0.5,
-                  },
+                  width: '100%',
+                  height: '100%',
+                  objectFit: 'cover',
+                  position: 'absolute',
+                  inset: 0,
                 }}
-                onClick={(e) => e.stopPropagation()}
               />
-            ) : (
-              <Typography
-                variant="body2"
+              <Box
                 sx={{
-                  fontWeight: 500,
-                  wordBreak: 'break-word',
-                  lineHeight: 1.3,
-                  display: '-webkit-box',
-                  WebkitLineClamp: 2,
-                  WebkitBoxOrient: 'vertical',
-                  overflow: 'hidden',
+                  mt: 'auto',
+                  width: '100%',
+                  position: 'relative',
+                  zIndex: 1,
+                  background: (theme) =>
+                    `linear-gradient(to top, ${theme.palette.common.black} 0%, transparent 100%)`,
+                  px: 1.5,
+                  pb: 1.5,
+                  pt: 4,
                 }}
               >
-                {item.name}
-              </Typography>
-            )}
-            <Box sx={{ mt: 1, display: 'flex', justifyContent: 'center' }}>
-              <Chip
-                label={getKindLabel()}
-                size="small"
-                variant="outlined"
-                sx={{
-                  fontSize: '0.65rem',
-                  height: 20,
-                  '& .MuiChip-label': { px: 1 },
-                }}
-              />
-            </Box>
-          </CardContent>
+                {isRenaming ? (
+                  <TextField
+                    inputRef={renameInputRef}
+                    value={renameValue}
+                    onChange={(e) => setRenameValue(e.target.value)}
+                    onKeyDown={handleRenameKeyDown}
+                    onBlur={handleRenameSubmit}
+                    size="small"
+                    fullWidth
+                    autoFocus
+                    sx={{
+                      '& .MuiInputBase-input': {
+                        textAlign: 'center',
+                        fontSize: '0.875rem',
+                        fontWeight: 500,
+                        py: 0.5,
+                        color: '#fff',
+                      },
+                      '& .MuiOutlinedInput-notchedOutline': {
+                        borderColor: 'rgba(255,255,255,0.3)',
+                      },
+                    }}
+                    onClick={(e) => e.stopPropagation()}
+                  />
+                ) : (
+                  <Typography
+                    variant="body2"
+                    sx={{
+                      fontWeight: 500,
+                      wordBreak: 'break-word',
+                      lineHeight: 1.3,
+                      color: '#fff',
+                      textShadow: '0 1px 3px rgba(0,0,0,0.5)',
+                      display: '-webkit-box',
+                      WebkitLineClamp: 2,
+                      WebkitBoxOrient: 'vertical',
+                      overflow: 'hidden',
+                    }}
+                  >
+                    {item.name}
+                  </Typography>
+                )}
+                <Box sx={{ mt: 0.5, display: 'flex' }}>
+                  <Chip
+                    label={getKindLabel()}
+                    size="small"
+                    variant="outlined"
+                    sx={{
+                      fontSize: '0.65rem',
+                      height: 20,
+                      color: 'rgba(255,255,255,0.85)',
+                      borderColor: 'rgba(255,255,255,0.4)',
+                      '& .MuiChip-label': { px: 1 },
+                    }}
+                  />
+                </Box>
+              </Box>
+            </>
+          ) : (
+            <>
+              <Box sx={{ mb: 1.5 }}>
+                {getIcon()}
+              </Box>
+              <CardContent sx={{ pt: 0, pb: 1, textAlign: 'center', width: '100%' }}>
+                {isRenaming ? (
+                  <TextField
+                    inputRef={renameInputRef}
+                    value={renameValue}
+                    onChange={(e) => setRenameValue(e.target.value)}
+                    onKeyDown={handleRenameKeyDown}
+                    onBlur={handleRenameSubmit}
+                    size="small"
+                    fullWidth
+                    autoFocus
+                    sx={{
+                      '& .MuiInputBase-input': {
+                        textAlign: 'center',
+                        fontSize: '0.875rem',
+                        fontWeight: 500,
+                        py: 0.5,
+                      },
+                    }}
+                    onClick={(e) => e.stopPropagation()}
+                  />
+                ) : (
+                  <Typography
+                    variant="body2"
+                    sx={{
+                      fontWeight: 500,
+                      wordBreak: 'break-word',
+                      lineHeight: 1.3,
+                      display: '-webkit-box',
+                      WebkitLineClamp: 2,
+                      WebkitBoxOrient: 'vertical',
+                      overflow: 'hidden',
+                    }}
+                  >
+                    {item.name}
+                  </Typography>
+                )}
+                <Box sx={{ mt: 1, display: 'flex', justifyContent: 'center' }}>
+                  <Chip
+                    label={getKindLabel()}
+                    size="small"
+                    variant="outlined"
+                    sx={{
+                      fontSize: '0.65rem',
+                      height: 20,
+                      '& .MuiChip-label': { px: 1 },
+                    }}
+                  />
+                </Box>
+              </CardContent>
+            </>
+          )}
         </CardActionArea>
       </Card>
 

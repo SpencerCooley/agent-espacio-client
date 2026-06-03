@@ -37,10 +37,12 @@ interface ThemeContextType {
 export const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
+  const [mounted, setMounted] = useState(false);
   const [mode, setMode] = useState<ThemeMode>('dark');
   const [currentTheme, setCurrentTheme] = useState<ThemeName>('hackerBuzz');
 
   useEffect(() => {
+    setMounted(true);
     const savedMode = localStorage.getItem('themeMode') as ThemeMode | null;
     const savedTheme = localStorage.getItem('themeName') as ThemeName | null;
     if (savedMode) {
@@ -50,6 +52,10 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       setCurrentTheme(savedTheme);
     }
   }, []);
+
+  if (!mounted) {
+    return null;
+  }
 
   const toggleTheme = () => {
     const newMode = mode === 'light' ? 'dark' : 'light';

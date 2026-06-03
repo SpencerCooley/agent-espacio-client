@@ -44,6 +44,7 @@ export default function WorkspaceLayout({
         display: 'flex',
         flexDirection: 'column',
         overflow: 'hidden',
+        bgcolor: 'background.default',
       }}
     >
       <WorkspaceHeader

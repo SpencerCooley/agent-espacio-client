@@ -1,5 +1,12 @@
 import { apiClient, API_BASE_URL, getToken, ApiError } from './api';
 
+export interface FileMeta {
+  width?: number;
+  height?: number;
+  has_alpha?: boolean;
+  thumbnails?: Record<string, { w: number; h: number; size_bytes: number }>;
+}
+
 export interface Asset {
   id: string;
   name: string;
@@ -11,10 +18,23 @@ export interface Asset {
   is_image: boolean;
   is_markdown: boolean;
   file_extension: string;
+  file_meta: FileMeta | null;
   descendant_of: string | null;
   created_at: string;
   updated_at: string;
   created_by_id: number | null;
+}
+
+export const DOWNLOAD_BASE_URL = `${API_BASE_URL}/assets`;
+
+/**
+ * Get the download URL for an asset.
+ * @param assetId - Asset UUID
+ * @param size - Optional thumbnail size (256, 512, etc.)
+ */
+export function getAssetDownloadUrl(assetId: string, size?: number): string {
+  const params = size ? `?size=${size}` : '';
+  return `${DOWNLOAD_BASE_URL}/${assetId}/download${params}`;
 }
 
 export const assetService = {

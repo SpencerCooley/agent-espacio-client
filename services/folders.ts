@@ -1,5 +1,12 @@
 import { apiClient } from './api';
 
+export interface FileMeta {
+  width?: number;
+  height?: number;
+  has_alpha?: boolean;
+  thumbnails?: Record<string, { w: number; h: number; size_bytes: number }>;
+}
+
 export interface Folder {
   id: string;
   name: string;
@@ -20,6 +27,7 @@ export interface FolderItem {
   mime_type?: string;
   size_bytes?: number;
   is_image?: boolean;
+  file_meta?: FileMeta | null;
   created_at: string;
   updated_at: string;
 }
@@ -33,6 +41,9 @@ export interface FolderContentsResponse {
 export const folderService = {
   getFolder: (folderId: string) =>
     apiClient.get<Folder>(`/folders/${folderId}`),
+
+  getFolderAncestors: (folderId: string) =>
+    apiClient.get<{ ancestors: Folder[] }>(`/folders/${folderId}/ancestors`),
 
   getFolderContents: (folderId: string) =>
     apiClient.get<FolderContentsResponse>(`/folders/${folderId}/contents`),
