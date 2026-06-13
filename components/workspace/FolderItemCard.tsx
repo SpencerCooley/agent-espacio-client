@@ -25,11 +25,13 @@ import {
   OpenInNew as OpenIcon,
   DriveFileRenameOutline as RenameIcon,
   Delete as DeleteIcon,
+  Movie as MovieIcon,
 } from '@mui/icons-material';
 import { useRouter } from 'next/navigation';
 import { FolderItem } from '../../services/folders';
 import { getAssetDownloadUrl } from '../../services/assets';
 import { useAuthImage } from '../../hooks/useAuthImage';
+import { useVideoThumbnail } from '../../hooks/useVideoThumbnail';
 
 interface FolderItemCardProps {
   item: FolderItem;
@@ -37,6 +39,7 @@ interface FolderItemCardProps {
   onRename?: (item: FolderItem, newName: string) => Promise<void>;
   onMoveItem?: (draggedItem: FolderItem, targetFolderId: string) => Promise<void>;
   onUploadToFolder?: (folderId: string, files: FileList) => Promise<void>;
+  isNew?: boolean;
 }
 
 /**
@@ -56,6 +59,7 @@ export default function FolderItemCard({
   onRename,
   onMoveItem,
   onUploadToFolder,
+  isNew,
 }: FolderItemCardProps) {
   const router = useRouter();
   const [contextMenu, setContextMenu] = useState<{ mouseX: number; mouseY: number } | null>(null);
@@ -66,10 +70,23 @@ export default function FolderItemCard({
   const thumbUrl = item.is_image ? getAssetDownloadUrl(item.id, 256) : null;
   const thumbSrc = useAuthImage(thumbUrl);
 
+  const videoUrl = item.mime_type?.startsWith('video/') ? getAssetDownloadUrl(item.id) : null;
+  const videoThumbSrc = useVideoThumbnail(videoUrl);
+
   // Drag state for folders (drop targets)
   const [isDragOver, setIsDragOver] = useState(false);
   // Red flash for invalid drops (e.g., dropping folder onto itself)
   const [invalidFlash, setInvalidFlash] = useState(false);
+  // Highlight new items that were added via real-time updates
+  const [isHighlighted, setIsHighlighted] = useState(isNew);
+
+  useEffect(() => {
+    if (isNew) {
+      setIsHighlighted(true);
+      const timer = setTimeout(() => setIsHighlighted(false), 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [isNew]);
 
   // Auto-focus rename input when entering rename mode
   useEffect(() => {
@@ -286,6 +303,9 @@ export default function FolderItemCard({
       if (item.mime_type === 'application/json') {
         return <DataObjectIcon sx={{ fontSize: 48, color: 'text.secondary' }} />;
       }
+      if (item.mime_type?.startsWith('video/')) {
+        return <MovieIcon sx={{ fontSize: 48, color: 'text.secondary' }} />;
+      }
       return <FileIcon sx={{ fontSize: 48, color: 'text.secondary' }} />;
     }
 
@@ -295,10 +315,12 @@ export default function FolderItemCard({
   const getKindLabel = () => {
     if (item.kind === 'folder') return 'Folder';
     if (item.kind === 'artifact') return item.type ? item.type.charAt(0).toUpperCase() + item.type.slice(1) : 'Artifact';
+    if (item.mime_type?.startsWith('video/')) return 'Video';
     return item.mime_type ? item.mime_type.split('/')[1]?.toUpperCase() : 'File';
   };
 
   const isImageWithThumb = item.kind === 'asset' && item.is_image && thumbSrc;
+  const isVideoWithThumb = item.kind === 'asset' && item.mime_type?.startsWith('video/') && videoThumbSrc;
   const isMarkdownWithPreview = item.kind === 'asset' && item.is_markdown && item.file_meta?.preview;
   const isFolder = item.kind === 'folder';
 
@@ -327,9 +349,17 @@ export default function FolderItemCard({
             bgcolor: 'action.selected',
             transform: 'scale(1.02)',
           }),
+          ...(isHighlighted && {
+            animation: 'newItemHighlight 2s ease',
+          }),
           ...(invalidFlash && {
             animation: 'invalidDropFlash 0.4s ease',
           }),
+          '@keyframes newItemHighlight': {
+            '0%': { borderColor: 'warning.main', boxShadow: '0 0 0 3px rgba(255, 152, 0, 0.3)', bgcolor: 'warning.light' },
+            '50%': { borderColor: 'warning.dark', boxShadow: '0 0 0 4px rgba(255, 152, 0, 0.4)', bgcolor: 'warning.light' },
+            '100%': { borderColor: 'divider', boxShadow: 'none', bgcolor: 'background.paper' },
+          },
           '@keyframes invalidDropFlash': {
             '0%': { borderColor: 'error.main', boxShadow: '0 0 0 3px rgba(244, 67, 54, 0.3)' },
             '50%': { borderColor: 'error.dark', boxShadow: '0 0 0 4px rgba(244, 67, 54, 0.4)' },
@@ -351,7 +381,7 @@ export default function FolderItemCard({
             alignItems: 'center',
             position: 'relative',
             overflow: 'hidden',
-            ...(isImageWithThumb || isMarkdownWithPreview
+            ...(isImageWithThumb || isVideoWithThumb || isMarkdownWithPreview
               ? { p: 0, aspectRatio: '4/3' }
               : { py: 3 }),
             ...(isRenaming && { pointerEvents: 'none' }),
@@ -363,6 +393,92 @@ export default function FolderItemCard({
                 component="img"
                 src={thumbSrc}
                 alt={item.name}
+                sx={{
+                  width: '100%',
+                  height: '100%',
+                  objectFit: 'cover',
+                  position: 'absolute',
+                  inset: 0,
+                }}
+              />
+              <Box
+                sx={{
+                  mt: 'auto',
+                  width: '100%',
+                  position: 'relative',
+                  zIndex: 1,
+                  background: (theme) =>
+                    `linear-gradient(to top, ${theme.palette.common.black} 0%, transparent 100%)`,
+                  px: 1.5,
+                  pb: 1.5,
+                  pt: 4,
+                }}
+              >
+                {isRenaming ? (
+                  <TextField
+                    inputRef={renameInputRef}
+                    value={renameValue}
+                    onChange={(e) => setRenameValue(e.target.value)}
+                    onKeyDown={handleRenameKeyDown}
+                    onBlur={handleRenameSubmit}
+                    size="small"
+                    fullWidth
+                    autoFocus
+                    sx={{
+                      '& .MuiInputBase-input': {
+                        textAlign: 'center',
+                        fontSize: '0.875rem',
+                        fontWeight: 500,
+                        py: 0.5,
+                        color: '#fff',
+                      },
+                      '& .MuiOutlinedInput-notchedOutline': {
+                        borderColor: 'rgba(255,255,255,0.3)',
+                      },
+                    }}
+                    onClick={(e) => e.stopPropagation()}
+                  />
+                ) : (
+                  <Typography
+                    variant="body2"
+                    sx={{
+                      fontWeight: 500,
+                      wordBreak: 'break-word',
+                      lineHeight: 1.3,
+                      color: '#fff',
+                      textShadow: '0 1px 3px rgba(0,0,0,0.5)',
+                      display: '-webkit-box',
+                      WebkitLineClamp: 2,
+                      WebkitBoxOrient: 'vertical',
+                      overflow: 'hidden',
+                    }}
+                  >
+                    {item.name}
+                  </Typography>
+                )}
+                <Box sx={{ mt: 0.5, display: 'flex' }}>
+                  <Chip
+                    label={getKindLabel()}
+                    size="small"
+                    variant="outlined"
+                    sx={{
+                      fontSize: '0.65rem',
+                      height: 20,
+                      color: 'rgba(255,255,255,0.85)',
+                      borderColor: 'rgba(255,255,255,0.4)',
+                      '& .MuiChip-label': { px: 1 },
+                    }}
+                  />
+                </Box>
+              </Box>
+            </>
+          ) : isVideoWithThumb ? (
+            <>
+              <Box
+                component="video"
+                src={videoThumbSrc}
+                muted
+                preload="metadata"
                 sx={{
                   width: '100%',
                   height: '100%',

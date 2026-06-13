@@ -18,10 +18,13 @@ import {
   Logout,
   Dashboard,
   ChevronRight,
+  Share as ShareIcon,
 } from '@mui/icons-material';
 import Logo from '../Logo';
 import { useApp } from '../../context/AppContext';
+import { useShareContext } from '../../context/ShareContext';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 
 interface BreadcrumbItem {
   label: string;
@@ -41,9 +44,14 @@ export default function WorkspaceHeader({
   onDropOnBreadcrumb,
 }: WorkspaceHeaderProps) {
   const { user, logout } = useApp();
+  const { shareTarget, setModalOpen } = useShareContext();
+  const pathname = usePathname();
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   // Track which breadcrumb item is being dragged over
   const [activeBreadcrumbDrop, setActiveBreadcrumbDrop] = useState<string | null>(null);
+
+  // Only show share icon on artifact routes
+  const isArtifactRoute = pathname?.startsWith('/workspace/artifacts/');
 
   const handleMenu = (event: React.MouseEvent<HTMLElement>) => {
     setAnchorEl(event.currentTarget);
@@ -57,6 +65,10 @@ export default function WorkspaceHeader({
     handleClose();
     await logout();
     window.location.href = '/login';
+  };
+
+  const handleShareClick = () => {
+    setModalOpen(true);
   };
 
   const handleBreadcrumbDragEnter = (folderId: string) => (e: React.DragEvent) => {
@@ -233,15 +245,16 @@ export default function WorkspaceHeader({
             </IconButton>
           )}
 
-          {/* Settings */}
-          <IconButton
-            component={Link}
-            href="/workspace/settings"
-            sx={{ color: 'text.primary' }}
-            title="Settings"
-          >
-            <SettingsIcon />
-          </IconButton>
+          {/* Share icon for artifact routes */}
+          {isArtifactRoute && shareTarget && (
+            <IconButton
+              onClick={handleShareClick}
+              sx={{ color: shareTarget.isPublic ? 'success.main' : 'text.primary' }}
+              title={shareTarget.isPublic ? 'Publicly shared' : 'Share this artifact'}
+            >
+              <ShareIcon />
+            </IconButton>
+          )}
 
           {/* User Menu */}
           <IconButton

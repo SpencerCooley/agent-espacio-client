@@ -14,6 +14,8 @@ export interface Folder {
   parent_id: string | null;
   path: string;
   is_root: boolean;
+  is_public: boolean;
+  public_magic_id: string | null;
   depth: number;
   created_at: string;
   updated_at: string;
@@ -64,4 +66,7 @@ export const folderService = {
 
   deleteFolder: (folderId: string) =>
     apiClient.delete<{ deleted_folder_id: string; deleted_subfolders_count: number; deleted_assets_count: number }>(`/folders/${folderId}`),
+
+  shareFolder: (folderId: string) =>
+    apiClient.post<Folder>(`/folders/${folderId}/share`),
 };

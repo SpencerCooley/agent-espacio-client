@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import {
   Box,
@@ -8,18 +8,26 @@ import {
   CircularProgress,
   Alert,
   Paper,
+  Snackbar,
 } from '@mui/material';
 import ProtectedRoute from '../../../../components/auth/ProtectedRoute';
 import WorkspaceLayout from '../../../../components/layout/WorkspaceLayout';
 import { artifactService, Artifact } from '../../../../services/artifacts';
+import { folderService } from '../../../../services/folders';
+import { useShareContext } from '../../../../context/ShareContext';
+import NoteEditor from '../../../../components/workspace/NoteEditor';
 
 function ArtifactViewerContent() {
   const params = useParams();
   const artifactId = params.artifactId as string;
+  const { setShareTarget } = useShareContext();
 
   const [artifact, setArtifact] = useState<Artifact | null>(null);
+  const [ancestors, setAncestors] = useState<{ id: string; name: string; is_public: boolean }[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isShareLoading, setIsShareLoading] = useState(false);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   useEffect(() => {
     if (!artifactId) return;
@@ -30,17 +38,144 @@ function ArtifactViewerContent() {
     artifactService.getArtifact(artifactId)
       .then((response) => {
         setArtifact(response);
+        if (response.folder_id) {
+          folderService.getFolderAncestors(response.folder_id)
+            .then((res) => {
+              const chain = res.ancestors
+                .filter((f) => !f.is_root)
+                .map((f) => ({
+                  id: f.id,
+                  name: f.name,
+                  is_public: f.is_public,
+                }));
+              setAncestors(chain);
+
+              // Check if any ancestor is public (inherited)
+              const hasPublicParent = chain.some((f) => f.is_public);
+              const isPublic = response.is_public || hasPublicParent;
+
+              setShareTarget({
+                id: response.id,
+                type: 'artifact',
+                name: response.name,
+                isPublic: isPublic,
+                publicMagicId: response.public_magic_id,
+                isInherited: hasPublicParent,
+                isLoading: false,
+                onToggle: async () => {
+                  if (hasPublicParent) return;
+                  setIsShareLoading(true);
+                  try {
+                    const updated = await artifactService.shareArtifact(artifactId);
+                    setArtifact((prev) => (prev ? { ...prev, is_public: updated.is_public, public_magic_id: updated.public_magic_id } : null));
+                    setShareTarget((prev) => (prev ? {
+                      ...prev,
+                      isPublic: updated.is_public,
+                      publicMagicId: updated.public_magic_id,
+                    } : null));
+                    setSuccessMessage(
+                      updated.is_public
+                        ? 'Artifact is now publicly shared'
+                        : 'Artifact is now private'
+                    );
+                  } catch (err: unknown) {
+                    const message = err instanceof Error ? err.message : 'Failed to toggle sharing';
+                    setError(message);
+                  } finally {
+                    setIsShareLoading(false);
+                  }
+                },
+              });
+            })
+            .catch(() => {
+              setAncestors([]);
+              setShareTarget({
+                id: response.id,
+                type: 'artifact',
+                name: response.name,
+                isPublic: response.is_public,
+                publicMagicId: response.public_magic_id,
+                isInherited: false,
+                isLoading: false,
+                onToggle: async () => {
+                  setIsShareLoading(true);
+                  try {
+                    const updated = await artifactService.shareArtifact(artifactId);
+                    setArtifact((prev) => (prev ? { ...prev, is_public: updated.is_public, public_magic_id: updated.public_magic_id } : null));
+                    setShareTarget((prev) => (prev ? {
+                      ...prev,
+                      isPublic: updated.is_public,
+                      publicMagicId: updated.public_magic_id,
+                    } : null));
+                    setSuccessMessage(
+                      updated.is_public
+                        ? 'Artifact is now publicly shared'
+                        : 'Artifact is now private'
+                    );
+                  } catch (err: unknown) {
+                    const message = err instanceof Error ? err.message : 'Failed to toggle sharing';
+                    setError(message);
+                  } finally {
+                    setIsShareLoading(false);
+                  }
+                },
+              });
+            });
+        } else {
+          // Root folder - no ancestors
+          setShareTarget({
+            id: response.id,
+            type: 'artifact',
+            name: response.name,
+            isPublic: response.is_public,
+            publicMagicId: response.public_magic_id,
+            isInherited: false,
+            isLoading: false,
+            onToggle: async () => {
+              setIsShareLoading(true);
+              try {
+                const updated = await artifactService.shareArtifact(artifactId);
+                setArtifact((prev) => (prev ? { ...prev, is_public: updated.is_public, public_magic_id: updated.public_magic_id } : null));
+                setShareTarget((prev) => (prev ? {
+                  ...prev,
+                  isPublic: updated.is_public,
+                  publicMagicId: updated.public_magic_id,
+                } : null));
+                setSuccessMessage(
+                  updated.is_public
+                    ? 'Artifact is now publicly shared'
+                    : 'Artifact is now private'
+                );
+              } catch (err: unknown) {
+                const message = err instanceof Error ? err.message : 'Failed to toggle sharing';
+                setError(message);
+              } finally {
+                setIsShareLoading(false);
+              }
+            },
+          });
+        }
         setLoading(false);
       })
       .catch((err) => {
         setError(err.message || 'Failed to load artifact');
         setLoading(false);
       });
-  }, [artifactId]);
+
+    return () => {
+      // Clear share target when leaving the page
+      setShareTarget(null);
+    };
+  }, [artifactId, setShareTarget]);
 
   const breadcrumb = artifact
     ? [
-        { label: 'My Drive', href: '/workspace' },
+        { label: 'My Drive', href: '/workspace', folderId: '00000000-0000-0000-0000-000000000001' },
+        ...ancestors.map((f) => ({
+          label: f.name,
+          href: `/workspace/folders/${f.id}`,
+          folderId: f.id,
+        })),
         { label: artifact.name },
       ]
     : [{ label: 'My Drive', href: '/workspace' }];
@@ -65,6 +200,21 @@ function ArtifactViewerContent() {
     );
   }
 
+  if (artifact.type === 'note') {
+    return (
+      <WorkspaceLayout breadcrumb={breadcrumb}>
+        <NoteEditor artifact={artifact} />
+        <Snackbar
+          open={!!successMessage}
+          autoHideDuration={3000}
+          onClose={() => setSuccessMessage(null)}
+          message={successMessage}
+          anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+        />
+      </WorkspaceLayout>
+    );
+  }
+
   return (
     <WorkspaceLayout breadcrumb={breadcrumb}>
       <Box>
@@ -80,6 +230,13 @@ function ArtifactViewerContent() {
           </Typography>
         </Paper>
       </Box>
+      <Snackbar
+        open={!!successMessage}
+        autoHideDuration={3000}
+        onClose={() => setSuccessMessage(null)}
+        message={successMessage}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      />
     </WorkspaceLayout>
   );
 }

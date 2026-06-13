@@ -7,6 +7,8 @@ export interface Artifact {
   description: string | null;
   content: Record<string, unknown>;
   folder_id: string;
+  is_public: boolean;
+  public_magic_id: string | null;
   created_at: string;
   updated_at: string;
   created_by_id: number | null;
@@ -62,4 +64,7 @@ export const artifactService = {
 
   getArtifactTypeDocs: (typeKey: string) =>
     apiClient.get<ArtifactType>(`/artifacts/docs/${typeKey}`),
+
+  shareArtifact: (artifactId: string) =>
+    apiClient.post<Artifact>(`/artifacts/${artifactId}/share`),
 };

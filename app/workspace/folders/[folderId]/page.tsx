@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useRef, useCallback } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import {
   Box,
   Typography,
@@ -10,8 +10,11 @@ import {
   Alert,
   Button,
   Snackbar,
+  Menu,
+  MenuItem,
+  Fade,
 } from '@mui/material';
-import { CreateNewFolder, UploadFile } from '@mui/icons-material';
+import { CreateNewFolder, UploadFile, NoteAdd, Share as ShareIcon } from '@mui/icons-material';
 import ProtectedRoute from '../../../../components/auth/ProtectedRoute';
 import WorkspaceLayout from '../../../../components/layout/WorkspaceLayout';
 import FolderItemCard from '../../../../components/workspace/FolderItemCard';
@@ -19,7 +22,9 @@ import CreateFolderDialog from '../../../../components/workspace/CreateFolderDia
 import DeleteConfirmDialog from '../../../../components/workspace/DeleteConfirmDialog';
 import { folderService, FolderContentsResponse, FolderItem } from '../../../../services/folders';
 import { assetService } from '../../../../services/assets';
-import { artifactService } from '../../../../services/artifacts';
+import { artifactService, ArtifactType } from '../../../../services/artifacts';
+import { useWebSocket } from '../../../../context/WebSocketContext';
+import SharePanel from '../../../../components/workspace/SharePanel';
 
 interface BreadcrumbItem {
   label: string;
@@ -29,10 +34,16 @@ interface BreadcrumbItem {
 
 function FolderExplorerContent() {
   const params = useParams();
+  const router = useRouter();
   const folderId = params.folderId as string;
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [data, setData] = useState<FolderContentsResponse | null>(null);
+  const dataRef = useRef<FolderContentsResponse | null>(null);
+  useEffect(() => {
+    dataRef.current = data;
+  }, [data]);
+  const [ancestors, setAncestors] = useState<{ id: string; name: string }[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
@@ -42,12 +53,28 @@ function FolderExplorerContent() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<FolderItem | null>(null);
 
+  // Artifact creation state
+  const [artifactTypes, setArtifactTypes] = useState<ArtifactType[]>([]);
+  const [artifactTypeAnchor, setArtifactTypeAnchor] = useState<HTMLElement | null>(null);
+  const [creatingArtifact, setCreatingArtifact] = useState(false);
+
   // Drag-and-drop state
   const [isDragOver, setIsDragOver] = useState(false);
   const [uploading, setUploading] = useState(false);
 
+  // Real-time: track newly added items for highlight animation
+  const [newItemIds, setNewItemIds] = useState<Set<string>>(new Set());
+
+  // Share state
+  const [isPublic, setIsPublic] = useState(false);
+  const [publicMagicId, setPublicMagicId] = useState<string | null>(null);
+  const [isShareLoading, setIsShareLoading] = useState(false);
+  const [showSharePanel, setShowSharePanel] = useState(false);
+  const [parentIsPublic, setParentIsPublic] = useState(false);
+
   // Ref-based drag counter to handle nested drag enter/leave
   const dragCounterRef = useRef(0);
+  const { subscribe, unsubscribe } = useWebSocket();
 
   const loadContents = useCallback(async () => {
     if (!folderId) return;
@@ -56,6 +83,22 @@ function FolderExplorerContent() {
     try {
       const response = await folderService.getFolderContents(folderId);
       setData(response);
+      setIsPublic(response.folder.is_public);
+      setPublicMagicId(response.folder.public_magic_id);
+      // Fetch ancestors for breadcrumb
+      const ancestorsRes = await folderService.getFolderAncestors(folderId);
+      const chain = ancestorsRes.ancestors
+        .filter((f) => !f.is_root && f.id !== folderId)
+        .map((f) => ({
+          id: f.id,
+          name: f.name,
+        }));
+      setAncestors(chain);
+      // Check if any ancestor is publicly shared (inherited public status)
+      const hasPublicParent = ancestorsRes.ancestors.some(
+        (f) => !f.is_root && f.id !== folderId && f.is_public
+      );
+      setParentIsPublic(hasPublicParent);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Failed to load folder contents';
       setError(message);
@@ -64,9 +107,69 @@ function FolderExplorerContent() {
     }
   }, [folderId]);
 
+  const handleToggleShare = useCallback(async () => {
+    if (!folderId || isShareLoading) return;
+    setIsShareLoading(true);
+    try {
+      const response = await folderService.shareFolder(folderId);
+      setIsPublic(response.is_public);
+      setPublicMagicId(response.public_magic_id);
+      setSuccessMessage(
+        response.is_public
+          ? 'Folder is now publicly shared'
+          : 'Folder is now private'
+      );
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Failed to toggle sharing';
+      setError(message);
+    } finally {
+      setIsShareLoading(false);
+    }
+  }, [folderId, isShareLoading]);
+
   useEffect(() => {
     loadContents();
   }, [loadContents]);
+
+  useEffect(() => {
+    artifactService.getArtifactDocs()
+      .then((res) => setArtifactTypes(res.types ?? []))
+      .catch(() => {});
+  }, []);
+
+  // Subscribe to real-time folder updates
+  useEffect(() => {
+    if (!folderId) return;
+
+    const channel = `folder:${folderId}`;
+    const handleEvent = (event: any) => {
+      // Refresh folder contents on any change
+      folderService.getFolderContents(folderId)
+        .then((response) => {
+          // Track new items for highlight animation
+          const oldIds = new Set(dataRef.current?.items.map((i) => i.id) ?? []);
+          const newIds = new Set<string>();
+          for (const item of response.items) {
+            if (!oldIds.has(item.id)) {
+              newIds.add(item.id);
+            }
+          }
+          if (newIds.size > 0) {
+            setNewItemIds(newIds);
+            setTimeout(() => {
+              setNewItemIds(new Set());
+            }, 2000);
+          }
+          setData(response);
+        })
+        .catch(() => {});
+    };
+
+    subscribe(channel, handleEvent);
+    return () => {
+      unsubscribe(channel, handleEvent);
+    };
+  }, [folderId, subscribe, unsubscribe]);
 
   const showSuccess = (message: string) => {
     setSuccessMessage(message);
@@ -158,6 +261,25 @@ function FolderExplorerContent() {
     }
     if (failedCount > 0) {
       setError(`${failedCount} file${failedCount > 1 ? 's' : ''} failed to upload`);
+    }
+  };
+
+  // Artifact creation handler
+  const handleCreateArtifact = async (type: ArtifactType) => {
+    setArtifactTypeAnchor(null);
+    setCreatingArtifact(true);
+    try {
+      const artifact = await artifactService.createArtifact({
+        name: 'New Note',
+        type: type.key,
+        content: { type: 'doc', content: [] },
+        folder_id: folderId,
+      });
+      router.push(`/workspace/artifacts/${artifact.id}`);
+    } catch {
+      setError('Failed to create artifact');
+    } finally {
+      setCreatingArtifact(false);
     }
   };
 
@@ -255,6 +377,11 @@ function FolderExplorerContent() {
   const breadcrumb: BreadcrumbItem[] = data
     ? [
         { label: 'My Drive', href: '/workspace', folderId: '00000000-0000-0000-0000-000000000001' },
+        ...ancestors.map((f) => ({
+          label: f.name,
+          href: `/workspace/folders/${f.id}`,
+          folderId: f.id,
+        })),
         { label: data.folder.name },
       ]
     : [{ label: 'My Drive', href: '/workspace', folderId: '00000000-0000-0000-0000-000000000001' }];
@@ -305,7 +432,21 @@ function FolderExplorerContent() {
   const { folder, items, total_items } = data;
 
   return (
-    <WorkspaceLayout breadcrumb={breadcrumb} onDropOnBreadcrumb={handleDropOnBreadcrumb}>
+    <WorkspaceLayout
+      breadcrumb={breadcrumb}
+      onDropOnBreadcrumb={handleDropOnBreadcrumb}
+      rightPanel={
+        showSharePanel && folder.parent_id && !parentIsPublic ? (
+          <SharePanel
+            itemId={folderId}
+            itemType="folder"
+            isPublic={isPublic}
+            publicMagicId={publicMagicId}
+            onToggle={handleToggleShare}
+          />
+        ) : undefined
+      }
+    >
       <Snackbar
         open={!!successMessage}
         autoHideDuration={4000}
@@ -359,7 +500,19 @@ function FolderExplorerContent() {
             {uploading && ' • Uploading...'}
           </Typography>
         </Box>
-        <Box sx={{ display: 'flex', gap: 1 }}>
+        <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+          {/* Share toggle button - only for non-root folders not under a public parent */}
+          {folder.parent_id && !parentIsPublic && (
+            <Button
+              variant={showSharePanel ? "contained" : "outlined"}
+              size="small"
+              startIcon={<ShareIcon />}
+              onClick={() => setShowSharePanel(!showSharePanel)}
+              color={isPublic ? "success" : "primary"}
+            >
+              {showSharePanel ? 'Hide' : 'Share'}
+            </Button>
+          )}
           <Button
             variant="outlined"
             size="small"
@@ -368,6 +521,26 @@ function FolderExplorerContent() {
           >
             New Folder
           </Button>
+          <Button
+            variant="outlined"
+            size="small"
+            startIcon={<NoteAdd />}
+            onClick={(e) => setArtifactTypeAnchor(e.currentTarget)}
+            disabled={creatingArtifact}
+          >
+            New Artifact
+          </Button>
+          <Menu
+            anchorEl={artifactTypeAnchor}
+            open={Boolean(artifactTypeAnchor)}
+            onClose={() => setArtifactTypeAnchor(null)}
+          >
+            {artifactTypes.map((t) => (
+              <MenuItem key={t.key} onClick={() => handleCreateArtifact(t)}>
+                {t.name}
+              </MenuItem>
+            ))}
+          </Menu>
           <Button
             variant="contained"
             size="small"
@@ -439,13 +612,18 @@ function FolderExplorerContent() {
           <Grid container spacing={4} sx={{ opacity: isDragOver ? 0.3 : 1, transition: 'opacity 0.2s ease' }}>
             {items.map((item: FolderItem) => (
               <Grid item xs={6} sm={4} md={3} lg={2} key={item.id}>
-                <FolderItemCard
-                  item={item}
-                  onDelete={handleDeleteRequest}
-                  onRename={item.kind === 'folder' ? handleRename : undefined}
-                  onMoveItem={handleMoveItem}
-                  onUploadToFolder={handleUploadToFolder}
-                />
+                <Fade in={true} timeout={newItemIds.has(item.id) ? 1000 : 0}>
+                  <Box>
+                    <FolderItemCard
+                      item={item}
+                      onDelete={handleDeleteRequest}
+                      onRename={item.kind === 'folder' ? handleRename : undefined}
+                      onMoveItem={handleMoveItem}
+                      onUploadToFolder={handleUploadToFolder}
+                      isNew={newItemIds.has(item.id)}
+                    />
+                  </Box>
+                </Fade>
               </Grid>
             ))}
           </Grid>

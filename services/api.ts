@@ -60,7 +60,15 @@ async function request<T>(method: string, path: string, data?: unknown): Promise
     let errorMessage = `HTTP ${response.status}`;
     try {
       const errorData = await response.json();
-      if (errorData.detail) errorMessage = errorData.detail;
+      if (errorData.detail) {
+        if (typeof errorData.detail === 'string') {
+          errorMessage = errorData.detail;
+        } else if (Array.isArray(errorData.detail)) {
+          errorMessage = errorData.detail.map((d: any) => d.msg || JSON.stringify(d)).join('; ');
+        } else {
+          errorMessage = JSON.stringify(errorData.detail);
+        }
+      }
     } catch {
       // Ignore JSON parse errors
     }
@@ -88,7 +96,15 @@ async function requestText(method: string, path: string): Promise<string> {
     let errorMessage = `HTTP ${response.status}`;
     try {
       const errorData = await response.json();
-      if (errorData.detail) errorMessage = errorData.detail;
+      if (errorData.detail) {
+        if (typeof errorData.detail === 'string') {
+          errorMessage = errorData.detail;
+        } else if (Array.isArray(errorData.detail)) {
+          errorMessage = errorData.detail.map((d: any) => d.msg || JSON.stringify(d)).join('; ');
+        } else {
+          errorMessage = JSON.stringify(errorData.detail);
+        }
+      }
     } catch {
       // Ignore JSON parse errors
     }

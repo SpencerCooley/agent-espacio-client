@@ -20,6 +20,8 @@ export interface Asset {
   is_markdown: boolean;
   file_extension: string;
   file_meta: FileMeta | null;
+  is_public: boolean;
+  public_magic_id: string | null;
   descendant_of: string | null;
   created_at: string;
   updated_at: string;
@@ -61,6 +63,9 @@ export const assetService = {
 
   moveAsset: (assetId: string, folderId: string) =>
     apiClient.put<Asset>(`/assets/${assetId}`, { folder_id: folderId }),
+
+  shareAsset: (assetId: string) =>
+    apiClient.post<Asset>(`/assets/${assetId}/share`),
 
   uploadAsset: async (file: File, folderId?: string) => {
     const token = getToken();

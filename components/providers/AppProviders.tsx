@@ -5,6 +5,9 @@ import { ThemeProvider as MUIThemeProvider, createTheme } from '@mui/material/st
 import CssBaseline from '@mui/material/CssBaseline';
 import { ThemeProvider, useThemeContext } from '../../context/ThemeContext';
 import { AppProvider } from '../../context/AppContext';
+import { WebSocketProvider } from '../../context/WebSocketContext';
+import { NotificationProvider } from '../../context/NotificationContext';
+import { ShareProvider } from '../../context/ShareContext';
 import EmotionRegistry from './EmotionRegistry';
 
 function ThemedMUIProvider({ children }: { children: ReactNode }) {
@@ -25,7 +28,13 @@ export default function AppProviders({ children }: { children: ReactNode }) {
       <ThemeProvider>
         <ThemedMUIProvider>
           <AppProvider>
-            {children}
+            <WebSocketProvider>
+              <ShareProvider>
+                <NotificationProvider>
+                  {children}
+                </NotificationProvider>
+              </ShareProvider>
+            </WebSocketProvider>
           </AppProvider>
         </ThemedMUIProvider>
       </ThemeProvider>

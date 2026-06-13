@@ -11,23 +11,36 @@ import {
   Button,
   Divider,
   Snackbar,
+  Switch,
+  TextField,
+  IconButton,
+  Tooltip,
+  Chip,
 } from '@mui/material';
-import { Download } from '@mui/icons-material';
+import { Download, ContentCopy, Public, Lock } from '@mui/icons-material';
 import ProtectedRoute from '../../../../components/auth/ProtectedRoute';
 import WorkspaceLayout from '../../../../components/layout/WorkspaceLayout';
 import MarkdownEditor from '../../../../components/workspace/MarkdownEditor';
 import { assetService, Asset, getAssetDownloadUrl } from '../../../../services/assets';
 import { folderService } from '../../../../services/folders';
 import { useAuthImage } from '../../../../hooks/useAuthImage';
+import { useAuthBlob } from '../../../../hooks/useAuthBlob';
 
 function AssetViewerContent() {
   const params = useParams();
   const assetId = params.assetId as string;
 
   const [asset, setAsset] = useState<Asset | null>(null);
-  const [ancestors, setAncestors] = useState<{ id: string; name: string }[]>([]);
+  const [ancestors, setAncestors] = useState<{ id: string; name: string; is_public: boolean }[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Share state
+  const [isPublic, setIsPublic] = useState(false);
+  const [publicMagicId, setPublicMagicId] = useState<string | null>(null);
+  const [isInherited, setIsInherited] = useState(false);
+  const [isShareLoading, setIsShareLoading] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   // Markdown state
   const [markdownContent, setMarkdownContent] = useState<string | null>(null);
@@ -44,6 +57,9 @@ function AssetViewerContent() {
     assetService.getAsset(assetId)
       .then((response) => {
         setAsset(response);
+        setIsPublic(response.is_public);
+        setPublicMagicId(response.public_magic_id);
+
         if (response.folder_id) {
           folderService.getFolderAncestors(response.folder_id)
             .then((res) => {
@@ -52,8 +68,16 @@ function AssetViewerContent() {
                 .map((f) => ({
                   id: f.id,
                   name: f.name,
+                  is_public: f.is_public,
                 }));
               setAncestors(chain);
+
+              // Check if any ancestor is public (inherited)
+              const hasPublicParent = chain.some((f) => f.is_public);
+              setIsInherited(hasPublicParent);
+              if (hasPublicParent) {
+                setIsPublic(true);
+              }
             })
             .catch(() => {
               setAncestors([]);
@@ -87,6 +111,35 @@ function AssetViewerContent() {
     setSuccessMessage('File saved');
   }, [assetId]);
 
+  const handleToggleShare = useCallback(async () => {
+    if (!assetId || isShareLoading || isInherited) return;
+    setIsShareLoading(true);
+    try {
+      const response = await assetService.shareAsset(assetId);
+      setIsPublic(response.is_public);
+      setPublicMagicId(response.public_magic_id);
+      setSuccessMessage(
+        response.is_public
+          ? 'Asset is now publicly shared'
+          : 'Asset is now private'
+      );
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Failed to toggle sharing';
+      setError(message);
+    } finally {
+      setIsShareLoading(false);
+    }
+  }, [assetId, isShareLoading, isInherited]);
+
+  const handleCopy = useCallback(() => {
+    if (publicMagicId) {
+      const url = `${typeof window !== 'undefined' ? window.location.origin : ''}/public/view/${publicMagicId}`;
+      navigator.clipboard.writeText(url);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  }, [publicMagicId]);
+
   const breadcrumb = asset
     ? [
         { label: 'My Drive', href: '/workspace', folderId: '00000000-0000-0000-0000-000000000001' },
@@ -100,7 +153,7 @@ function AssetViewerContent() {
     : [{ label: 'My Drive', href: '/workspace' }];
 
   const dims = asset?.file_meta
-    ? `${asset.file_meta.width} × ${asset.file_meta.height}`
+    ? `${asset.file_meta.width} \u00d7 ${asset.file_meta.height}`
     : null;
 
   const thumbSizes = asset?.file_meta?.thumbnails
@@ -109,6 +162,9 @@ function AssetViewerContent() {
 
   const imageUrl = asset?.is_image ? getAssetDownloadUrl(asset.id) : null;
   const imageSrc = useAuthImage(imageUrl);
+
+  const videoUrl = asset?.mime_type?.startsWith('video/') ? getAssetDownloadUrl(asset.id) : null;
+  const videoSrc = useAuthBlob(videoUrl);
 
   const handleDownload = async (url: string, filename: string) => {
     const token = localStorage.getItem('accessToken');
@@ -129,9 +185,14 @@ function AssetViewerContent() {
     }
   };
 
-  // Left panel: file metadata
+  const publicUrl = publicMagicId
+    ? `${typeof window !== 'undefined' ? window.location.origin : ''}/public/view/${publicMagicId}`
+    : '';
+
+  // Left panel: file metadata + share
   const leftPanel = asset ? (
     <Box sx={{ p: 2 }}>
+      {/* File Info */}
       <Typography variant="subtitle2" sx={{ mb: 2, fontWeight: 600 }}>
         File Info
       </Typography>
@@ -179,7 +240,7 @@ function AssetViewerContent() {
           {thumbSizes.map((size) => {
             const meta = asset.file_meta!.thumbnails![String(size)];
             const label = meta
-              ? `${size}px (${meta.w} × ${meta.h}, ${(meta.size_bytes / 1024).toFixed(0)}KB)`
+              ? `${size}px (${meta.w} \u00d7 ${meta.h}, ${(meta.size_bytes / 1024).toFixed(0)}KB)`
               : `${size}px`;
             return (
               <Box key={size} sx={{ mb: 1 }}>
@@ -200,6 +261,66 @@ function AssetViewerContent() {
             );
           })}
         </>
+      )}
+
+      {/* Share Section */}
+      <Divider sx={{ my: 2 }} />
+      <Typography variant="subtitle2" sx={{ mb: 2, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 1 }}>
+        {isPublic ? <Public color="primary" fontSize="small" /> : <Lock fontSize="small" />}
+        Share
+      </Typography>
+
+      {isInherited && (
+        <Alert severity="info" sx={{ mb: 2 }}>
+          This item is public because its parent folder is shared.
+        </Alert>
+      )}
+
+      <Box sx={{ mb: 3 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
+          <Typography variant="body2">Public access</Typography>
+          <Switch
+            checked={isPublic}
+            onChange={handleToggleShare}
+            disabled={isInherited || isShareLoading}
+          />
+        </Box>
+        <Typography variant="caption" color="text.secondary">
+          {isPublic
+            ? 'Anyone with the link can view this item'
+            : 'Only logged-in users can access this item'}
+        </Typography>
+      </Box>
+
+      {isPublic && publicUrl && (
+        <Paper variant="outlined" sx={{ p: 2, mb: 2 }}>
+          <Typography variant="subtitle2" sx={{ mb: 1 }}>
+            Public link
+          </Typography>
+          <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+            <TextField
+              value={publicUrl}
+              size="small"
+              fullWidth
+              InputProps={{
+                readOnly: true,
+              }}
+            />
+            <Tooltip title={copied ? 'Copied!' : 'Copy link'}>
+              <IconButton onClick={handleCopy} size="small" color={copied ? 'success' : 'default'}>
+                <ContentCopy />
+              </IconButton>
+            </Tooltip>
+          </Box>
+          {copied && (
+            <Chip
+              size="small"
+              color="success"
+              label="Copied to clipboard"
+              sx={{ mt: 1 }}
+            />
+          )}
+        </Paper>
       )}
     </Box>
   ) : null;
@@ -223,6 +344,9 @@ function AssetViewerContent() {
       </WorkspaceLayout>
     );
   }
+
+  // Video detection
+  const isVideo = asset.mime_type?.startsWith('video/');
 
   return (
     <WorkspaceLayout breadcrumb={breadcrumb} leftPanel={leftPanel}>
@@ -256,6 +380,34 @@ function AssetViewerContent() {
               />
             ) : (
               <Typography color="text.secondary">Loading image...</Typography>
+            )}
+          </Paper>
+        ) : isVideo ? (
+          <Paper
+            sx={{
+              p: 2,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              minHeight: 400,
+              bgcolor: 'background.default',
+              overflow: 'auto',
+            }}
+          >
+            {videoSrc ? (
+              <Box
+                component="video"
+                controls
+                preload="metadata"
+                src={videoSrc}
+                sx={{
+                  maxWidth: '100%',
+                  maxHeight: 'calc(100vh - 200px)',
+                  borderRadius: 1,
+                }}
+              />
+            ) : (
+              <Typography color="text.secondary">Loading video...</Typography>
             )}
           </Paper>
         ) : asset.is_markdown ? (

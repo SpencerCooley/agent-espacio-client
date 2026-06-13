@@ -3,6 +3,8 @@
 import { Box } from '@mui/material';
 import WorkspaceHeader from './WorkspaceHeader';
 import WorkspaceShell from '../workspace/WorkspaceShell';
+import NotificationFeed from '../NotificationFeed';
+import ShareModal from '../workspace/ShareModal';
 import { ReactNode } from 'react';
 
 interface BreadcrumbItem {
@@ -55,6 +57,8 @@ export default function WorkspaceLayout({
       <WorkspaceShell leftPanel={leftPanel} rightPanel={rightPanel}>
         {children}
       </WorkspaceShell>
+      <NotificationFeed />
+      <ShareModal />
     </Box>
   );
 }
