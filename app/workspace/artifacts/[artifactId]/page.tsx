@@ -16,6 +16,7 @@ import { artifactService, Artifact } from '../../../../services/artifacts';
 import { folderService } from '../../../../services/folders';
 import { useShareContext } from '../../../../context/ShareContext';
 import NoteEditor from '../../../../components/workspace/NoteEditor';
+import WorkflowEditor from '../../../../components/workspace/WorkflowEditor';
 
 function ArtifactViewerContent() {
   const params = useParams();
@@ -204,6 +205,21 @@ function ArtifactViewerContent() {
     return (
       <WorkspaceLayout breadcrumb={breadcrumb}>
         <NoteEditor artifact={artifact} />
+        <Snackbar
+          open={!!successMessage}
+          autoHideDuration={3000}
+          onClose={() => setSuccessMessage(null)}
+          message={successMessage}
+          anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+        />
+      </WorkspaceLayout>
+    );
+  }
+
+  if (artifact.type === 'workflow') {
+    return (
+      <WorkspaceLayout breadcrumb={breadcrumb}>
+        <WorkflowEditor artifact={artifact} />
         <Snackbar
           open={!!successMessage}
           autoHideDuration={3000}

@@ -5,6 +5,7 @@ import { useParams } from 'next/navigation';
 import { Box, Typography, Grid, Paper, Breadcrumbs, Link, Chip, Button } from '@mui/material';
 import { Folder as FolderIcon, InsertDriveFile as FileIcon, Download as DownloadIcon, Movie as MovieIcon } from '@mui/icons-material';
 import { marked } from 'marked';
+import WorkflowPublicView from '../../../../components/workspace/WorkflowPublicView';
 
 interface PublicItem {
   kind: string;
@@ -336,6 +337,17 @@ export default function PublicViewPage() {
   // Render artifact view (note)
   if (data.kind === 'artifact' && data.artifact) {
     const artifact = data.artifact;
+
+    // Workflow artifacts render full page (no container)
+    if (artifact.type === 'workflow' && artifact.content) {
+      return (
+        <WorkflowPublicView
+          content={artifact.content}
+          name={artifact.name}
+          description={artifact.description}
+        />
+      );
+    }
 
     return (
       <Box sx={{ p: 3, maxWidth: 800, mx: 'auto' }}>

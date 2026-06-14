@@ -270,7 +270,7 @@ function FolderExplorerContent() {
     setCreatingArtifact(true);
     try {
       const artifact = await artifactService.createArtifact({
-        name: 'New Note',
+        name: `New ${type.name}`,
         type: type.key,
         content: { type: 'doc', content: [] },
         folder_id: folderId,
