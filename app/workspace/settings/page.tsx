@@ -1,10 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import ProtectedRoute from '../../../components/auth/ProtectedRoute';
 import WorkspaceLayout from '../../../components/layout/WorkspaceLayout';
 import { useApp } from '../../../context/AppContext';
 import { useThemeContext } from '../../../context/ThemeContext';
+import { settingsService, PublicTheme } from '../../../services/settings';
 import {
   Typography,
   Paper,
@@ -61,6 +62,118 @@ const themeLabels: Record<string, string> = {
   scientificAcademia: 'Scientific Academia',
   mintCream: 'Mint Cream',
 };
+
+function PublicAppearanceSection() {
+  const [publicTheme, setPublicTheme] = useState<PublicTheme>({ name: 'hackerBuzz', mode: 'dark' });
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+
+  const { availableThemes } = useThemeContext();
+
+  useEffect(() => {
+    settingsService.getPublicTheme()
+      .then((res) => {
+        setPublicTheme(res);
+      })
+      .catch(() => {
+        // Fallback already set
+      });
+  }, []);
+
+  const handleThemeChange = (event: SelectChangeEvent<string>) => {
+    const newTheme = { ...publicTheme, name: event.target.value };
+    setPublicTheme(newTheme);
+    saveTheme(newTheme);
+  };
+
+  const handleModeToggle = () => {
+    const newTheme = { ...publicTheme, mode: publicTheme.mode === 'dark' ? 'light' : 'dark' as 'light' | 'dark' };
+    setPublicTheme(newTheme);
+    saveTheme(newTheme);
+  };
+
+  const saveTheme = async (theme: PublicTheme) => {
+    setSaving(true);
+    try {
+      await settingsService.updatePublicTheme(theme.name, theme.mode);
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    } catch (e) {
+      console.error('Failed to save public theme', e);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Paper sx={{ mb: 3 }}>
+      <Typography variant="h6" sx={{ px: 2, pt: 2, pb: 1 }} color="text.primary">
+        Public Appearance
+      </Typography>
+      <Typography variant="caption" sx={{ px: 2, pb: 1, display: 'block' }} color="text.secondary">
+        This controls how public pages look to visitors
+      </Typography>
+      <Divider />
+      <List>
+        {/* Theme Selector */}
+        <ListItem>
+          <ListItemIcon>
+            <PaletteIcon />
+          </ListItemIcon>
+          <ListItemText
+            primary="Public Theme"
+            secondary="Choose the visual style for public pages"
+          />
+          <FormControl sx={{ minWidth: 200 }} size="small">
+            <InputLabel id="public-theme-select-label">Theme</InputLabel>
+            <Select
+              labelId="public-theme-select-label"
+              id="public-theme-select"
+              value={publicTheme.name}
+              label="Theme"
+              onChange={handleThemeChange}
+            >
+              {availableThemes.map((theme) => (
+                <MenuItem key={theme} value={theme}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    {themeIcons[theme]}
+                    {themeLabels[theme]}
+                  </Box>
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+        </ListItem>
+
+        <Divider component="li" />
+
+        {/* Dark Mode Toggle */}
+        <ListItem>
+          <ListItemIcon>
+            {publicTheme.mode === 'dark' ? <DarkModeIcon /> : <LightModeIcon />}
+          </ListItemIcon>
+          <ListItemText
+            primary="Public Dark Mode"
+            secondary={publicTheme.mode === 'dark' ? 'Currently enabled' : 'Currently disabled'}
+          />
+          <Switch
+            edge="end"
+            checked={publicTheme.mode === 'dark'}
+            onChange={handleModeToggle}
+          />
+        </ListItem>
+
+        {saved && (
+          <ListItem>
+            <Typography variant="caption" color="success.main" sx={{ ml: 4 }}>
+              Saved!
+            </Typography>
+          </ListItem>
+        )}
+      </List>
+    </Paper>
+  );
+}
 
 function SettingsContent() {
   const { user } = useApp();
@@ -216,6 +329,9 @@ function SettingsContent() {
           </Grid>
         </Grid>
       </Paper>
+
+      {/* Public Appearance */}
+      <PublicAppearanceSection />
 
       {/* Admin Section */}
       {isAdmin && (

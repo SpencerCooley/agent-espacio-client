@@ -22,6 +22,7 @@ import {
   InsertDriveFile as FileIcon,
   Notes as NotesIcon,
   Public as PublicIcon,
+  Map as MapIcon,
   OpenInNew as OpenIcon,
   DriveFileRenameOutline as RenameIcon,
   Delete as DeleteIcon,
@@ -290,7 +291,7 @@ export default function FolderItemCard({
         case 'note':
           return <NotesIcon sx={{ fontSize: 48, color: 'secondary.main' }} />;
         case 'map':
-          return <PublicIcon sx={{ fontSize: 48, color: 'secondary.main' }} />;
+          return <MapIcon sx={{ fontSize: 48, color: 'secondary.main' }} />;
         default:
           return <ArticleIcon sx={{ fontSize: 48, color: 'secondary.main' }} />;
       }

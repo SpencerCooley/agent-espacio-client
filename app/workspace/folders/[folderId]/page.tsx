@@ -269,10 +269,34 @@ function FolderExplorerContent() {
     setArtifactTypeAnchor(null);
     setCreatingArtifact(true);
     try {
+      // For maps, create a clean map without any default geometries
+      const content = type.key === 'map'
+        ? {
+            viewport: {
+              latitude: 20,
+              longitude: 0,
+              zoom: 2,
+              pitch: 0,
+              bearing: 0,
+              bounds: {
+                north: 85.0,
+                south: -85.0,
+                east: 180.0,
+                west: -180.0,
+              },
+            },
+            style: 'carto-voyager',
+            geojson: {
+              type: 'FeatureCollection',
+              features: [],
+            },
+          }
+        : (type.example_content as any)?.content || {};
+
       const artifact = await artifactService.createArtifact({
         name: `New ${type.name}`,
         type: type.key,
-        content: { type: 'doc', content: [] },
+        content,
         folder_id: folderId,
       });
       router.push(`/workspace/artifacts/${artifact.id}`);

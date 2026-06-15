@@ -1,10 +1,23 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useParams } from 'next/navigation';
-import { Box, Typography, Grid, Paper, Breadcrumbs, Link, Chip, Button } from '@mui/material';
-import { Folder as FolderIcon, InsertDriveFile as FileIcon, Download as DownloadIcon, Movie as MovieIcon } from '@mui/icons-material';
+import { Box, Typography, Grid, Paper, Breadcrumbs, Link, Chip, Button, IconButton } from '@mui/material';
+import { Folder as FolderIcon, InsertDriveFile as FileIcon, Download as DownloadIcon, Movie as MovieIcon, Close as CloseIcon, Image as ImageIcon, Article as ArticleIcon, Map as MapIcon, Description as MarkdownIcon, DataObject as JsonIcon } from '@mui/icons-material';
+import InlineThumbnail from '../../../../components/workspace/InlineThumbnail';
 import { marked } from 'marked';
+import { ThemeProvider as MUIThemeProvider, createTheme, ThemeOptions } from '@mui/material/styles';
+import {
+  hackerBuzzTheme, hackerBuzzDarkTheme,
+  midnightGlowTheme, midnightGlowDarkTheme,
+  playfulCandyTheme, playfulCandyDarkTheme,
+  luxeartTheme, luxeartDarkTheme,
+  retroGamifyTheme, retroGamifyDarkTheme,
+  scientificAcademiaTheme, scientificAcademiaDarkTheme,
+  mintCreamTheme, mintCreamDarkTheme,
+} from '../../../../themes';
+import maplibregl from 'maplibre-gl';
+import 'maplibre-gl/dist/maplibre-gl.css';
 import WorkflowPublicView from '../../../../components/workspace/WorkflowPublicView';
 
 interface PublicItem {
@@ -57,7 +70,21 @@ interface PublicViewData {
   ancestors?: AncestorItem[];
   items?: PublicItem[];
   total_items?: number;
+  public_theme?: {
+    name: string;
+    mode: 'light' | 'dark';
+  };
 }
+
+const themeMap: Record<string, { light: ThemeOptions; dark: ThemeOptions }> = {
+  hackerBuzz: { light: hackerBuzzTheme, dark: hackerBuzzDarkTheme },
+  midnightGlow: { light: midnightGlowTheme, dark: midnightGlowDarkTheme },
+  playfulCandy: { light: playfulCandyTheme, dark: playfulCandyDarkTheme },
+  luxeart: { light: luxeartTheme, dark: luxeartDarkTheme },
+  retroGamify: { light: retroGamifyTheme, dark: retroGamifyDarkTheme },
+  scientificAcademia: { light: scientificAcademiaTheme, dark: scientificAcademiaDarkTheme },
+  mintCream: { light: mintCreamTheme, dark: mintCreamDarkTheme },
+};
 
 function PublicAssetView({ asset }: { asset: NonNullable<PublicViewData['asset']> }) {
   const isImage = asset.is_image;
@@ -188,32 +215,39 @@ export default function PublicViewPage() {
     fetchPublicView();
   }, [magicId]);
 
-  if (loading) {
-    return (
-      <Box sx={{ p: 4, textAlign: 'center' }}>
-        <Typography>Loading...</Typography>
-      </Box>
-    );
-  }
+  // Build public theme from server response
+  const publicThemeName = data?.public_theme?.name || 'hackerBuzz';
+  const publicThemeMode = data?.public_theme?.mode || 'dark';
+  const themeOptions = themeMap[publicThemeName]?.[publicThemeMode] || themeMap['hackerBuzz']['dark'];
+  const publicTheme = createTheme(themeOptions);
 
-  if (error) {
-    return (
-      <Box sx={{ p: 4, textAlign: 'center' }}>
-        <Typography color="error">{error}</Typography>
-      </Box>
-    );
-  }
+  const content = () => {
+    if (loading) {
+      return (
+        <Box sx={{ p: 4, textAlign: 'center' }}>
+          <Typography>Loading...</Typography>
+        </Box>
+      );
+    }
 
-  if (!data) {
-    return (
-      <Box sx={{ p: 4, textAlign: 'center' }}>
-        <Typography>Item not found</Typography>
-      </Box>
-    );
-  }
+    if (error) {
+      return (
+        <Box sx={{ p: 4, textAlign: 'center' }}>
+          <Typography color="error">{error}</Typography>
+        </Box>
+      );
+    }
 
-  // Render folder view
-  if (data.kind === 'folder' && data.folder) {
+    if (!data) {
+      return (
+        <Box sx={{ p: 4, textAlign: 'center' }}>
+          <Typography>Item not found</Typography>
+        </Box>
+      );
+    }
+
+    // Render folder view
+    if (data.kind === 'folder' && data.folder) {
     return (
       <Box sx={{ p: 3, maxWidth: 1200, mx: 'auto' }}>
         <Breadcrumbs sx={{ mb: 2 }}>
@@ -349,6 +383,17 @@ export default function PublicViewPage() {
       );
     }
 
+    // Map artifacts render full page (no container)
+    if (artifact.type === 'map' && artifact.content) {
+      return (
+        <MapPublicView
+          content={artifact.content}
+          name={artifact.name}
+          description={artifact.description}
+        />
+      );
+    }
+
     return (
       <Box sx={{ p: 3, maxWidth: 800, mx: 'auto' }}>
         <Typography variant="h4" sx={{ mb: 2 }}>
@@ -374,10 +419,25 @@ export default function PublicViewPage() {
     );
   }
 
+    return (
+      <Box sx={{ p: 4, textAlign: 'center' }}>
+        <Typography>Unknown item type</Typography>
+      </Box>
+    );
+  };
+
   return (
-    <Box sx={{ p: 4, textAlign: 'center' }}>
-      <Typography>Unknown item type</Typography>
-    </Box>
+    <MUIThemeProvider theme={publicTheme}>
+      <Box
+        sx={{
+          bgcolor: 'background.default',
+          color: 'text.primary',
+          minHeight: '100vh',
+        }}
+      >
+        {content()}
+      </Box>
+    </MUIThemeProvider>
   );
 }
 
@@ -539,6 +599,511 @@ function renderNode(node: any): string {
     default:
       return inner;
   }
+}
+
+// Full-page map renderer for public view
+function getFeatureColor(feature: any): string {
+  return feature?.properties?.style?.color || '#1976d2';
+}
+
+function getFeatureFillOpacity(feature: any): number {
+  return feature?.properties?.style?.fillOpacity ?? 0.3;
+}
+
+function getFeatureStrokeWidth(feature: any): number {
+  return feature?.properties?.style?.strokeWidth ?? 2;
+}
+
+interface Association {
+  type: 'artifact' | 'asset';
+  id: string;
+  name: string;
+  kind?: string;
+  mime_type?: string;
+  is_image?: boolean;
+  public_magic_id?: string | null;
+}
+
+function MapPublicView({ content, name, description }: { content: any; name?: string; description?: string }) {
+  const mapContainerRef = useRef<HTMLDivElement>(null);
+  const mapRef = useRef<maplibregl.Map | null>(null);
+  const [tooltip, setTooltip] = useState<{
+    visible: boolean;
+    x: number;
+    y: number;
+    name: string;
+    description: string;
+  }>({ visible: false, x: 0, y: 0, name: '', description: '' });
+  const [hoveredFeatureId, setHoveredFeatureId] = useState<string | null>(null);
+  const [associationPanel, setAssociationPanel] = useState<{
+    open: boolean;
+    featureName: string;
+    associations: Association[];
+  }>({ open: false, featureName: '', associations: [] });
+  const cursorRef = useRef<'default' | 'pointer'>('default');
+
+  const viewport = content?.viewport || {
+    latitude: 20,
+    longitude: 0,
+    zoom: 2,
+    pitch: 0,
+    bearing: 0,
+  };
+  const style = content?.style || 'carto-voyager';
+
+  const CARTO_VOYAGER_URL = 'https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json';
+  const CARTO_DARK_MATTER_URL = 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json';
+
+  const GOOGLE_SATELLITE_STYLE = {
+    version: 8 as const,
+    sources: {
+      satellite: {
+        type: 'raster' as const,
+        tiles: [
+          'https://mt0.google.com/vt/lyrs=s&x={x}&y={y}&z={z}',
+          'https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}',
+          'https://mt2.google.com/vt/lyrs=s&x={x}&y={y}&z={z}',
+          'https://mt3.google.com/vt/lyrs=s&x={x}&y={y}&z={z}',
+        ],
+        tileSize: 256,
+        attribution: 'Imagery © Google',
+        maxzoom: 22,
+      },
+    },
+    layers: [
+      { id: 'satellite', type: 'raster' as const, source: 'satellite', minzoom: 0, maxzoom: 22 },
+    ],
+  };
+
+  const OSM_STYLE = {
+    version: 8 as const,
+    sources: {
+      osm: {
+        type: 'raster' as const,
+        tiles: [
+          'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+        ],
+        tileSize: 256,
+        attribution: '© OpenStreetMap contributors',
+        maxzoom: 19,
+      },
+    },
+    layers: [
+      { id: 'osm', type: 'raster' as const, source: 'osm', minzoom: 0, maxzoom: 19 },
+    ],
+  };
+
+  function getStyleUrl(mapStyle: string) {
+    switch (mapStyle) {
+      case 'google-satellite':
+        return GOOGLE_SATELLITE_STYLE;
+      case 'dark-matter':
+        return CARTO_DARK_MATTER_URL;
+      case 'osm':
+        return OSM_STYLE;
+      case 'carto-voyager':
+      default:
+        return CARTO_VOYAGER_URL;
+    }
+  }
+
+  useEffect(() => {
+    if (!mapContainerRef.current) return;
+
+    const map = new maplibregl.Map({
+      container: mapContainerRef.current,
+      style: getStyleUrl(style),
+      center: [viewport.longitude, viewport.latitude],
+      zoom: viewport.zoom,
+      pitch: viewport.pitch,
+      bearing: viewport.bearing,
+    });
+
+    map.addControl(new maplibregl.NavigationControl(), 'top-right');
+    mapRef.current = map;
+
+    // Add GeoJSON layer after style loads
+    const geojson = content?.geojson;
+    if (geojson && geojson.features && geojson.features.length > 0) {
+      const points = geojson.features.filter((f: any) => f.geometry?.type === 'Point');
+      const linesAndPolygons = geojson.features.filter(
+        (f: any) => f.geometry?.type === 'LineString' || f.geometry?.type === 'MultiLineString' || f.geometry?.type === 'Polygon' || f.geometry?.type === 'MultiPolygon'
+      );
+
+      map.once('style.load', () => {
+        // Add markers for points
+        points.forEach((feature: any) => {
+          const coords = feature.geometry.coordinates;
+          const color = getFeatureColor(feature);
+          const el = document.createElement('div');
+          el.style.width = '24px';
+          el.style.height = '24px';
+          el.style.backgroundColor = color;
+          el.style.borderRadius = '50%';
+          el.style.border = '3px solid #fff';
+          el.style.boxShadow = '0 2px 6px rgba(0,0,0,0.3)';
+          el.style.cursor = 'pointer';
+
+          const marker = new maplibregl.Marker({ element: el }).setLngLat(coords).addTo(map);
+
+          const props = feature.properties || {};
+          const featureName = props.name || 'Unnamed';
+          const featureDescription = props.description || '';
+          const associations = props.associations
+            ? (typeof props.associations === 'string' ? JSON.parse(props.associations) : props.associations)
+            : [];
+
+          // Hover tooltip
+          el.addEventListener('mouseenter', (e) => {
+            const rect = el.getBoundingClientRect();
+            const mapRect = mapContainerRef.current?.getBoundingClientRect();
+            if (mapRect) {
+              setTooltip({
+                visible: true,
+                x: rect.left - mapRect.left + rect.width / 2 + 16,
+                y: rect.top - mapRect.top - 16,
+                name: featureName,
+                description: featureDescription,
+              });
+            }
+            if (associations.length > 0) {
+              cursorRef.current = 'pointer';
+              map.getCanvas().style.cursor = 'pointer';
+            }
+          });
+
+          el.addEventListener('mouseleave', () => {
+            setTooltip((prev) => ({ ...prev, visible: false }));
+            if (cursorRef.current !== 'default') {
+              cursorRef.current = 'default';
+              map.getCanvas().style.cursor = 'default';
+            }
+          });
+
+          // Click -> navigate associations
+          el.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (associations.length === 1) {
+              const assoc = associations[0];
+              const url = `/public/view/${assoc.public_magic_id || assoc.id}`;
+              window.open(url, '_blank');
+            } else if (associations.length > 1) {
+              setAssociationPanel({
+                open: true,
+                featureName,
+                associations,
+              });
+            }
+          });
+        });
+
+        // Add source for lines and polygons
+        if (linesAndPolygons.length > 0) {
+          map.addSource('geojson-features', {
+            type: 'geojson',
+            data: {
+              type: 'FeatureCollection',
+              features: linesAndPolygons,
+            },
+          });
+
+          // Line layer (also matches MultiLineString)
+          map.addLayer({
+            id: 'geojson-lines',
+            type: 'line',
+            source: 'geojson-features',
+            filter: ['in', ['geometry-type'], ['literal', ['LineString', 'MultiLineString']]],
+            paint: {
+              'line-color': ['coalesce', ['get', 'color', ['get', 'style']], '#1976d2'],
+              'line-width': ['coalesce', ['get', 'strokeWidth', ['get', 'style']], 3],
+            },
+          });
+
+          // Polygon fill layer (also matches MultiPolygon)
+          map.addLayer({
+            id: 'geojson-polygons-fill',
+            type: 'fill',
+            source: 'geojson-features',
+            filter: ['in', ['geometry-type'], ['literal', ['Polygon', 'MultiPolygon']]],
+            paint: {
+              'fill-color': ['coalesce', ['get', 'color', ['get', 'style']], '#1976d2'],
+              'fill-opacity': ['coalesce', ['get', 'fillOpacity', ['get', 'style']], 0.3],
+            },
+          });
+
+          // Polygon outline layer (also matches MultiPolygon)
+          map.addLayer({
+            id: 'geojson-polygons-outline',
+            type: 'line',
+            source: 'geojson-features',
+            filter: ['in', ['geometry-type'], ['literal', ['Polygon', 'MultiPolygon']]],
+            paint: {
+              'line-color': ['coalesce', ['get', 'color', ['get', 'style']], '#1976d2'],
+              'line-width': ['coalesce', ['get', 'strokeWidth', ['get', 'style']], 2],
+            },
+          });
+
+          // Hover interactions
+          const layerIds = ['geojson-lines', 'geojson-polygons-fill', 'geojson-polygons-outline'];
+          
+          map.on('mousemove', (e) => {
+            const features = map.queryRenderedFeatures(e.point, { layers: layerIds });
+            if (features.length > 0) {
+              const feature = features[0];
+              const props = feature.properties || {};
+              const featureName = props.name || 'Unnamed';
+              const featureDescription = props.description || '';
+              const featureId = feature.id || '';
+              const associations = props.associations
+                ? (typeof props.associations === 'string' ? JSON.parse(props.associations) : props.associations)
+                : [];
+              
+              setTooltip({
+                visible: true,
+                x: e.point.x + 16,
+                y: e.point.y - 16,
+                name: featureName,
+                description: featureDescription,
+              });
+              setHoveredFeatureId(featureId ? String(featureId) : null);
+              
+              if (associations.length > 0 && cursorRef.current !== 'pointer') {
+                cursorRef.current = 'pointer';
+                map.getCanvas().style.cursor = 'pointer';
+              }
+            } else {
+              setTooltip((prev) => ({ ...prev, visible: false }));
+              setHoveredFeatureId(null);
+              if (cursorRef.current !== 'default') {
+                cursorRef.current = 'default';
+                map.getCanvas().style.cursor = 'default';
+              }
+            }
+          });
+
+          map.on('mouseleave', () => {
+            setTooltip((prev) => ({ ...prev, visible: false }));
+            setHoveredFeatureId(null);
+            if (cursorRef.current !== 'default') {
+              cursorRef.current = 'default';
+              map.getCanvas().style.cursor = 'default';
+            }
+          });
+
+          map.on('click', (e) => {
+            const features = map.queryRenderedFeatures(e.point, { layers: layerIds });
+            if (features.length > 0) {
+              const feature = features[0];
+              const props = feature.properties || {};
+              const featureName = props.name || 'Unnamed';
+              const associations = props.associations
+                ? (typeof props.associations === 'string' ? JSON.parse(props.associations) : props.associations)
+                : [];
+              
+              if (associations.length === 1) {
+                const assoc = associations[0];
+                const url = `/public/view/${assoc.public_magic_id || assoc.id}`;
+                window.open(url, '_blank');
+              } else if (associations.length > 1) {
+                setAssociationPanel({
+                  open: true,
+                  featureName,
+                  associations,
+                });
+              }
+            }
+          });
+        }
+      });
+    }
+
+    return () => {
+      map.remove();
+      mapRef.current = null;
+    };
+  }, []);
+
+  return (
+    <Box sx={{ width: '100vw', height: '100vh', position: 'relative' }}>
+      <Box
+        ref={mapContainerRef}
+        sx={{ position: 'absolute', inset: 0 }}
+      />
+      {/* Optional: overlay name and description at top-left */}
+      {(name || description) && (
+        <Box
+          sx={(theme) => ({
+            position: 'absolute',
+            top: 16,
+            left: 16,
+            zIndex: 1000,
+            bgcolor: theme.palette.mode === 'dark' ? 'rgba(18,18,18,0.9)' : 'rgba(255,255,255,0.9)',
+            borderRadius: 1,
+            px: 2,
+            py: 1,
+            boxShadow: 2,
+            maxWidth: 400,
+            color: theme.palette.text.primary,
+          })}
+        >
+          {name && (
+            <Typography variant="h6" sx={{ fontWeight: 600, mb: description ? 0.5 : 0 }}>
+              {name}
+            </Typography>
+          )}
+          {description && (
+            <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+              {description}
+            </Typography>
+          )}
+        </Box>
+      )}
+
+      {/* Hover tooltip */}
+      {tooltip.visible && (
+        <Box
+          sx={{
+            position: 'absolute',
+            left: tooltip.x,
+            top: tooltip.y,
+            zIndex: 1001,
+            bgcolor: 'rgba(0,0,0,0.85)',
+            color: '#fff',
+            borderRadius: 1,
+            px: 1.5,
+            py: 1,
+            boxShadow: 3,
+            maxWidth: 280,
+            pointerEvents: 'none',
+          }}
+        >
+          <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: tooltip.description ? 0.5 : 0 }}>
+            {tooltip.name}
+          </Typography>
+          {tooltip.description && (
+            <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.8)', lineHeight: 1.4 }}>
+              {tooltip.description}
+            </Typography>
+          )}
+        </Box>
+      )}
+
+      {/* Association panel */}
+      {associationPanel.open && (
+        <Box
+          sx={{
+            position: 'absolute',
+            right: 0,
+            top: 0,
+            bottom: 0,
+            width: 320,
+            zIndex: 1002,
+            bgcolor: 'background.paper',
+            borderLeft: '1px solid',
+            borderColor: 'divider',
+            boxShadow: '-4px 0 12px rgba(0,0,0,0.15)',
+            display: 'flex',
+            flexDirection: 'column',
+            overflow: 'hidden',
+          }}
+        >
+          {/* Panel header */}
+          <Box
+            sx={{
+              px: 2,
+              py: 1.5,
+              borderBottom: '1px solid',
+              borderColor: 'divider',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+            }}
+          >
+            <Box>
+              <Typography variant="subtitle2" fontWeight={600}>
+                {associationPanel.featureName}
+              </Typography>
+              <Typography variant="caption" color="text.secondary">
+                {associationPanel.associations.length} linked items
+              </Typography>
+            </Box>
+            <IconButton
+              size="small"
+              onClick={() => setAssociationPanel({ open: false, featureName: '', associations: [] })}
+            >
+              <CloseIcon fontSize="small" />
+            </IconButton>
+          </Box>
+
+          {/* Association list */}
+          <Box sx={{ flex: 1, overflowY: 'auto', p: 2, display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+            {associationPanel.associations.map((assoc: Association) => (
+              <Box
+                key={assoc.id}
+                sx={{
+                  display: 'flex',
+                  alignItems: 'stretch',
+                  gap: 1.5,
+                  borderRadius: 1,
+                  overflow: 'hidden',
+                  border: '1px solid',
+                  borderColor: 'divider',
+                  cursor: 'pointer',
+                  bgcolor: 'background.paper',
+                  transition: 'box-shadow 0.2s',
+                  '&:hover': { boxShadow: 2, borderColor: 'primary.main' },
+                }}
+                onClick={() => {
+                  const url = `/public/view/${assoc.public_magic_id || assoc.id}`;
+                  window.open(url, '_blank');
+                }}
+              >
+                {/* Thumbnail / Icon */}
+                <Box sx={{ width: 120, height: 90, flexShrink: 0, bgcolor: 'action.hover', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <InlineThumbnail
+                    type={assoc.type}
+                    id={assoc.id}
+                    kind={assoc.kind}
+                    is_image={assoc.is_image}
+                    public_magic_id={assoc.public_magic_id}
+                    variant="public"
+                    size={120}
+                  />
+                  {(assoc.type === 'artifact' || (!assoc.is_image && !assoc.kind?.includes('image') && !assoc.kind?.includes('video'))) && (
+                    <Box sx={{ color: 'text.secondary', fontSize: 40 }}>
+                      {assoc.type === 'artifact' ? (
+                        assoc.kind === 'note' ? <ArticleIcon fontSize="large" /> :
+                        assoc.kind === 'map' ? <MapIcon fontSize="large" /> :
+                        <ArticleIcon fontSize="large" />
+                      ) : (
+                        assoc.kind?.includes('video') ? <MovieIcon fontSize="large" /> :
+                        assoc.kind?.includes('markdown') ? <MarkdownIcon fontSize="large" /> :
+                        assoc.kind?.includes('json') ? <JsonIcon fontSize="large" /> :
+                        <FileIcon fontSize="large" />
+                      )}
+                    </Box>
+                  )}
+                </Box>
+
+                {/* Info */}
+                <Box sx={{ flex: 1, py: 1, pr: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', minWidth: 0 }}>
+                  <Typography variant="subtitle2" fontWeight={600}>
+                    {assoc.name}
+                  </Typography>
+                  <Box sx={{ display: 'flex', gap: 0.5, mt: 0.5, flexWrap: 'wrap' }}>
+                    <Chip label={assoc.type} size="small" color={assoc.type === 'artifact' ? 'primary' : 'secondary'} sx={{ fontSize: '0.7rem', height: 22 }} />
+                    {assoc.kind && (
+                      <Chip label={assoc.kind} size="small" variant="outlined" sx={{ fontSize: '0.7rem', height: 22 }} />
+                    )}
+                  </Box>
+                </Box>
+              </Box>
+            ))}
+          </Box>
+        </Box>
+      )}
+    </Box>
+  );
 }
 
 function escapeHtml(text: string): string {
