@@ -204,14 +204,6 @@ function WorkflowPublicViewInner({
                     backgroundColor: themeMode === 'dark' ? '#1e1e1e' : '#fff',
                     borderColor: themeMode === 'dark' ? '#444' : '#e0e0e0',
                   }}
-                  buttonStyle={{
-                    backgroundColor: themeMode === 'dark' ? '#1e1e1e' : '#fff',
-                    color: themeMode === 'dark' ? '#fff' : '#333',
-                    borderColor: themeMode === 'dark' ? '#444' : '#e0e0e0',
-                  }}
-                  buttonHoverStyle={{
-                    backgroundColor: themeMode === 'dark' ? '#333' : '#f5f5f5',
-                  }}
                 />
                 <MiniMap
                   style={{
