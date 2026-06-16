@@ -17,6 +17,8 @@ import { useAuthImage } from '../../hooks/useAuthImage';
 import { useVideoThumbnail } from '../../hooks/useVideoThumbnail';
 import { getAssetDownloadUrl } from '../../services/assets';
 
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+
 interface Association {
   type: 'artifact' | 'asset';
   id: string;
@@ -75,10 +77,10 @@ export default function AssociationMediaCard({ association, variant, onClick }: 
 
   // Public: use public URLs
   const publicThumbUrl = isImage
-    ? `http://localhost:8000/public/assets/${association.public_magic_id || association.id}/download`
+    ? `${API_BASE_URL}/public/assets/${association.public_magic_id || association.id}/download`
     : null;
   const publicVideoUrl = isVideo
-    ? `http://localhost:8000/public/assets/${association.public_magic_id || association.id}/download`
+    ? `${API_BASE_URL}/public/assets/${association.public_magic_id || association.id}/download`
     : null;
 
   const thumbSrc = variant === 'editor' ? editorThumbSrc : publicThumbUrl;

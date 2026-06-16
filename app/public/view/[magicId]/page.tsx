@@ -20,6 +20,8 @@ import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import WorkflowPublicView from '../../../../components/workspace/WorkflowPublicView';
 
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+
 interface PublicItem {
   kind: string;
   id: string;
@@ -90,7 +92,7 @@ function PublicAssetView({ asset }: { asset: NonNullable<PublicViewData['asset']
   const isImage = asset.is_image;
   const isMarkdown = asset.mime_type === 'text/markdown' || asset.mime_type === 'text/x-markdown';
   const isVideo = asset.mime_type?.startsWith('video/');
-  const downloadUrl = `http://localhost:8000/public/assets/${asset.public_magic_id || asset.id}/download`;
+  const downloadUrl = `${API_BASE_URL}/public/assets/${asset.public_magic_id || asset.id}/download`;
 
   const [markdownContent, setMarkdownContent] = useState<string | null>(null);
   const [loadingMarkdown, setLoadingMarkdown] = useState(false);
@@ -199,7 +201,7 @@ export default function PublicViewPage() {
 
     const fetchPublicView = async () => {
       try {
-        const response = await fetch(`http://localhost:8000/public/view/${magicId}`);
+        const response = await fetch(`${API_BASE_URL}/public/view/${magicId}`);
         if (!response.ok) {
           throw new Error('Public item not found');
         }
@@ -281,10 +283,10 @@ export default function PublicViewPage() {
             const isImage = item.kind === 'asset' && item.is_image;
             const isVideo = item.kind === 'asset' && item.mime_type?.startsWith('video/');
             const thumbnailUrl = isImage
-              ? `http://localhost:8000/public/assets/${item.id}/download`
+              ? `${API_BASE_URL}/public/assets/${item.id}/download`
               : null;
             const videoThumbnailUrl = isVideo
-              ? `http://localhost:8000/public/assets/${item.id}/download`
+              ? `${API_BASE_URL}/public/assets/${item.id}/download`
               : null;
 
             return (
@@ -584,8 +586,7 @@ function renderNode(node: any): string {
       if (assetMatch) {
         const assetId = assetMatch[1];
         // Use full API URL since frontend and API may be on different ports
-        const apiUrl = 'http://localhost:8000';
-        src = `${apiUrl}/public/assets/${assetId}/download`;
+        src = `${API_BASE_URL}/public/assets/${assetId}/download`;
       }
       return `<img src="${src}" alt="${alt}" style="max-width: 100%; display: block; margin: 8px auto;" />`;
     case 'table':

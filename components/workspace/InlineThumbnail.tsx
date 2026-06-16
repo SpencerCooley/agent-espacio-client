@@ -9,6 +9,8 @@ import {
   Movie as MovieIcon,
 } from '@mui/icons-material';
 
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+
 interface InlineThumbnailProps {
   type: 'artifact' | 'asset';
   id: string;
@@ -91,7 +93,7 @@ export default function InlineThumbnail({
     }
   } else {
     // public variant
-    const publicUrl = `http://localhost:8000/public/assets/${public_magic_id || id}/download`;
+    const publicUrl = `${API_BASE_URL}/public/assets/${public_magic_id || id}/download`;
 
     if (isImage) {
       return (
