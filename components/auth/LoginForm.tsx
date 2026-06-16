@@ -76,13 +76,7 @@ export default function LoginForm() {
       >
         <Box sx={{ mb: 4, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
           <Logo width={240} height={184} />
-          <Typography 
-            variant="subtitle1" 
-            color="text.secondary" 
-            sx={{ mt: 1, fontSize: '0.9rem' }}
-          >
-            Collaborative Workspace
-          </Typography>
+
         </Box>
 
         <Typography variant="h5" component="h1" gutterBottom align="center">
