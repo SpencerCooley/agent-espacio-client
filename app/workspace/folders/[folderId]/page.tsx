@@ -269,29 +269,35 @@ function FolderExplorerContent() {
     setArtifactTypeAnchor(null);
     setCreatingArtifact(true);
     try {
-      // For maps, create a clean map without any default geometries
-      const content = type.key === 'map'
-        ? {
-            viewport: {
-              latitude: 20,
-              longitude: 0,
-              zoom: 2,
-              pitch: 0,
-              bearing: 0,
-              bounds: {
-                north: 85.0,
-                south: -85.0,
-                east: 180.0,
-                west: -180.0,
-              },
+      // For maps, create a clean map without any default geometries.
+      // For notes, start empty so the editor begins blank.
+      let content: any;
+      if (type.key === 'map') {
+        content = {
+          viewport: {
+            latitude: 20,
+            longitude: 0,
+            zoom: 2,
+            pitch: 0,
+            bearing: 0,
+            bounds: {
+              north: 85.0,
+              south: -85.0,
+              east: 180.0,
+              west: -180.0,
             },
-            style: 'carto-voyager',
-            geojson: {
-              type: 'FeatureCollection',
-              features: [],
-            },
-          }
-        : (type.example_content as any)?.content || {};
+          },
+          style: 'carto-voyager',
+          geojson: {
+            type: 'FeatureCollection',
+            features: [],
+          },
+        };
+      } else if (type.key === 'note') {
+        content = {};
+      } else {
+        content = (type.example_content as any)?.content || {};
+      }
 
       const artifact = await artifactService.createArtifact({
         name: `New ${type.name}`,
