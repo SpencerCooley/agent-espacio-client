@@ -19,7 +19,7 @@ interface InlineThumbnailProps {
   is_image?: boolean;
   public_magic_id?: string | null;
   size?: number;
-  variant: 'editor' | 'public';
+  variant: 'editor' | 'public' | 'workspace';
 }
 
 export default function InlineThumbnail({
@@ -34,7 +34,7 @@ export default function InlineThumbnail({
   const isImage = type === 'asset' && (is_image || kind?.includes('image'));
   const isVideo = type === 'asset' && kind?.includes('video');
 
-  if (variant === 'editor') {
+  if (variant === 'editor' || variant === 'workspace') {
     const imageUrl = isImage ? getAssetDownloadUrl(id, 128) : null;
     const thumbSrc = useAuthImage(imageUrl);
     const videoUrl = isVideo ? getAssetDownloadUrl(id) : null;

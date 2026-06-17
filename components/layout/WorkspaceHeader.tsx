@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import React, { useState } from 'react';
 import {
   AppBar,
   Toolbar,
@@ -19,12 +19,13 @@ import {
   Dashboard,
   ChevronRight,
   Share as ShareIcon,
+  Visibility as VisibilityIcon,
 } from '@mui/icons-material';
 import Logo from '../Logo';
 import { useApp } from '../../context/AppContext';
 import { useShareContext } from '../../context/ShareContext';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 
 interface BreadcrumbItem {
   label: string;
@@ -46,12 +47,31 @@ export default function WorkspaceHeader({
   const { user, logout } = useApp();
   const { shareTarget, setModalOpen } = useShareContext();
   const pathname = usePathname();
+  const router = useRouter();
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   // Track which breadcrumb item is being dragged over
   const [activeBreadcrumbDrop, setActiveBreadcrumbDrop] = useState<string | null>(null);
 
-  // Only show share icon on artifact routes
+  // Only show share/preview icons on artifact routes
   const isArtifactRoute = pathname?.startsWith('/workspace/artifacts/');
+  const isPreviewRoute = pathname?.includes('/preview');
+  
+  // Extract artifact ID from path for preview navigation
+  const artifactIdForPreview = React.useMemo(() => {
+    if (!isArtifactRoute || isPreviewRoute) return null;
+    // Path format: /workspace/artifacts/[artifactId] or /workspace/artifacts/[artifactId]/...
+    const parts = pathname?.split('/');
+    if (parts && parts.length >= 4) {
+      return parts[3];
+    }
+    return null;
+  }, [pathname, isArtifactRoute, isPreviewRoute]);
+
+  const handlePreviewClick = () => {
+    if (artifactIdForPreview) {
+      window.open(`/workspace/artifacts/${artifactIdForPreview}/preview`, '_blank');
+    }
+  };
 
   const handleMenu = (event: React.MouseEvent<HTMLElement>) => {
     setAnchorEl(event.currentTarget);
@@ -246,13 +266,24 @@ export default function WorkspaceHeader({
           )}
 
           {/* Share icon for artifact routes */}
-          {isArtifactRoute && shareTarget && (
+          {isArtifactRoute && shareTarget && !isPreviewRoute && (
             <IconButton
               onClick={handleShareClick}
               sx={{ color: shareTarget.isPublic ? 'success.main' : 'text.primary' }}
               title={shareTarget.isPublic ? 'Publicly shared' : 'Share this artifact'}
             >
               <ShareIcon />
+            </IconButton>
+          )}
+
+          {/* Preview icon for artifact routes (not on preview route itself) */}
+          {isArtifactRoute && !isPreviewRoute && artifactIdForPreview && (
+            <IconButton
+              onClick={handlePreviewClick}
+              sx={{ color: 'text.primary' }}
+              title="Preview public view"
+            >
+              <VisibilityIcon />
             </IconButton>
           )}
 
