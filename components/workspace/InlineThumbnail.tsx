@@ -2,10 +2,8 @@
 
 import { Box } from '@mui/material';
 import { useAuthImage } from '../../hooks/useAuthImage';
-import { useVideoThumbnail } from '../../hooks/useVideoThumbnail';
 import { getAssetDownloadUrl } from '../../services/assets';
 import {
-  Image as ImageIcon,
   Movie as MovieIcon,
 } from '@mui/icons-material';
 
@@ -34,38 +32,21 @@ export default function InlineThumbnail({
   const isImage = type === 'asset' && (is_image || kind?.includes('image'));
   const isVideo = type === 'asset' && kind?.includes('video');
 
-  if (variant === 'editor' || variant === 'workspace') {
-    const imageUrl = isImage ? getAssetDownloadUrl(id, 128) : null;
-    const thumbSrc = useAuthImage(imageUrl);
-    const videoUrl = isVideo ? getAssetDownloadUrl(id) : null;
-    const videoThumbSrc = useVideoThumbnail(videoUrl);
+  // Use generated thumbnails for both images and videos (backend ffmpeg)
+  const needsThumbnail = isImage || isVideo;
+  const thumbnailSize = size > 100 ? 256 : size;
 
-    if (isImage && thumbSrc) {
-      return (
-        <Box
-          component="img"
-          src={thumbSrc}
-          alt=""
-          sx={{
-            width: size,
-            height: size,
-            borderRadius: 0.5,
-            objectFit: 'cover',
-            border: '1px solid',
-            borderColor: 'divider',
-            flexShrink: 0,
-          }}
-        />
-      );
-    }
-    if (isVideo && videoThumbSrc) {
+  if (variant === 'editor' || variant === 'workspace') {
+    const thumbUrl = needsThumbnail ? getAssetDownloadUrl(id, thumbnailSize) : null;
+    const thumbSrc = useAuthImage(thumbUrl);
+
+    if (needsThumbnail && thumbSrc) {
       return (
         <Box sx={{ position: 'relative', width: size, height: size, flexShrink: 0 }}>
           <Box
-            component="video"
-            src={videoThumbSrc}
-            muted
-            preload="metadata"
+            component="img"
+            src={thumbSrc}
+            alt=""
             sx={{
               width: size,
               height: size,
@@ -75,52 +56,44 @@ export default function InlineThumbnail({
               borderColor: 'divider',
             }}
           />
-          <Box
-            sx={{
-              position: 'absolute',
-              inset: 0,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              bgcolor: 'rgba(0,0,0,0.3)',
-              borderRadius: 0.5,
-            }}
-          >
-            <MovieIcon sx={{ color: '#fff', fontSize: size * 0.4 }} />
-          </Box>
+          {isVideo && (
+            <Box
+              sx={{
+                position: 'absolute',
+                inset: 0,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                bgcolor: 'rgba(0,0,0,0.3)',
+                borderRadius: 0.5,
+              }}
+            >
+              <MovieIcon sx={{ color: '#fff', fontSize: size * 0.4 }} />
+            </Box>
+          )}
+        </Box>
+      );
+    }
+
+    // Fallback icon for videos without a thumbnail
+    if (isVideo) {
+      return (
+        <Box sx={{ width: size, height: size, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <MovieIcon sx={{ color: 'text.secondary', fontSize: size * 0.5 }} />
         </Box>
       );
     }
   } else {
     // public variant
-    const publicUrl = `${API_BASE_URL}/public/assets/${public_magic_id || id}/download`;
+    const publicUrl = `${API_BASE_URL}/public/assets/${public_magic_id || id}/download${needsThumbnail ? `?size=${thumbnailSize}` : ''}`;
 
-    if (isImage) {
-      return (
-        <Box
-          component="img"
-          src={publicUrl}
-          alt=""
-          sx={{
-            width: size,
-            height: size,
-            borderRadius: 0.5,
-            objectFit: 'cover',
-            border: '1px solid',
-            borderColor: 'divider',
-            flexShrink: 0,
-          }}
-        />
-      );
-    }
-    if (isVideo) {
+    if (needsThumbnail) {
       return (
         <Box sx={{ position: 'relative', width: size, height: size, flexShrink: 0 }}>
           <Box
-            component="video"
+            component="img"
             src={publicUrl}
-            muted
-            preload="metadata"
+            alt=""
             sx={{
               width: size,
               height: size,
@@ -130,19 +103,21 @@ export default function InlineThumbnail({
               borderColor: 'divider',
             }}
           />
-          <Box
-            sx={{
-              position: 'absolute',
-              inset: 0,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              bgcolor: 'rgba(0,0,0,0.3)',
-              borderRadius: 0.5,
-            }}
-          >
-            <MovieIcon sx={{ color: '#fff', fontSize: size * 0.4 }} />
-          </Box>
+          {isVideo && (
+            <Box
+              sx={{
+                position: 'absolute',
+                inset: 0,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                bgcolor: 'rgba(0,0,0,0.3)',
+                borderRadius: 0.5,
+              }}
+            >
+              <MovieIcon sx={{ color: '#fff', fontSize: size * 0.4 }} />
+            </Box>
+          )}
         </Box>
       );
     }

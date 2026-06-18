@@ -83,6 +83,7 @@ interface WorkflowPublicViewProps {
   };
   name: string;
   description?: string;
+  themeMode?: 'light' | 'dark';
 }
 
 function WorkflowPublicViewInner({
@@ -440,11 +441,13 @@ function WorkflowPublicViewInner({
   );
 }
 
-export default function WorkflowPublicView({ content, name, description }: WorkflowPublicViewProps) {
+export default function WorkflowPublicView({ content, name, description, themeMode: themeModeProp }: WorkflowPublicViewProps) {
   const [viewMode, setViewMode] = useState<'visual' | 'json'>('visual');
   const [copied, setCopied] = useState(false);
   const [selectedNode, setSelectedNode] = useState<any>(null);
-  const { mode: themeMode } = useThemeContext();
+  const { mode: contextThemeMode } = useThemeContext();
+  // Use prop if provided (for public views), otherwise fall back to global context
+  const themeMode = themeModeProp || contextThemeMode;
 
   const jsonString = useMemo(() => JSON.stringify(content, null, 2), [content]);
   const highlightedJson = useMemo(() => {

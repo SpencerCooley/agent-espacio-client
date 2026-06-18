@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
+import NextLink from 'next/link';
 import { Box, Typography, Grid, Paper, Breadcrumbs, Link, Chip } from '@mui/material';
 import { Folder as FolderIcon, InsertDriveFile as FileIcon, Image as ImageIcon, Article as ArticleIcon, Map as MapIcon } from '@mui/icons-material';
 import InlineThumbnail from '../../../../components/workspace/InlineThumbnail';
@@ -155,6 +156,7 @@ export default function PublicViewPage() {
               {data.ancestors.map((ancestor) => (
                 <Link
                   key={ancestor.id}
+                  component={NextLink}
                   href={ancestor.public_magic_id ? `/public/view/${ancestor.public_magic_id}` : '#'}
                   underline="hover"
                   color="inherit"
@@ -168,38 +170,48 @@ export default function PublicViewPage() {
 
           {/* Items grid */}
           <Grid container spacing={2}>
-            {data.items?.map((item) => (
-              <Grid item xs={12} sm={6} md={4} lg={3} key={`${item.kind}-${item.id}`}>
-                <Link
-                  href={item.public_magic_id ? `/public/view/${item.public_magic_id}` : '#'}
-                  underline="none"
-                  color="inherit"
-                >
-                  <Paper
-                    sx={{
-                      p: 2,
-                      display: 'flex',
-                      flexDirection: 'column',
-                      alignItems: 'center',
-                      cursor: item.public_magic_id ? 'pointer' : 'default',
-                      opacity: item.public_magic_id ? 1 : 0.6,
-                      '&:hover': item.public_magic_id ? { bgcolor: 'action.hover' } : {},
-                    }}
+            {data.items?.map((item) => {
+              // All items in a public folder are publicly accessible
+              // Use magic_id if available, otherwise use regular id (for inherited public items)
+              const itemUrl = item.public_magic_id || item.id 
+                ? `/public/view/${item.public_magic_id || item.id}`
+                : '#';
+              const isClickable = !!(item.public_magic_id || item.id);
+              
+              return (
+                <Grid item xs={12} sm={6} md={4} lg={3} key={`${item.kind}-${item.id}`}>
+                  <Link
+                    component={NextLink}
+                    href={itemUrl}
+                    underline="none"
+                    color="inherit"
                   >
-                    <Box sx={{ mb: 1, color: 'text.secondary' }}>{getItemIcon(item)}</Box>
-                    <Typography variant="subtitle2" align="center" noWrap sx={{ width: '100%' }}>
-                      {item.name}
-                    </Typography>
-                    <Chip
-                      label={item.kind}
-                      size="small"
-                      sx={{ mt: 1 }}
-                      color={item.kind === 'folder' ? 'primary' : 'default'}
-                    />
-                  </Paper>
-                </Link>
-              </Grid>
-            ))}
+                    <Paper
+                      sx={{
+                        p: 2,
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        cursor: isClickable ? 'pointer' : 'default',
+                        opacity: isClickable ? 1 : 0.6,
+                        '&:hover': isClickable ? { bgcolor: 'action.hover' } : {},
+                      }}
+                    >
+                      <Box sx={{ mb: 1, color: 'text.secondary' }}>{getItemIcon(item)}</Box>
+                      <Typography variant="subtitle2" align="center" noWrap sx={{ width: '100%' }}>
+                        {item.name}
+                      </Typography>
+                      <Chip
+                        label={item.kind}
+                        size="small"
+                        sx={{ mt: 1 }}
+                        color={item.kind === 'folder' ? 'primary' : 'default'}
+                      />
+                    </Paper>
+                  </Link>
+                </Grid>
+              );
+            })}
           </Grid>
         </Box>
       );
@@ -231,6 +243,7 @@ export default function PublicViewPage() {
             content={artifact.content}
             name={artifact.name}
             description={artifact.description}
+            themeMode={data?.public_theme?.mode}
           />
         );
       }

@@ -1,9 +1,10 @@
 'use client';
 
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { Box, Typography, Paper, Chip, Button, IconButton } from '@mui/material';
 import { Download as DownloadIcon, Close as CloseIcon, Article as ArticleIcon, Map as MapIcon, Movie as MovieIcon, Description as MarkdownIcon, DataObject as JsonIcon } from '@mui/icons-material';
 import InlineThumbnail from '../workspace/InlineThumbnail';
+import { SmartVideoPlayer } from '../ui/SmartVideoPlayer';
 import { marked } from 'marked';
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
@@ -79,18 +80,7 @@ export function PublicAssetView({
           sx={{ maxWidth: '100%', maxHeight: '80vh', borderRadius: 2, display: 'block', mx: 'auto' }}
         />
       ) : isVideo ? (
-        <Box sx={{ display: 'flex', justifyContent: 'center' }}>
-          <Box
-            component="video"
-            controls
-            loop
-            autoPlay
-            muted
-            preload="metadata"
-            src={downloadUrl}
-            sx={{ maxWidth: '100%', maxHeight: '80vh', borderRadius: 2, display: 'block' }}
-          />
-        </Box>
+        <SmartVideoPlayer src={downloadUrl} name={name} />
       ) : isMarkdown ? (
         <Paper sx={{ p: 4 }}>
           {loadingMarkdown ? (
@@ -341,8 +331,9 @@ export function MapPublicView({ content, name, description, isPreview }: MapView
   const [associationPanel, setAssociationPanel] = useState<{
     open: boolean;
     featureName: string;
+    featureDescription: string;
     associations: Association[];
-  }>({ open: false, featureName: '', associations: [] });
+  }>({ open: false, featureName: '', featureDescription: '', associations: [] });
   const cursorRef = useRef<'default' | 'pointer'>('default');
 
   const viewport = content?.viewport || {
@@ -449,11 +440,11 @@ export function MapPublicView({ content, name, description, isPreview }: MapView
             .setLngLat([coords[0], coords[1]])
             .addTo(map);
 
-          el.addEventListener('mouseenter', () => {
+          el.addEventListener('mousemove', (e) => {
             setTooltip({
               visible: true,
-              x: 0,
-              y: 0,
+              x: e.clientX,
+              y: e.clientY,
               name: feature.properties?.name || 'Point',
               description: feature.properties?.description || '',
             });
@@ -479,10 +470,17 @@ export function MapPublicView({ content, name, description, isPreview }: MapView
             const associations: Association[] = rawAssociations
               ? (typeof rawAssociations === 'string' ? JSON.parse(rawAssociations) : rawAssociations)
               : [];
-            if (associations.length > 0) {
+            if (associations.length === 1) {
+              const assoc = associations[0];
+              const url = isPreview
+                ? (assoc.type === 'asset' ? `/workspace/assets/${assoc.id}` : `/workspace/artifacts/${assoc.id}/preview`)
+                : `/public/view/${assoc.public_magic_id || assoc.id}`;
+              window.open(url, '_blank');
+            } else if (associations.length > 1) {
               setAssociationPanel({
                 open: true,
                 featureName: feature.properties?.name || 'Point',
+                featureDescription: feature.properties?.description || '',
                 associations,
               });
             }
@@ -570,15 +568,77 @@ export function MapPublicView({ content, name, description, isPreview }: MapView
               const associations: Association[] = rawAssociations
                 ? (typeof rawAssociations === 'string' ? JSON.parse(rawAssociations) : rawAssociations)
                 : [];
-              if (associations.length > 0) {
+              if (associations.length === 1) {
+                const assoc = associations[0];
+                const url = isPreview
+                  ? (assoc.type === 'asset' ? `/workspace/assets/${assoc.id}` : `/workspace/artifacts/${assoc.id}/preview`)
+                  : `/public/view/${assoc.public_magic_id || assoc.id}`;
+                window.open(url, '_blank');
+              } else if (associations.length > 1) {
                 setAssociationPanel({
                   open: true,
                   featureName: f.properties?.name || (geometryType === 'Polygon' ? 'Polygon' : 'Line'),
+                  featureDescription: f.properties?.description || '',
                   associations,
                 });
               }
             }
           });
+
+          // Line layer events (for LineString and MultiLineString)
+          if (geometryType === 'LineString' || geometryType === 'MultiLineString') {
+            map.on('mousemove', `${id}-line`, (e) => {
+              if (e.features && e.features.length > 0) {
+                const f = e.features[0];
+                setTooltip({
+                  visible: true,
+                  x: e.point.x,
+                  y: e.point.y,
+                  name: f.properties?.name || 'Line',
+                  description: f.properties?.description || '',
+                });
+                if (cursorRef.current !== 'pointer') {
+                  map.getCanvas().style.cursor = 'pointer';
+                  cursorRef.current = 'pointer';
+                }
+                setHoveredFeatureId(id);
+              }
+            });
+
+            map.on('mouseleave', `${id}-line`, () => {
+              setTooltip(prev => ({ ...prev, visible: false }));
+              if (cursorRef.current !== 'default') {
+                map.getCanvas().style.cursor = '';
+                cursorRef.current = 'default';
+              }
+              setHoveredFeatureId(null);
+            });
+
+            map.on('click', `${id}-line`, (e) => {
+              if (e.features && e.features.length > 0) {
+                const f = e.features[0];
+                const props = f.properties;
+                const rawAssociations = props?.associations;
+                const associations: Association[] = rawAssociations
+                  ? (typeof rawAssociations === 'string' ? JSON.parse(rawAssociations) : rawAssociations)
+                  : [];
+                if (associations.length === 1) {
+                  const assoc = associations[0];
+                  const url = isPreview
+                    ? (assoc.type === 'asset' ? `/workspace/assets/${assoc.id}` : `/workspace/artifacts/${assoc.id}/preview`)
+                    : `/public/view/${assoc.public_magic_id || assoc.id}`;
+                  window.open(url, '_blank');
+                } else if (associations.length > 1) {
+                  setAssociationPanel({
+                    open: true,
+                    featureName: f.properties?.name || 'Line',
+                    featureDescription: f.properties?.description || '',
+                    associations,
+                  });
+                }
+              }
+            });
+          }
         });
       });
     }
@@ -685,13 +745,18 @@ export function MapPublicView({ content, name, description, isPreview }: MapView
               <Typography variant="subtitle2" fontWeight={600}>
                 {associationPanel.featureName}
               </Typography>
+              {associationPanel.featureDescription && (
+                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.25 }}>
+                  {associationPanel.featureDescription}
+                </Typography>
+              )}
               <Typography variant="caption" color="text.secondary">
                 {associationPanel.associations.length} linked items
               </Typography>
             </Box>
             <IconButton
               size="small"
-              onClick={() => setAssociationPanel({ open: false, featureName: '', associations: [] })}
+              onClick={() => setAssociationPanel({ open: false, featureName: '', featureDescription: '', associations: [] })}
             >
               <CloseIcon fontSize="small" />
             </IconButton>
@@ -716,8 +781,8 @@ export function MapPublicView({ content, name, description, isPreview }: MapView
                   '&:hover': { boxShadow: 2, borderColor: 'primary.main' },
                 }}
                 onClick={() => {
-                  const url = isPreview 
-                    ? (assoc.type === 'asset' ? `/workspace/assets/${assoc.id}` : `/workspace/artifacts/${assoc.id}`)
+                  const url = isPreview
+                    ? (assoc.type === 'asset' ? `/workspace/assets/${assoc.id}` : `/workspace/artifacts/${assoc.id}/preview`)
                     : `/public/view/${assoc.public_magic_id || assoc.id}`;
                   window.open(url, '_blank');
                 }}

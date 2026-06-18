@@ -27,19 +27,22 @@ export default function ShareModal() {
     setModalOpen(false);
   };
 
+  // When inherited, use the item's ID directly since it's accessible via parent's public URL
+  const targetId = shareTarget?.publicMagicId || (shareTarget?.isInherited ? shareTarget?.id : null);
+
   const handleCopy = useCallback(() => {
-    if (shareTarget?.publicMagicId) {
-      const url = `${typeof window !== 'undefined' ? window.location.origin : ''}/public/view/${shareTarget.publicMagicId}`;
+    if (targetId) {
+      const url = `${typeof window !== 'undefined' ? window.location.origin : ''}/public/view/${targetId}`;
       navigator.clipboard.writeText(url);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     }
-  }, [shareTarget]);
+  }, [targetId]);
 
   if (!shareTarget) return null;
 
-  const publicUrl = shareTarget.publicMagicId
-    ? `${typeof window !== 'undefined' ? window.location.origin : ''}/public/view/${shareTarget.publicMagicId}`
+  const publicUrl = targetId
+    ? `${typeof window !== 'undefined' ? window.location.origin : ''}/public/view/${targetId}`
     : '';
 
   return (
@@ -50,57 +53,90 @@ export default function ShareModal() {
       </DialogTitle>
       <DialogContent>
         <Box>
-          {shareTarget.isInherited && (
-            <Alert severity="info" sx={{ mb: 2 }}>
-              This item is public because its parent folder is shared.
-            </Alert>
-          )}
+          {shareTarget.isInherited ? (
+            // Inherited public item - simple alert with copy link
+            <>
+              <Alert severity="info" sx={{ mb: 2 }}>
+                This item is public because its parent folder is shared.
+              </Alert>
 
-          <Box sx={{ mb: 3 }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
-              <Typography variant="body2">Public access</Typography>
-              <Switch
-                checked={shareTarget.isPublic}
-                onChange={shareTarget.onToggle}
-                disabled={shareTarget.isInherited || shareTarget.isLoading}
-              />
-            </Box>
-            <Typography variant="caption" color="text.secondary">
-              {shareTarget.isPublic
-                ? 'Anyone with the link can view this item'
-                : 'Only logged-in users can access this item'}
-            </Typography>
-          </Box>
-
-          {shareTarget.isPublic && publicUrl && (
-            <Paper variant="outlined" sx={{ p: 2, mb: 2 }}>
-              <Typography variant="subtitle2" sx={{ mb: 1 }}>
-                Public link
-              </Typography>
-              <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
-                <TextField
-                  value={publicUrl}
-                  size="small"
-                  fullWidth
-                  InputProps={{
-                    readOnly: true,
-                  }}
-                />
-                <Tooltip title={copied ? 'Copied!' : 'Copy link'}>
-                  <IconButton onClick={handleCopy} size="small" color={copied ? 'success' : 'default'}>
-                    <CopyIcon />
-                  </IconButton>
-                </Tooltip>
-              </Box>
-              {copied && (
-                <Chip
-                  size="small"
-                  color="success"
-                  label="Copied to clipboard"
-                  sx={{ mt: 1 }}
-                />
+              {publicUrl && (
+                <Paper variant="outlined" sx={{ p: 2, mb: 2 }}>
+                  <Typography variant="subtitle2" sx={{ mb: 1 }}>
+                    Public link
+                  </Typography>
+                  <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                    <TextField
+                      value={publicUrl}
+                      size="small"
+                      fullWidth
+                      InputProps={{ readOnly: true }}
+                    />
+                    <Tooltip title={copied ? 'Copied!' : 'Copy link'}>
+                      <IconButton onClick={handleCopy} size="small" color={copied ? 'success' : 'default'}>
+                        <CopyIcon />
+                      </IconButton>
+                    </Tooltip>
+                  </Box>
+                  {copied && (
+                    <Chip
+                      size="small"
+                      color="success"
+                      label="Copied to clipboard"
+                      sx={{ mt: 1 }}
+                    />
+                  )}
+                </Paper>
               )}
-            </Paper>
+            </>
+          ) : (
+            // Regular share controls
+            <>
+              <Box sx={{ mb: 3 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
+                  <Typography variant="body2">Public access</Typography>
+                  <Switch
+                    checked={shareTarget.isPublic}
+                    onChange={shareTarget.onToggle}
+                    disabled={shareTarget.isLoading}
+                  />
+                </Box>
+                <Typography variant="caption" color="text.secondary">
+                  {shareTarget.isPublic
+                    ? 'Anyone with the link can view this item'
+                    : 'Only logged-in users can access this item'}
+                </Typography>
+              </Box>
+
+              {shareTarget.isPublic && publicUrl && (
+                <Paper variant="outlined" sx={{ p: 2, mb: 2 }}>
+                  <Typography variant="subtitle2" sx={{ mb: 1 }}>
+                    Public link
+                  </Typography>
+                  <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                    <TextField
+                      value={publicUrl}
+                      size="small"
+                      fullWidth
+                      InputProps={{ readOnly: true }}
+                    />
+                    <Tooltip title={copied ? 'Copied!' : 'Copy link'}>
+                      <IconButton onClick={handleCopy} size="small" color={copied ? 'success' : 'default'}>
+                        <CopyIcon />
+                      </IconButton>
+                    </Tooltip>
+                  </Box>
+                  {copied && (
+                    <Chip
+                      size="small"
+                      color="success"
+                      label="Copied to clipboard"
+                      sx={{ mt: 1 }}
+                    />
+                  )}
+                </Paper>
+              )}
+            </>
           )}
 
           <Divider sx={{ my: 2 }} />

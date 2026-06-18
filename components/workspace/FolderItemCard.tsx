@@ -32,7 +32,6 @@ import { useRouter } from 'next/navigation';
 import { FolderItem } from '../../services/folders';
 import { getAssetDownloadUrl } from '../../services/assets';
 import { useAuthImage } from '../../hooks/useAuthImage';
-import { useVideoThumbnail } from '../../hooks/useVideoThumbnail';
 
 interface FolderItemCardProps {
   item: FolderItem;
@@ -68,11 +67,10 @@ export default function FolderItemCard({
   const [renameValue, setRenameValue] = useState(item.name);
   const renameInputRef = useRef<HTMLInputElement>(null);
 
-  const thumbUrl = item.is_image ? getAssetDownloadUrl(item.id, 256) : null;
+  // Thumbnails: generated for images and videos via backend
+  const hasThumbnail = item.kind === 'asset' && item.file_meta?.thumbnails;
+  const thumbUrl = hasThumbnail ? getAssetDownloadUrl(item.id, 256) : null;
   const thumbSrc = useAuthImage(thumbUrl);
-
-  const videoUrl = item.mime_type?.startsWith('video/') ? getAssetDownloadUrl(item.id) : null;
-  const videoThumbSrc = useVideoThumbnail(videoUrl);
 
   // Drag state for folders (drop targets)
   const [isDragOver, setIsDragOver] = useState(false);
@@ -321,7 +319,7 @@ export default function FolderItemCard({
   };
 
   const isImageWithThumb = item.kind === 'asset' && item.is_image && thumbSrc;
-  const isVideoWithThumb = item.kind === 'asset' && item.mime_type?.startsWith('video/') && videoThumbSrc;
+  const isVideoWithThumb = item.kind === 'asset' && item.mime_type?.startsWith('video/') && thumbSrc;
   const isMarkdownWithPreview = item.kind === 'asset' && item.is_markdown && item.file_meta?.preview;
   const isFolder = item.kind === 'folder';
 
@@ -476,10 +474,9 @@ export default function FolderItemCard({
           ) : isVideoWithThumb ? (
             <>
               <Box
-                component="video"
-                src={videoThumbSrc}
-                muted
-                preload="metadata"
+                component="img"
+                src={thumbSrc}
+                alt={item.name}
                 sx={{
                   width: '100%',
                   height: '100%',
@@ -488,6 +485,31 @@ export default function FolderItemCard({
                   inset: 0,
                 }}
               />
+              {/* Video play indicator overlay */}
+              <Box
+                sx={{
+                  position: 'absolute',
+                  inset: 0,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  zIndex: 1,
+                }}
+              >
+                <Box
+                  sx={{
+                    width: 48,
+                    height: 48,
+                    borderRadius: '50%',
+                    bgcolor: 'rgba(0,0,0,0.5)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <MovieIcon sx={{ color: '#fff', fontSize: 24 }} />
+                </Box>
+              </Box>
               <Box
                 sx={{
                   mt: 'auto',

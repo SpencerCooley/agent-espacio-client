@@ -21,6 +21,7 @@ import { Download, ContentCopy, Public, Lock } from '@mui/icons-material';
 import ProtectedRoute from '../../../../components/auth/ProtectedRoute';
 import WorkspaceLayout from '../../../../components/layout/WorkspaceLayout';
 import MarkdownEditor from '../../../../components/workspace/MarkdownEditor';
+import { SmartVideoPlayer } from '../../../../components/ui/SmartVideoPlayer';
 import { assetService, Asset, getAssetDownloadUrl } from '../../../../services/assets';
 import { folderService } from '../../../../services/folders';
 import { useAuthImage } from '../../../../hooks/useAuthImage';
@@ -132,13 +133,15 @@ function AssetViewerContent() {
   }, [assetId, isShareLoading, isInherited]);
 
   const handleCopy = useCallback(() => {
-    if (publicMagicId) {
-      const url = `${typeof window !== 'undefined' ? window.location.origin : ''}/public/view/${publicMagicId}`;
+    // When inherited, use the asset's ID directly since it's accessible via parent's public URL
+    const targetId = publicMagicId || (isInherited ? assetId : null);
+    if (targetId) {
+      const url = `${typeof window !== 'undefined' ? window.location.origin : ''}/public/view/${targetId}`;
       navigator.clipboard.writeText(url);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     }
-  }, [publicMagicId]);
+  }, [publicMagicId, isInherited, assetId]);
 
   const breadcrumb = asset
     ? [
@@ -185,8 +188,11 @@ function AssetViewerContent() {
     }
   };
 
+  // When inherited, use the asset's ID directly since it's accessible via parent's public URL
   const publicUrl = publicMagicId
     ? `${typeof window !== 'undefined' ? window.location.origin : ''}/public/view/${publicMagicId}`
+    : isInherited && assetId
+    ? `${typeof window !== 'undefined' ? window.location.origin : ''}/public/view/${assetId}`
     : '';
 
   // Left panel: file metadata + share
@@ -270,57 +276,90 @@ function AssetViewerContent() {
         Share
       </Typography>
 
-      {isInherited && (
-        <Alert severity="info" sx={{ mb: 2 }}>
-          This item is public because its parent folder is shared.
-        </Alert>
-      )}
-
-      <Box sx={{ mb: 3 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
-          <Typography variant="body2">Public access</Typography>
-          <Switch
-            checked={isPublic}
-            onChange={handleToggleShare}
-            disabled={isInherited || isShareLoading}
-          />
-        </Box>
-        <Typography variant="caption" color="text.secondary">
-          {isPublic
-            ? 'Anyone with the link can view this item'
-            : 'Only logged-in users can access this item'}
-        </Typography>
-      </Box>
-
-      {isPublic && publicUrl && (
-        <Paper variant="outlined" sx={{ p: 2, mb: 2 }}>
-          <Typography variant="subtitle2" sx={{ mb: 1 }}>
-            Public link
-          </Typography>
-          <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
-            <TextField
-              value={publicUrl}
-              size="small"
-              fullWidth
-              InputProps={{
-                readOnly: true,
-              }}
-            />
-            <Tooltip title={copied ? 'Copied!' : 'Copy link'}>
-              <IconButton onClick={handleCopy} size="small" color={copied ? 'success' : 'default'}>
-                <ContentCopy />
-              </IconButton>
-            </Tooltip>
-          </Box>
-          {copied && (
-            <Chip
-              size="small"
-              color="success"
-              label="Copied to clipboard"
-              sx={{ mt: 1 }}
-            />
+      {isInherited ? (
+        // Inherited public item - simple alert with copy link
+        <>
+          <Alert severity="info" sx={{ mb: 2 }}>
+            This item is public because its parent folder is shared.
+          </Alert>
+          
+          {publicUrl && (
+            <Paper variant="outlined" sx={{ p: 2, mb: 2 }}>
+              <Typography variant="subtitle2" sx={{ mb: 1 }}>
+                Public link
+              </Typography>
+              <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                <TextField
+                  value={publicUrl}
+                  size="small"
+                  fullWidth
+                  InputProps={{ readOnly: true }}
+                />
+                <Tooltip title={copied ? 'Copied!' : 'Copy link'}>
+                  <IconButton onClick={handleCopy} size="small" color={copied ? 'success' : 'default'}>
+                    <ContentCopy />
+                  </IconButton>
+                </Tooltip>
+              </Box>
+              {copied && (
+                <Chip
+                  size="small"
+                  color="success"
+                  label="Copied to clipboard"
+                  sx={{ mt: 1 }}
+                />
+              )}
+            </Paper>
           )}
-        </Paper>
+        </>
+      ) : (
+        // Regular share controls
+        <>
+          <Box sx={{ mb: 3 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
+              <Typography variant="body2">Public access</Typography>
+              <Switch
+                checked={isPublic}
+                onChange={handleToggleShare}
+                disabled={isShareLoading}
+              />
+            </Box>
+            <Typography variant="caption" color="text.secondary">
+              {isPublic
+                ? 'Anyone with the link can view this item'
+                : 'Only logged-in users can access this item'}
+            </Typography>
+          </Box>
+
+          {isPublic && publicUrl && (
+            <Paper variant="outlined" sx={{ p: 2, mb: 2 }}>
+              <Typography variant="subtitle2" sx={{ mb: 1 }}>
+                Public link
+              </Typography>
+              <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                <TextField
+                  value={publicUrl}
+                  size="small"
+                  fullWidth
+                  InputProps={{ readOnly: true }}
+                />
+                <Tooltip title={copied ? 'Copied!' : 'Copy link'}>
+                  <IconButton onClick={handleCopy} size="small" color={copied ? 'success' : 'default'}>
+                    <ContentCopy />
+                  </IconButton>
+                </Tooltip>
+              </Box>
+              {copied && (
+                <Chip
+                  size="small"
+                  color="success"
+                  label="Copied to clipboard"
+                  sx={{ mt: 1 }}
+                />
+              )}
+            </Paper>
+          )}
+        </>
       )}
     </Box>
   ) : null;
@@ -395,16 +434,10 @@ function AssetViewerContent() {
             }}
           >
             {videoSrc ? (
-              <Box
-                component="video"
-                controls
-                preload="metadata"
-                src={videoSrc}
-                sx={{
-                  maxWidth: '100%',
-                  maxHeight: 'calc(100vh - 200px)',
-                  borderRadius: 1,
-                }}
+              <SmartVideoPlayer 
+                src={videoSrc} 
+                name={asset.name}
+                maxHeight="calc(100vh - 200px)"
               />
             ) : (
               <Typography color="text.secondary">Loading video...</Typography>

@@ -14,7 +14,6 @@ import {
   PlayArrow as PlayIcon,
 } from '@mui/icons-material';
 import { useAuthImage } from '../../hooks/useAuthImage';
-import { useVideoThumbnail } from '../../hooks/useVideoThumbnail';
 import { getAssetDownloadUrl } from '../../services/assets';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
@@ -69,22 +68,16 @@ export default function AssociationMediaCard({ association, variant, onClick }: 
   const isVideo = isAsset && (association.kind?.toLowerCase().includes('video') || association.mime_type?.startsWith('video/'));
   const isMedia = isImage || isVideo;
 
-  // Editor: use authenticated URLs
-  const editorThumbUrl = isImage ? getAssetDownloadUrl(association.id, 256) : null;
+  // Editor: use authenticated thumbnail URLs for both images and videos
+  const editorThumbUrl = isMedia ? getAssetDownloadUrl(association.id, 256) : null;
   const editorThumbSrc = useAuthImage(editorThumbUrl);
-  const editorVideoUrl = isVideo ? getAssetDownloadUrl(association.id) : null;
-  const editorVideoThumbSrc = useVideoThumbnail(editorVideoUrl);
 
-  // Public: use public URLs
-  const publicThumbUrl = isImage
-    ? `${API_BASE_URL}/public/assets/${association.public_magic_id || association.id}/download`
-    : null;
-  const publicVideoUrl = isVideo
-    ? `${API_BASE_URL}/public/assets/${association.public_magic_id || association.id}/download`
+  // Public: use public thumbnail URLs for both images and videos
+  const publicThumbUrl = isMedia
+    ? `${API_BASE_URL}/public/assets/${association.public_magic_id || association.id}/download?size=256`
     : null;
 
   const thumbSrc = variant === 'editor' ? editorThumbSrc : publicThumbUrl;
-  const videoThumbSrc = variant === 'editor' ? editorVideoThumbSrc : publicVideoUrl;
 
   const workspaceUrl = isAsset
     ? `/workspace/assets/${association.id}`
@@ -123,38 +116,28 @@ export default function AssociationMediaCard({ association, variant, onClick }: 
       onClick={handleClick}
     >
       {/* Media Preview */}
-      {isMedia && (thumbSrc || videoThumbSrc) ? (
+      {isMedia && thumbSrc ? (
         <Box sx={{ position: 'relative', width: '100%', aspectRatio: '4/3', bgcolor: 'grey.100' }}>
-          {isImage && thumbSrc ? (
+          <Box
+            component="img"
+            src={thumbSrc}
+            alt={association.name}
+            sx={{ width: '100%', height: '100%', objectFit: 'cover' }}
+          />
+          {isVideo && (
             <Box
-              component="img"
-              src={thumbSrc}
-              alt={association.name}
-              sx={{ width: '100%', height: '100%', objectFit: 'cover' }}
-            />
-          ) : isVideo && videoThumbSrc ? (
-            <>
-              <Box
-                component="video"
-                src={videoThumbSrc}
-                muted
-                preload="metadata"
-                sx={{ width: '100%', height: '100%', objectFit: 'cover' }}
-              />
-              <Box
-                sx={{
-                  position: 'absolute',
-                  inset: 0,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  bgcolor: 'rgba(0,0,0,0.3)',
-                }}
-              >
-                <PlayIcon sx={{ color: '#fff', fontSize: 40, opacity: 0.9 }} />
-              </Box>
-            </>
-          ) : null}
+              sx={{
+                position: 'absolute',
+                inset: 0,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                bgcolor: 'rgba(0,0,0,0.3)',
+              }}
+            >
+              <PlayIcon sx={{ color: '#fff', fontSize: 40, opacity: 0.9 }} />
+            </Box>
+          )}
         </Box>
       ) : (
         /* Non-Media Preview */
