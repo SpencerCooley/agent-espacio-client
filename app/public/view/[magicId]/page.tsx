@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import NextLink from 'next/link';
 import { Box, Typography, Grid, Paper, Breadcrumbs, Link, Chip } from '@mui/material';
-import { Folder as FolderIcon, InsertDriveFile as FileIcon, Image as ImageIcon, Article as ArticleIcon, Map as MapIcon } from '@mui/icons-material';
+import { Folder as FolderIcon, InsertDriveFile as FileIcon, Image as ImageIcon, Article as ArticleIcon, Map as MapIcon, Movie as MovieIcon } from '@mui/icons-material';
 import InlineThumbnail from '../../../../components/workspace/InlineThumbnail';
 import { ThemeProvider as MUIThemeProvider, createTheme } from '@mui/material/styles';
 import { themeMap } from '../../../../themes';
@@ -173,11 +173,15 @@ export default function PublicViewPage() {
             {data.items?.map((item) => {
               // All items in a public folder are publicly accessible
               // Use magic_id if available, otherwise use regular id (for inherited public items)
-              const itemUrl = item.public_magic_id || item.id 
+              const itemUrl = item.public_magic_id || item.id
                 ? `/public/view/${item.public_magic_id || item.id}`
                 : '#';
               const isClickable = !!(item.public_magic_id || item.id);
-              
+
+              const isImage = item.kind === 'asset' && item.is_image;
+              const isVideo = item.kind === 'asset' && item.mime_type?.startsWith('video/');
+              const isMedia = isImage || isVideo;
+
               return (
                 <Grid item xs={12} sm={6} md={4} lg={3} key={`${item.kind}-${item.id}`}>
                   <Link
@@ -188,25 +192,115 @@ export default function PublicViewPage() {
                   >
                     <Paper
                       sx={{
-                        p: 2,
                         display: 'flex',
                         flexDirection: 'column',
                         alignItems: 'center',
+                        overflow: 'hidden',
                         cursor: isClickable ? 'pointer' : 'default',
                         opacity: isClickable ? 1 : 0.6,
                         '&:hover': isClickable ? { bgcolor: 'action.hover' } : {},
                       }}
                     >
-                      <Box sx={{ mb: 1, color: 'text.secondary' }}>{getItemIcon(item)}</Box>
-                      <Typography variant="subtitle2" align="center" noWrap sx={{ width: '100%' }}>
-                        {item.name}
-                      </Typography>
-                      <Chip
-                        label={item.kind}
-                        size="small"
-                        sx={{ mt: 1 }}
-                        color={item.kind === 'folder' ? 'primary' : 'default'}
-                      />
+                      {isMedia ? (
+                        <Box sx={{ position: 'relative', width: '100%', aspectRatio: '4/3' }}>
+                          <Box
+                            component="img"
+                            src={`${API_BASE_URL}/public/assets/${item.public_magic_id || item.id}/download?size=256`}
+                            alt={item.name}
+                            sx={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                          />
+                          {isVideo && (
+                            <Box
+                              sx={{
+                                position: 'absolute',
+                                inset: 0,
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                zIndex: 1,
+                              }}
+                            >
+                              <Box
+                                sx={{
+                                  width: 48,
+                                  height: 48,
+                                  borderRadius: '50%',
+                                  bgcolor: 'rgba(0,0,0,0.5)',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                }}
+                              >
+                                <MovieIcon sx={{ color: '#fff', fontSize: 24 }} />
+                              </Box>
+                            </Box>
+                          )}
+                          <Box
+                            sx={{
+                              position: 'absolute',
+                              bottom: 0,
+                              left: 0,
+                              right: 0,
+                              zIndex: 1,
+                              background: (theme) =>
+                                `linear-gradient(to top, ${theme.palette.common.black} 0%, transparent 100%)`,
+                              px: 1.5,
+                              pb: 1.5,
+                              pt: 4,
+                            }}
+                          >
+                            <Typography
+                              variant="subtitle2"
+                              sx={{
+                                color: '#fff',
+                                textShadow: '0 1px 3px rgba(0,0,0,0.5)',
+                                fontWeight: 500,
+                                whiteSpace: 'nowrap',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                              }}
+                            >
+                              {item.name}
+                            </Typography>
+                            <Chip
+                              label={item.kind}
+                              size="small"
+                              variant="outlined"
+                              sx={{
+                                mt: 0.5,
+                                color: 'rgba(255,255,255,0.85)',
+                                borderColor: 'rgba(255,255,255,0.4)',
+                                fontSize: '0.65rem',
+                                height: 20,
+                                '& .MuiChip-label': { px: 1 },
+                              }}
+                            />
+                          </Box>
+                        </Box>
+                      ) : (
+                        <Box
+                          sx={{
+                            width: '100%',
+                            aspectRatio: '4/3',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            p: 2,
+                          }}
+                        >
+                          <Box sx={{ mb: 1, color: 'text.secondary' }}>{getItemIcon(item)}</Box>
+                          <Typography variant="subtitle2" align="center" noWrap sx={{ width: '100%' }}>
+                            {item.name}
+                          </Typography>
+                          <Chip
+                            label={item.kind}
+                            size="small"
+                            sx={{ mt: 1 }}
+                            color={item.kind === 'folder' ? 'primary' : 'default'}
+                          />
+                        </Box>
+                      )}
                     </Paper>
                   </Link>
                 </Grid>
