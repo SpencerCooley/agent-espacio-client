@@ -1,0 +1,120 @@
+.audio-player {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 16px;
+  width: 100%;
+  padding: 16px;
+  border-radius: 12px;
+  box-sizing: border-box;
+  font-family: var(--ap-font-family, system-ui, sans-serif);
+  background: var(--ap-bg-color, #0f172a);
+  color: var(--ap-text-color, #f8fafc);
+}
+
+.audio-player__controls {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.audio-player__play-btn {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--ap-play-btn-color, #3b82f6);
+  color: white;
+  transition: transform 0.15s ease, opacity 0.15s ease;
+  flex-shrink: 0;
+  padding: 0;
+}
+
+.audio-player__play-btn:hover {
+  transform: scale(1.05);
+  opacity: 0.9;
+}
+
+.audio-player__play-btn:active {
+  transform: scale(0.95);
+}
+
+.audio-player__play-btn svg {
+  width: 20px;
+  height: 20px;
+  fill: currentColor;
+}
+
+.audio-player__time {
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  color: var(--ap-text-color, #f8fafc);
+  opacity: 0.7;
+  white-space: nowrap;
+  font-family: inherit;
+}
+
+.audio-player__canvas-wrap {
+  flex: 1;
+  position: relative;
+  min-width: 0;
+  border-radius: 8px;
+  overflow: hidden;
+  cursor: pointer;
+  background: var(--ap-bg-color, #0f172a);
+}
+
+.audio-player__canvas-wrap canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.audio-player__canvas-wrap .audio-player__loading {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--ap-bg-color, #0f172a);
+  pointer-events: none;
+}
+
+.audio-player__loading-bar {
+  width: 40%;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--ap-bar-color, #64748b);
+  opacity: 0.3;
+  animation: ap-pulse 2s ease-in-out infinite;
+}
+
+@keyframes ap-pulse {
+  0%, 100% { opacity: 0.3; }
+  50% { opacity: 0.6; }
+}
+
+.audio-player__error {
+  padding: 16px;
+  color: #ef4444;
+  font-size: 14px;
+  text-align: center;
+}
+
+.audio-player__name {
+  font-size: 12px;
+  color: var(--ap-text-color, #f8fafc);
+  opacity: 0.6;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100px;
+  text-align: center;
+  font-family: inherit;
+}

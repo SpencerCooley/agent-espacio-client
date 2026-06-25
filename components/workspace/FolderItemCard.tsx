@@ -27,6 +27,7 @@ import {
   DriveFileRenameOutline as RenameIcon,
   Delete as DeleteIcon,
   Movie as MovieIcon,
+  Audiotrack as AudioIcon,
 } from '@mui/icons-material';
 import { useRouter } from 'next/navigation';
 import { FolderItem } from '../../services/folders';
@@ -305,6 +306,9 @@ export default function FolderItemCard({
       if (item.mime_type?.startsWith('video/')) {
         return <MovieIcon sx={{ fontSize: 48, color: 'text.secondary' }} />;
       }
+      if (item.mime_type?.startsWith('audio/')) {
+        return <AudioIcon sx={{ fontSize: 48, color: 'text.secondary' }} />;
+      }
       return <FileIcon sx={{ fontSize: 48, color: 'text.secondary' }} />;
     }
 
@@ -315,6 +319,7 @@ export default function FolderItemCard({
     if (item.kind === 'folder') return 'Folder';
     if (item.kind === 'artifact') return item.type ? item.type.charAt(0).toUpperCase() + item.type.slice(1) : 'Artifact';
     if (item.mime_type?.startsWith('video/')) return 'Video';
+    if (item.mime_type?.startsWith('audio/')) return 'Audio';
     return item.mime_type ? item.mime_type.split('/')[1]?.toUpperCase() : 'File';
   };
 

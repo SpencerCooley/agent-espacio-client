@@ -5,6 +5,7 @@ import { useAuthImage } from '../../hooks/useAuthImage';
 import { getAssetDownloadUrl } from '../../services/assets';
 import {
   Movie as MovieIcon,
+  Audiotrack as AudioIcon,
 } from '@mui/icons-material';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
@@ -31,6 +32,7 @@ export default function InlineThumbnail({
 }: InlineThumbnailProps) {
   const isImage = type === 'asset' && (is_image || kind?.includes('image'));
   const isVideo = type === 'asset' && kind?.includes('video');
+  const isAudio = type === 'asset' && kind?.includes('audio');
 
   // Use generated thumbnails for both images and videos (backend ffmpeg)
   const needsThumbnail = isImage || isVideo;
@@ -80,6 +82,15 @@ export default function InlineThumbnail({
       return (
         <Box sx={{ width: size, height: size, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <MovieIcon sx={{ color: 'text.secondary', fontSize: size * 0.5 }} />
+        </Box>
+      );
+    }
+
+    // Fallback icon for audio
+    if (isAudio) {
+      return (
+        <Box sx={{ width: size, height: size, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <AudioIcon sx={{ color: 'text.secondary', fontSize: size * 0.5 }} />
         </Box>
       );
     }

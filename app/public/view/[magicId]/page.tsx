@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import NextLink from 'next/link';
 import { Box, Typography, Grid, Paper, Breadcrumbs, Link, Chip } from '@mui/material';
-import { Folder as FolderIcon, InsertDriveFile as FileIcon, Image as ImageIcon, Article as ArticleIcon, Map as MapIcon, Movie as MovieIcon } from '@mui/icons-material';
+import { Folder as FolderIcon, InsertDriveFile as FileIcon, Image as ImageIcon, Article as ArticleIcon, Map as MapIcon, Movie as MovieIcon, Audiotrack as AudiotrackIcon } from '@mui/icons-material';
 import InlineThumbnail from '../../../../components/workspace/InlineThumbnail';
 import { ThemeProvider as MUIThemeProvider, createTheme } from '@mui/material/styles';
 import { themeMap } from '../../../../themes';
@@ -111,6 +111,7 @@ export default function PublicViewPage() {
     if (item.kind === 'folder') return <FolderIcon fontSize="large" />;
     if (item.kind === 'asset') {
       if (item.is_image) return <ImageIcon fontSize="large" />;
+      if (item.mime_type?.startsWith('audio/')) return <AudiotrackIcon fontSize="large" />;
       return <FileIcon fontSize="large" />;
     }
     if (item.kind === 'artifact') {

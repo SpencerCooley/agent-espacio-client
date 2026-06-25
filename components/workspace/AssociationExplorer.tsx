@@ -27,6 +27,7 @@ import InsertDriveFileIcon from '@mui/icons-material/InsertDriveFile';
 import DescriptionIcon from '@mui/icons-material/Description';
 import DataObjectIcon from '@mui/icons-material/DataObject';
 import MovieIcon from '@mui/icons-material/Movie';
+import AudiotrackIcon from '@mui/icons-material/Audiotrack';
 import { artifactService, Artifact } from '../../services/artifacts';
 import { assetService, Asset } from '../../services/assets';
 
@@ -109,6 +110,7 @@ export default function AssociationExplorer({ open, onClose, onSelect }: Associa
     // asset
     if (item.mime_type?.startsWith('image/')) return <InsertDriveFileIcon fontSize="small" />;
     if (item.mime_type?.startsWith('video/')) return <MovieIcon fontSize="small" />;
+    if (item.mime_type?.startsWith('audio/')) return <AudiotrackIcon fontSize="small" />;
     if (item.mime_type === 'text/markdown' || item.mime_type === 'text/x-markdown') return <DescriptionIcon fontSize="small" />;
     if (item.mime_type === 'application/json') return <DataObjectIcon fontSize="small" />;
     return <InsertDriveFileIcon fontSize="small" />;

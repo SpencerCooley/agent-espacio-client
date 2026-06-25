@@ -22,6 +22,7 @@ import ProtectedRoute from '../../../../components/auth/ProtectedRoute';
 import WorkspaceLayout from '../../../../components/layout/WorkspaceLayout';
 import MarkdownEditor from '../../../../components/workspace/MarkdownEditor';
 import { SmartVideoPlayer } from '../../../../components/ui/SmartVideoPlayer';
+import { AudioPlayerThemed } from '../../../../components/ui/AudioPlayer';
 import { assetService, Asset, getAssetDownloadUrl } from '../../../../services/assets';
 import { folderService } from '../../../../services/folders';
 import { useAuthImage } from '../../../../hooks/useAuthImage';
@@ -168,6 +169,9 @@ function AssetViewerContent() {
 
   const videoUrl = asset?.mime_type?.startsWith('video/') ? getAssetDownloadUrl(asset.id) : null;
   const videoSrc = useAuthBlob(videoUrl);
+
+  const audioUrl = asset?.mime_type?.startsWith('audio/') ? getAssetDownloadUrl(asset.id) : null;
+  const audioSrc = useAuthBlob(audioUrl);
 
   const handleDownload = async (url: string, filename: string) => {
     const token = localStorage.getItem('accessToken');
@@ -386,6 +390,7 @@ function AssetViewerContent() {
 
   // Video detection
   const isVideo = asset.mime_type?.startsWith('video/');
+  const isAudio = asset.mime_type?.startsWith('audio/');
 
   return (
     <WorkspaceLayout breadcrumb={breadcrumb} leftPanel={leftPanel}>
@@ -441,6 +446,28 @@ function AssetViewerContent() {
               />
             ) : (
               <Typography color="text.secondary">Loading video...</Typography>
+            )}
+          </Paper>
+        ) : isAudio ? (
+          <Paper
+            sx={{
+              p: 2,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              minHeight: 400,
+              bgcolor: 'background.default',
+              overflow: 'auto',
+            }}
+          >
+            {audioSrc ? (
+              <AudioPlayerThemed
+                src={audioSrc}
+                name={asset.name}
+                height={200}
+              />
+            ) : (
+              <Typography color="text.secondary">Loading audio...</Typography>
             )}
           </Paper>
         ) : asset.is_markdown ? (

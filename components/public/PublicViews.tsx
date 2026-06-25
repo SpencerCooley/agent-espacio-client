@@ -5,6 +5,7 @@ import { Box, Typography, Paper, Chip, Button, IconButton } from '@mui/material'
 import { Download as DownloadIcon, Close as CloseIcon, Article as ArticleIcon, Map as MapIcon, Movie as MovieIcon, Description as MarkdownIcon, DataObject as JsonIcon } from '@mui/icons-material';
 import InlineThumbnail from '../workspace/InlineThumbnail';
 import { SmartVideoPlayer } from '../ui/SmartVideoPlayer';
+import { AudioPlayerThemed } from '../ui/AudioPlayer';
 import { marked } from 'marked';
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
@@ -35,6 +36,7 @@ export function PublicAssetView({
   const isImage = is_image;
   const isMarkdown = mime_type === 'text/markdown' || mime_type === 'text/x-markdown';
   const isVideo = mime_type?.startsWith('video/');
+  const isAudio = mime_type?.startsWith('audio/');
   const downloadUrl = customDownloadUrl || `${API_BASE_URL}/public/assets/${public_magic_id || id}/download`;
 
   const [markdownContent, setMarkdownContent] = useState<string | null>(null);
@@ -81,6 +83,8 @@ export function PublicAssetView({
         />
       ) : isVideo ? (
         <SmartVideoPlayer src={downloadUrl} name={name} />
+      ) : isAudio ? (
+        <AudioPlayerThemed src={downloadUrl} name={name} height={200} />
       ) : isMarkdown ? (
         <Paper sx={{ p: 4 }}>
           {loadingMarkdown ? (
