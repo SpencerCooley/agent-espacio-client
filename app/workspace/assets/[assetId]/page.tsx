@@ -49,6 +49,8 @@ function AssetViewerContent() {
   const [loadingContent, setLoadingContent] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
+  const siteName = process.env.NEXT_PUBLIC_SITE_NAME || 'Agent Espacio';
+
   useEffect(() => {
     if (!assetId) return;
 
@@ -106,6 +108,12 @@ function AssetViewerContent() {
         setLoading(false);
       });
   }, [assetId]);
+
+  useEffect(() => {
+    if (asset) {
+      document.title = `${asset.name} | Asset | ${siteName}`;
+    }
+  }, [asset, siteName]);
 
   const handleSaveMarkdown = useCallback(async (content: string) => {
     if (!assetId) return;

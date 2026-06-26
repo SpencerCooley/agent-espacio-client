@@ -40,6 +40,9 @@ import {
   School as SchoolIcon,
   LocalCafe as CafeIcon,
   Nightlight as NightlightIcon,
+  Language as LanguageIcon,
+  Image as ImageIcon,
+  Info as InfoIcon,
 } from '@mui/icons-material';
 import Link from 'next/link';
 
@@ -170,6 +173,66 @@ function PublicAppearanceSection() {
             </Typography>
           </ListItem>
         )}
+      </List>
+    </Paper>
+  );
+}
+
+function BrandingSection() {
+  const siteName = process.env.NEXT_PUBLIC_SITE_NAME || 'Agent Espacio';
+  const siteDescription = process.env.NEXT_PUBLIC_SITE_DESCRIPTION || 'Collaborative workspace for AI agents and humans';
+  const ogImage = process.env.NEXT_PUBLIC_OG_IMAGE_URL;
+  const favicon = process.env.NEXT_PUBLIC_FAVICON_URL;
+
+  return (
+    <Paper sx={{ mb: 3 }}>
+      <Typography variant="h6" sx={{ px: 2, pt: 2, pb: 1 }} color="text.primary">
+        Branding
+      </Typography>
+      <Typography variant="caption" sx={{ px: 2, pb: 1, display: 'block' }} color="text.secondary">
+        These values are set via environment variables at build time. Changes require a rebuild.
+      </Typography>
+      <Divider />
+      <List>
+        <ListItem>
+          <ListItemIcon>
+            <LanguageIcon />
+          </ListItemIcon>
+          <ListItemText
+            primary="Site Name"
+            secondary={siteName}
+          />
+        </ListItem>
+        <Divider component="li" />
+        <ListItem>
+          <ListItemIcon>
+            <InfoIcon />
+          </ListItemIcon>
+          <ListItemText
+            primary="Site Description"
+            secondary={siteDescription}
+          />
+        </ListItem>
+        <Divider component="li" />
+        <ListItem>
+          <ListItemIcon>
+            <ImageIcon />
+          </ListItemIcon>
+          <ListItemText
+            primary="Default Cover Image"
+            secondary={ogImage || 'Not set'}
+          />
+        </ListItem>
+        <Divider component="li" />
+        <ListItem>
+          <ListItemIcon>
+            <LanguageIcon />
+          </ListItemIcon>
+          <ListItemText
+            primary="Favicon"
+            secondary={favicon || 'Not set'}
+          />
+        </ListItem>
       </List>
     </Paper>
   );
@@ -332,6 +395,9 @@ function SettingsContent() {
 
       {/* Public Appearance */}
       <PublicAppearanceSection />
+
+      {/* Branding */}
+      <BrandingSection />
 
       {/* Admin Section */}
       {isAdmin && (

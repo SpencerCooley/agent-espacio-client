@@ -72,6 +72,8 @@ function FolderExplorerContent() {
   const [showSharePanel, setShowSharePanel] = useState(false);
   const [parentIsPublic, setParentIsPublic] = useState(false);
 
+  const siteName = process.env.NEXT_PUBLIC_SITE_NAME || 'Agent Espacio';
+
   // Ref-based drag counter to handle nested drag enter/leave
   const dragCounterRef = useRef(0);
   const { subscribe, unsubscribe } = useWebSocket();
@@ -130,6 +132,12 @@ function FolderExplorerContent() {
   useEffect(() => {
     loadContents();
   }, [loadContents]);
+
+  useEffect(() => {
+    if (data?.folder?.name) {
+      document.title = `${data.folder.name} | Folder | ${siteName}`;
+    }
+  }, [data, siteName]);
 
   useEffect(() => {
     artifactService.getArtifactDocs()

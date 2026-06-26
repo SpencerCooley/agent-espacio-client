@@ -31,6 +31,8 @@ function ArtifactViewerContent() {
   const [isShareLoading, setIsShareLoading] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
+  const siteName = process.env.NEXT_PUBLIC_SITE_NAME || 'Agent Espacio';
+
   useEffect(() => {
     if (!artifactId) return;
 
@@ -169,6 +171,13 @@ function ArtifactViewerContent() {
       setShareTarget(null);
     };
   }, [artifactId, setShareTarget]);
+
+  useEffect(() => {
+    if (artifact) {
+      const typeLabel = artifact.type.charAt(0).toUpperCase() + artifact.type.slice(1);
+      document.title = `${artifact.name} | ${typeLabel} | ${siteName}`;
+    }
+  }, [artifact, siteName]);
 
   const breadcrumb = artifact
     ? [
