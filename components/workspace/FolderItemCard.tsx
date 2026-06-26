@@ -66,7 +66,9 @@ export default function FolderItemCard({
   const [contextMenu, setContextMenu] = useState<{ mouseX: number; mouseY: number } | null>(null);
   const [isRenaming, setIsRenaming] = useState(false);
   const [renameValue, setRenameValue] = useState(item.name);
+  const [isSubmittingRename, setIsSubmittingRename] = useState(false);
   const renameInputRef = useRef<HTMLInputElement>(null);
+  const blurGuardRef = useRef(false);
 
   // Thumbnails: generated for images and videos via backend
   const hasThumbnail = item.kind === 'asset' && item.file_meta?.thumbnails;
@@ -91,8 +93,14 @@ export default function FolderItemCard({
   // Auto-focus rename input when entering rename mode
   useEffect(() => {
     if (isRenaming && renameInputRef.current) {
+      // Prevent blur from firing immediately (e.g., when menu closes)
+      blurGuardRef.current = true;
       renameInputRef.current.focus();
       renameInputRef.current.select();
+      const timer = setTimeout(() => {
+        blurGuardRef.current = false;
+      }, 150);
+      return () => clearTimeout(timer);
     }
   }, [isRenaming]);
 
@@ -108,6 +116,7 @@ export default function FolderItemCard({
   };
 
   const handleContextMenu = (event: React.MouseEvent<HTMLElement>) => {
+    if (isRenaming) return;
     event.preventDefault();
     setContextMenu({
       mouseX: event.clientX - 2,
@@ -133,12 +142,16 @@ export default function FolderItemCard({
   };
 
   const handleRenameSubmit = async () => {
+    if (isSubmittingRename || blurGuardRef.current) return;
     if (renameValue.trim() && renameValue !== item.name && onRename) {
+      setIsSubmittingRename(true);
       try {
         await onRename(item, renameValue.trim());
       } catch {
         // Error handled by parent, revert name
         setRenameValue(item.name);
+      } finally {
+        setIsSubmittingRename(false);
       }
     }
     setIsRenaming(false);
@@ -388,7 +401,6 @@ export default function FolderItemCard({
             ...(isImageWithThumb || isVideoWithThumb || isMarkdownWithPreview
               ? { p: 0, aspectRatio: '4/3' }
               : { py: 3 }),
-            ...(isRenaming && { pointerEvents: 'none' }),
           }}
         >
           {isImageWithThumb ? (
@@ -425,9 +437,10 @@ export default function FolderItemCard({
                     onChange={(e) => setRenameValue(e.target.value)}
                     onKeyDown={handleRenameKeyDown}
                     onBlur={handleRenameSubmit}
+                    disabled={isSubmittingRename}
                     size="small"
                     fullWidth
-                    autoFocus
+
                     sx={{
                       '& .MuiInputBase-input': {
                         textAlign: 'center',
@@ -535,9 +548,10 @@ export default function FolderItemCard({
                     onChange={(e) => setRenameValue(e.target.value)}
                     onKeyDown={handleRenameKeyDown}
                     onBlur={handleRenameSubmit}
+                    disabled={isSubmittingRename}
                     size="small"
                     fullWidth
-                    autoFocus
+
                     sx={{
                       '& .MuiInputBase-input': {
                         textAlign: 'center',
@@ -629,9 +643,10 @@ export default function FolderItemCard({
                     onChange={(e) => setRenameValue(e.target.value)}
                     onKeyDown={handleRenameKeyDown}
                     onBlur={handleRenameSubmit}
+                    disabled={isSubmittingRename}
                     size="small"
                     fullWidth
-                    autoFocus
+
                     sx={{
                       '& .MuiInputBase-input': {
                         textAlign: 'center',
@@ -685,9 +700,10 @@ export default function FolderItemCard({
                     onChange={(e) => setRenameValue(e.target.value)}
                     onKeyDown={handleRenameKeyDown}
                     onBlur={handleRenameSubmit}
+                    disabled={isSubmittingRename}
                     size="small"
                     fullWidth
-                    autoFocus
+
                     sx={{
                       '& .MuiInputBase-input': {
                         textAlign: 'center',

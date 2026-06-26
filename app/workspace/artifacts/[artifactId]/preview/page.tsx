@@ -132,7 +132,7 @@ export default function ArtifactPreviewPage() {
           {artifact.name}
         </Typography>
 
-        {artifact.description && (
+        {artifact.type !== 'note' && artifact.description && (
           <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
             {artifact.description}
           </Typography>

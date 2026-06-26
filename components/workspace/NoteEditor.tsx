@@ -13,6 +13,7 @@ import {
   MenuItem,
   TextField,
   Popover,
+  Button,
 } from '@mui/material';
 import { useEditor, EditorContent, ReactNodeViewRenderer } from '@tiptap/react';
 import { NodeSelection } from '@tiptap/pm/state';
@@ -28,6 +29,7 @@ import { TaskList, TaskItem } from '@tiptap/extension-list';
 import { TextStyle } from '@tiptap/extension-text-style';
 import Color from '@tiptap/extension-color';
 import Highlight from '@tiptap/extension-highlight';
+import Link from '@tiptap/extension-link';
 import FormatBoldIcon from '@mui/icons-material/FormatBold';
 import FormatItalicIcon from '@mui/icons-material/FormatItalic';
 import FormatUnderlinedIcon from '@mui/icons-material/FormatUnderlined';
@@ -53,6 +55,7 @@ import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import FormatColorTextIcon from '@mui/icons-material/FormatColorText';
 import HighlightIcon from '@mui/icons-material/Highlight';
 import FormatClearIcon from '@mui/icons-material/FormatClear';
+import LinkIcon from '@mui/icons-material/Link';
 import { artifactService, Artifact } from '../../services/artifacts';
 import { assetService, getAssetDownloadUrl } from '../../services/assets';
 import AssetImageNodeView from './AssetImageNodeView';
@@ -111,6 +114,8 @@ export default function NoteEditor({ artifact }: NoteEditorProps) {
   const [heading, setHeading] = useState('0');
   const [colorAnchor, setColorAnchor] = useState<null | HTMLElement>(null);
   const [highlightAnchor, setHighlightAnchor] = useState<null | HTMLElement>(null);
+  const [linkAnchor, setLinkAnchor] = useState<null | HTMLElement>(null);
+  const [linkUrl, setLinkUrl] = useState('');
   const saveRef = useRef<(json: Record<string, unknown>) => Promise<void>>(null!);
   const [selectedImage, setSelectedImage] = useState<{
     pos: number;
@@ -182,6 +187,11 @@ export default function NoteEditor({ artifact }: NoteEditorProps) {
       TextStyle,
       Color,
       Highlight.configure({ multicolor: true }),
+      Link.configure({
+        openOnClick: true,
+        linkOnPaste: true,
+        autolink: true,
+      }),
       ImageExtension.extend({
         selectable: true,
         addAttributes() {
@@ -478,6 +488,64 @@ export default function NoteEditor({ artifact }: NoteEditorProps) {
             <StrikethroughIcon fontSize="small" />
           </IconButton>
         </Tooltip>
+
+        <Tooltip title="Link">
+          <IconButton
+            size="small"
+            onClick={(e) => {
+              if (editor.isActive('link')) {
+                editor.chain().focus().unsetLink().run();
+              } else {
+                setLinkAnchor(e.currentTarget);
+                setLinkUrl('');
+              }
+            }}
+            color={editor.isActive('link') ? 'primary' : 'default'}
+          >
+            <LinkIcon fontSize="small" />
+          </IconButton>
+        </Tooltip>
+        <Popover
+          open={Boolean(linkAnchor)}
+          anchorEl={linkAnchor}
+          onClose={() => setLinkAnchor(null)}
+          anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
+          transformOrigin={{ vertical: 'top', horizontal: 'left' }}
+        >
+          <Paper sx={{ p: 1.5, display: 'flex', gap: 1, alignItems: 'center', minWidth: 280 }}>
+            <TextField
+              size="small"
+              placeholder="https://example.com"
+              value={linkUrl}
+              onChange={(e) => setLinkUrl(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  if (linkUrl.trim()) {
+                    editor.chain().focus().setLink({ href: linkUrl.trim() }).run();
+                    setLinkAnchor(null);
+                    setLinkUrl('');
+                  }
+                }
+              }}
+              sx={{ flex: 1 }}
+              autoFocus
+            />
+            <Button
+              size="small"
+              variant="contained"
+              onClick={() => {
+                if (linkUrl.trim()) {
+                  editor.chain().focus().setLink({ href: linkUrl.trim() }).run();
+                  setLinkAnchor(null);
+                  setLinkUrl('');
+                }
+              }}
+            >
+              Add
+            </Button>
+          </Paper>
+        </Popover>
 
         <Tooltip title="Text Color">
           <IconButton
@@ -818,7 +886,8 @@ export default function NoteEditor({ artifact }: NoteEditorProps) {
                 color: 'text.secondary',
                 fontStyle: 'italic',
               },
-              '& a': { color: 'primary.main' },
+              '& a': { color: 'info.main', textDecoration: 'underline', cursor: 'pointer' },
+              '& a:hover': { color: 'info.dark' },
               '& mark': {
                 borderRadius: 0.5,
                 padding: '0 2px',

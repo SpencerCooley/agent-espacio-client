@@ -471,6 +471,11 @@ function WorkflowEditorInner({ artifact }: WorkflowEditorProps) {
             maskColor={themeMode === 'dark' ? 'rgba(0, 0, 0, 0.5)' : 'rgba(0, 0, 0, 0.2)'}
           />
           <Panel position="top-left">
+            <Typography variant="caption" color="text.secondary">
+              {saving ? 'Saving...' : 'Saved'}
+            </Typography>
+          </Panel>
+          <Panel position="top-right">
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, maxWidth: 400 }}>
               {/* Name editor */}
               <TextField
@@ -585,11 +590,6 @@ function WorkflowEditorInner({ artifact }: WorkflowEditorProps) {
               )}
             </Paper>
             </Box>
-          </Panel>
-          <Panel position="top-right">
-            <Typography variant="caption" color="text.secondary">
-              {saving ? 'Saving...' : 'Saved'}
-            </Typography>
           </Panel>
         </ReactFlow>
       </Box>

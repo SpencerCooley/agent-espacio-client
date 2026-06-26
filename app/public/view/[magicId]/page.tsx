@@ -264,7 +264,7 @@ export default function PublicViewPage() {
                               {item.name}
                             </Typography>
                             <Chip
-                              label={item.kind}
+                              label={item.kind === 'artifact' ? item.type : item.kind}
                               size="small"
                               variant="outlined"
                               sx={{
@@ -295,7 +295,7 @@ export default function PublicViewPage() {
                             {item.name}
                           </Typography>
                           <Chip
-                            label={item.kind}
+                            label={item.kind === 'artifact' ? item.type : item.kind}
                             size="small"
                             sx={{ mt: 1 }}
                             color={item.kind === 'folder' ? 'primary' : 'default'}
@@ -360,7 +360,7 @@ export default function PublicViewPage() {
             {artifact.name}
           </Typography>
 
-          {artifact.description && (
+          {artifact.type !== 'note' && artifact.description && (
             <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
               {artifact.description}
             </Typography>
