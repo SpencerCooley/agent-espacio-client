@@ -106,6 +106,8 @@ export function PublicAssetView({
                 '& table': { borderCollapse: 'collapse', width: '100%', mb: 2 },
                 '& th, & td': { border: '1px solid #ddd', p: 1, textAlign: 'left' },
                 '& th': { bgcolor: 'rgba(0,0,0,0.05)', fontWeight: 600 },
+                '& a': { color: 'primary.main', textDecoration: 'underline', cursor: 'pointer' },
+                '& a:hover': { color: 'primary.dark' },
               }}
               dangerouslySetInnerHTML={{ __html: marked.parse(markdownContent) as string }}
             />
@@ -162,6 +164,8 @@ export function NotePublicView({ content, isPreview }: NoteViewProps) {
         '& table': { borderCollapse: 'collapse', width: '100%', mb: 2 },
         '& th, & td': { border: '1px solid #ddd', p: 1, textAlign: 'left' },
         '& th': { bgcolor: 'rgba(0,0,0,0.05)', fontWeight: 600 },
+        '& a': { color: 'primary.main', textDecoration: 'underline', cursor: 'pointer' },
+        '& a:hover': { color: 'primary.dark' },
       }}
       dangerouslySetInnerHTML={{ __html: html }}
     />
