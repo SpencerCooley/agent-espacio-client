@@ -6,6 +6,7 @@ import { Box, Typography, Paper } from '@mui/material';
 import { ThemeProvider as MUIThemeProvider, createTheme } from '@mui/material/styles';
 import { themeMap } from '../../../../../themes';
 import WorkflowPublicView from '../../../../../components/workspace/WorkflowPublicView';
+import GalleryPublicView from '../../../../../components/workspace/GalleryPublicView';
 import { NotePublicView, MapPublicView } from '../../../../../components/public/PublicViews';
 import { useApp } from '../../../../../context/AppContext';
 
@@ -118,6 +119,18 @@ export default function ArtifactPreviewPage() {
     if (artifact.type === 'map' && artifact.content) {
       return (
         <MapPublicView
+          content={artifact.content}
+          name={artifact.name}
+          description={artifact.description}
+          isPreview
+        />
+      );
+    }
+
+    // Gallery artifacts render full page (no container)
+    if (artifact.type === 'gallery' && artifact.content) {
+      return (
+        <GalleryPublicView
           content={artifact.content}
           name={artifact.name}
           description={artifact.description}

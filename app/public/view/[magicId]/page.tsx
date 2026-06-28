@@ -4,11 +4,12 @@ import React, { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import NextLink from 'next/link';
 import { Box, Typography, Grid, Paper, Breadcrumbs, Link, Chip } from '@mui/material';
-import { Folder as FolderIcon, InsertDriveFile as FileIcon, Image as ImageIcon, Article as ArticleIcon, Map as MapIcon, Movie as MovieIcon, Audiotrack as AudiotrackIcon } from '@mui/icons-material';
+import { Folder as FolderIcon, InsertDriveFile as FileIcon, Image as ImageIcon, Article as ArticleIcon, Map as MapIcon, Movie as MovieIcon, Audiotrack as AudiotrackIcon, PhotoLibrary as PhotoLibraryIcon } from '@mui/icons-material';
 import InlineThumbnail from '../../../../components/workspace/InlineThumbnail';
 import { ThemeProvider as MUIThemeProvider, createTheme } from '@mui/material/styles';
 import { themeMap } from '../../../../themes';
 import WorkflowPublicView from '../../../../components/workspace/WorkflowPublicView';
+import GalleryPublicView from '../../../../components/workspace/GalleryPublicView';
 import { PublicAssetView, NotePublicView, MapPublicView } from '../../../../components/public/PublicViews';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
@@ -117,6 +118,7 @@ export default function PublicViewPage() {
     if (item.kind === 'artifact') {
       if (item.type === 'note') return <ArticleIcon fontSize="large" />;
       if (item.type === 'map') return <MapIcon fontSize="large" />;
+      if (item.type === 'gallery') return <PhotoLibraryIcon fontSize="large" />;
       return <ArticleIcon fontSize="large" />;
     }
     return <FileIcon fontSize="large" />;
@@ -347,6 +349,17 @@ export default function PublicViewPage() {
       if (artifact.type === 'map' && artifact.content) {
         return (
           <MapPublicView
+            content={artifact.content}
+            name={artifact.name}
+            description={artifact.description}
+          />
+        );
+      }
+
+      // Gallery artifacts render full page (no container)
+      if (artifact.type === 'gallery' && artifact.content) {
+        return (
+          <GalleryPublicView
             content={artifact.content}
             name={artifact.name}
             description={artifact.description}

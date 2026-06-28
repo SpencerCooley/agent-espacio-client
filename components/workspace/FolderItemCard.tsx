@@ -28,6 +28,7 @@ import {
   Delete as DeleteIcon,
   Movie as MovieIcon,
   Audiotrack as AudioIcon,
+  PhotoLibrary as PhotoLibraryIcon,
 } from '@mui/icons-material';
 import { useRouter } from 'next/navigation';
 import { FolderItem } from '../../services/folders';
@@ -304,6 +305,8 @@ export default function FolderItemCard({
           return <NotesIcon sx={{ fontSize: 48, color: 'secondary.main' }} />;
         case 'map':
           return <MapIcon sx={{ fontSize: 48, color: 'secondary.main' }} />;
+        case 'gallery':
+          return <PhotoLibraryIcon sx={{ fontSize: 48, color: 'secondary.main' }} />;
         default:
           return <ArticleIcon sx={{ fontSize: 48, color: 'secondary.main' }} />;
       }
@@ -330,7 +333,10 @@ export default function FolderItemCard({
 
   const getKindLabel = () => {
     if (item.kind === 'folder') return 'Folder';
-    if (item.kind === 'artifact') return item.type ? item.type.charAt(0).toUpperCase() + item.type.slice(1) : 'Artifact';
+    if (item.kind === 'artifact') {
+      if (item.type === 'gallery') return 'Gallery';
+      return item.type ? item.type.charAt(0).toUpperCase() + item.type.slice(1) : 'Artifact';
+    }
     if (item.mime_type?.startsWith('video/')) return 'Video';
     if (item.mime_type?.startsWith('audio/')) return 'Audio';
     return item.mime_type ? item.mime_type.split('/')[1]?.toUpperCase() : 'File';

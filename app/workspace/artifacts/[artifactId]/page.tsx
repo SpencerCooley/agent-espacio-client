@@ -18,6 +18,7 @@ import { useShareContext } from '../../../../context/ShareContext';
 import NoteEditor from '../../../../components/workspace/NoteEditor';
 import WorkflowEditor from '../../../../components/workspace/WorkflowEditor';
 import MapEditor from '../../../../components/workspace/MapEditor';
+import GalleryEditor from '../../../../components/workspace/GalleryEditor';
 
 function ArtifactViewerContent() {
   const params = useParams();
@@ -245,6 +246,21 @@ function ArtifactViewerContent() {
     return (
       <WorkspaceLayout breadcrumb={breadcrumb}>
         <MapEditor artifact={artifact} />
+        <Snackbar
+          open={!!successMessage}
+          autoHideDuration={3000}
+          onClose={() => setSuccessMessage(null)}
+          message={successMessage}
+          anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+        />
+      </WorkspaceLayout>
+    );
+  }
+
+  if (artifact.type === 'gallery') {
+    return (
+      <WorkspaceLayout breadcrumb={breadcrumb}>
+        <GalleryEditor artifact={artifact} />
         <Snackbar
           open={!!successMessage}
           autoHideDuration={3000}
