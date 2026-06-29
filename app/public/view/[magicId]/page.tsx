@@ -369,7 +369,7 @@ export default function PublicViewPage() {
 
       return (
         <Box sx={{ p: 3, maxWidth: 800, mx: 'auto' }}>
-          <Typography variant="h4" sx={{ mb: 2 }}>
+          <Typography variant="h5" sx={{ mb: 2 }}>
             {artifact.name}
           </Typography>
 
