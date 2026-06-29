@@ -275,7 +275,14 @@ function renderNode(node: any, isPreview?: boolean): string {
           src = `${API_BASE_URL}/public/assets/${assetId}/download`;
         }
       }
-      return `<img src="${src}" alt="${alt}" style="max-width: 100%; display: block; margin: 8px auto;" />`;
+      const align = attrs.textAlign;
+      let imgStyle = 'max-width: 100%; display: block; margin: 8px 0;';
+      if (align === 'center') {
+        imgStyle = 'max-width: 100%; display: block; margin: 8px auto;';
+      } else if (align === 'right') {
+        imgStyle = 'max-width: 100%; display: block; margin: 8px 0 8px auto;';
+      }
+      return `<img src="${src}" alt="${alt}" style="${imgStyle}" />`;
     case 'table':
       return `<table>${inner}</table>`;
     case 'tableRow':

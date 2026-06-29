@@ -24,8 +24,6 @@ import {
   Select,
   MenuItem,
   SelectChangeEvent,
-  Grid,
-  Button,
 } from '@mui/material';
 import {
   Brightness4 as DarkModeIcon,
@@ -34,40 +32,14 @@ import {
   VpnKey as KeyIcon,
   ArrowBack as ArrowBackIcon,
   Palette as PaletteIcon,
-  Computer as ComputerIcon,
-  Star as StarIcon,
-  Games as GamesIcon,
-  School as SchoolIcon,
-  LocalCafe as CafeIcon,
-  Nightlight as NightlightIcon,
   Language as LanguageIcon,
   Image as ImageIcon,
   Info as InfoIcon,
 } from '@mui/icons-material';
 import Link from 'next/link';
 
-const themeIcons: Record<string, React.ReactNode> = {
-  hackerBuzz: <ComputerIcon />,
-  midnightGlow: <NightlightIcon />,
-  playfulCandy: <StarIcon />,
-  luxeart: <PaletteIcon />,
-  retroGamify: <GamesIcon />,
-  scientificAcademia: <SchoolIcon />,
-  mintCream: <CafeIcon />,
-};
-
-const themeLabels: Record<string, string> = {
-  hackerBuzz: 'Hacker Buzz',
-  midnightGlow: 'Midnight Glow',
-  playfulCandy: 'Playful Candy',
-  luxeart: 'Luxe Art',
-  retroGamify: 'Retro Gamify',
-  scientificAcademia: 'Scientific Academia',
-  mintCream: 'Mint Cream',
-};
-
 function PublicAppearanceSection() {
-  const [publicTheme, setPublicTheme] = useState<PublicTheme>({ name: 'hackerBuzz', mode: 'dark' });
+  const [publicTheme, setPublicTheme] = useState<PublicTheme>({ theme_id: '', mode: 'dark' });
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
 
@@ -84,7 +56,7 @@ function PublicAppearanceSection() {
   }, []);
 
   const handleThemeChange = (event: SelectChangeEvent<string>) => {
-    const newTheme = { ...publicTheme, name: event.target.value };
+    const newTheme = { ...publicTheme, theme_id: event.target.value };
     setPublicTheme(newTheme);
     saveTheme(newTheme);
   };
@@ -98,7 +70,7 @@ function PublicAppearanceSection() {
   const saveTheme = async (theme: PublicTheme) => {
     setSaving(true);
     try {
-      await settingsService.updatePublicTheme(theme.name, theme.mode);
+      await settingsService.updatePublicTheme(theme.theme_id, theme.mode);
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
     } catch (e) {
@@ -132,16 +104,13 @@ function PublicAppearanceSection() {
             <Select
               labelId="public-theme-select-label"
               id="public-theme-select"
-              value={publicTheme.name}
+              value={publicTheme.theme_id}
               label="Theme"
               onChange={handleThemeChange}
             >
               {availableThemes.map((theme) => (
-                <MenuItem key={theme} value={theme}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                    {themeIcons[theme]}
-                    {themeLabels[theme]}
-                  </Box>
+                <MenuItem key={theme.id} value={theme.id}>
+                  {theme.name}
                 </MenuItem>
               ))}
             </Select>
@@ -240,19 +209,19 @@ function BrandingSection() {
 
 function SettingsContent() {
   const { user } = useApp();
-  const { mode, toggleTheme, currentTheme, setTheme, availableThemes } = useThemeContext();
+  const { mode, toggleTheme, currentThemeId, setThemeId, availableThemes } = useThemeContext();
   const isAdmin = user?.role === 'admin';
 
   const handleThemeChange = (event: SelectChangeEvent<string>) => {
-    setTheme(event.target.value as typeof currentTheme);
+    setThemeId(event.target.value);
   };
 
   return (
     <Box>
       <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-        <IconButton 
-          component={Link} 
-          href="/workspace" 
+        <IconButton
+          component={Link}
+          href="/workspace"
           sx={{ mr: 2 }}
           title="Back to Workspace"
         >
@@ -270,20 +239,20 @@ function SettingsContent() {
             <ListItemIcon>
               <PersonIcon />
             </ListItemIcon>
-            <ListItemText 
-              primary="Email" 
-              secondary={user?.email} 
+            <ListItemText
+              primary="Email"
+              secondary={user?.email}
             />
           </ListItem>
           <ListItem>
             <ListItemIcon>
               <KeyIcon />
             </ListItemIcon>
-            <ListItemText 
-              primary="Role" 
+            <ListItemText
+              primary="Role"
               secondary={
-                <Chip 
-                  label={isAdmin ? 'Administrator' : 'User'} 
+                <Chip
+                  label={isAdmin ? 'Administrator' : 'User'}
                   color={isAdmin ? 'primary' : 'default'}
                   size="small"
                 />
@@ -297,7 +266,7 @@ function SettingsContent() {
       {/* Appearance */}
       <Paper sx={{ mb: 3 }}>
         <Typography variant="h6" sx={{ px: 2, pt: 2, pb: 1 }} color="text.primary">
-          Appearance
+          Admin Appearance
         </Typography>
         <Divider />
         <List>
@@ -306,8 +275,8 @@ function SettingsContent() {
             <ListItemIcon>
               <PaletteIcon />
             </ListItemIcon>
-            <ListItemText 
-              primary="Theme" 
+            <ListItemText
+              primary="Theme"
               secondary="Choose your visual style"
             />
             <FormControl sx={{ minWidth: 200 }} size="small">
@@ -315,16 +284,13 @@ function SettingsContent() {
               <Select
                 labelId="theme-select-label"
                 id="theme-select"
-                value={currentTheme}
+                value={currentThemeId}
                 label="Theme"
                 onChange={handleThemeChange}
               >
                 {availableThemes.map((theme) => (
-                  <MenuItem key={theme} value={theme}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                      {themeIcons[theme]}
-                      {themeLabels[theme]}
-                    </Box>
+                  <MenuItem key={theme.id} value={theme.id}>
+                    {theme.name}
                   </MenuItem>
                 ))}
               </Select>
@@ -338,8 +304,8 @@ function SettingsContent() {
             <ListItemIcon>
               {mode === 'dark' ? <DarkModeIcon /> : <LightModeIcon />}
             </ListItemIcon>
-            <ListItemText 
-              primary="Dark Mode" 
+            <ListItemText
+              primary="Dark Mode"
               secondary={mode === 'dark' ? 'Currently enabled' : 'Currently disabled'}
             />
             <Switch
@@ -349,48 +315,6 @@ function SettingsContent() {
             />
           </ListItem>
         </List>
-      </Paper>
-
-      {/* Preview Section */}
-      <Paper sx={{ mb: 3, p: 2 }}>
-        <Typography variant="h6" sx={{ mb: 2 }} color="text.primary">
-          Theme Preview
-        </Typography>
-        <Grid container spacing={2}>
-          <Grid item xs={12} md={4}>
-            <Paper variant="outlined" sx={{ p: 2, textAlign: 'center' }}>
-              <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-                Primary Button
-              </Typography>
-              <Button variant="contained" color="primary" fullWidth>
-                Primary
-              </Button>
-            </Paper>
-          </Grid>
-          <Grid item xs={12} md={4}>
-            <Paper variant="outlined" sx={{ p: 2, textAlign: 'center' }}>
-              <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-                Secondary Button
-              </Typography>
-              <Button variant="contained" color="secondary" fullWidth>
-                Secondary
-              </Button>
-            </Paper>
-          </Grid>
-          <Grid item xs={12} md={4}>
-            <Paper variant="outlined" sx={{ p: 2, textAlign: 'center' }}>
-              <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-                Text Colors
-              </Typography>
-              <Typography variant="body2" color="text.primary">
-                Primary Text
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                Secondary Text
-              </Typography>
-            </Paper>
-          </Grid>
-        </Grid>
       </Paper>
 
       {/* Public Appearance */}
@@ -412,8 +336,8 @@ function SettingsContent() {
                 <ListItemIcon>
                   <KeyIcon />
                 </ListItemIcon>
-                <ListItemText 
-                  primary="Go to Admin Panel" 
+                <ListItemText
+                  primary="Go to Admin Panel"
                   secondary="Manage users and API keys"
                 />
               </ListItemButton>

@@ -4,9 +4,9 @@ import React, { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { Box, Typography, Paper } from '@mui/material';
 import { ThemeProvider as MUIThemeProvider, createTheme } from '@mui/material/styles';
-import { themeMap } from '../../../../../themes';
 import WorkflowPublicView from '../../../../../components/workspace/WorkflowPublicView';
 import GalleryPublicView from '../../../../../components/workspace/GalleryPublicView';
+import ComposerPublicView from '../../../../../components/workspace/ComposerPublicView';
 import { NotePublicView, MapPublicView } from '../../../../../components/public/PublicViews';
 import { useApp } from '../../../../../context/AppContext';
 
@@ -23,8 +23,9 @@ interface PreviewData {
     public_magic_id: string;
   };
   public_theme: {
-    name: string;
+    theme_id: string;
     mode: 'light' | 'dark';
+    definition: any;
   };
 }
 
@@ -66,14 +67,11 @@ export default function ArtifactPreviewPage() {
   }, [artifactId, authLoading]);
 
   const theme = React.useMemo(() => {
-    if (!data?.public_theme) {
-      return createTheme(themeMap.mintCream.light);
+    const definition = data?.public_theme?.definition;
+    if (definition) {
+      return createTheme(definition);
     }
-    const themeVariant = themeMap[data.public_theme.name];
-    if (!themeVariant) {
-      return createTheme(themeMap.mintCream.light);
-    }
-    return createTheme(themeVariant[data.public_theme.mode] || themeVariant.light);
+    return createTheme({ palette: { mode: 'light' } });
   }, [data?.public_theme]);
 
   if (loading) {
@@ -135,6 +133,18 @@ export default function ArtifactPreviewPage() {
           name={artifact.name}
           description={artifact.description}
           isPreview
+        />
+      );
+    }
+
+    // Composer artifacts
+    if (artifact.type === 'composer') {
+      return (
+        <ComposerPublicView
+          artifactId={artifact.id}
+          publicMagicId={artifact.public_magic_id}
+          isPreview
+          themeMode={data?.public_theme?.mode}
         />
       );
     }

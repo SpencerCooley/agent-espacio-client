@@ -1,7 +1,7 @@
 import { apiClient, ApiError } from './api';
 
 export interface PublicTheme {
-  name: string;
+  theme_id: string;
   mode: 'light' | 'dark';
 }
 
@@ -16,6 +16,6 @@ export const settingsService = {
   getPublicTheme: () =>
     apiClient.get<PublicTheme>('/settings/public-theme'),
 
-  updatePublicTheme: (name: string, mode: 'light' | 'dark') =>
-    apiClient.put<{ public_theme: PublicTheme }>('/settings/public-theme', { name, mode }),
+  updatePublicTheme: (theme_id: string, mode: 'light' | 'dark') =>
+    apiClient.put<{ public_theme: PublicTheme }>('/settings/public-theme', { theme_id, mode }),
 };

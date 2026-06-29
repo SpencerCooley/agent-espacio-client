@@ -15,10 +15,13 @@ import WorkspaceLayout from '../../../../components/layout/WorkspaceLayout';
 import { artifactService, Artifact } from '../../../../services/artifacts';
 import { folderService } from '../../../../services/folders';
 import { useShareContext } from '../../../../context/ShareContext';
-import NoteEditor from '../../../../components/workspace/NoteEditor';
-import WorkflowEditor from '../../../../components/workspace/WorkflowEditor';
-import MapEditor from '../../../../components/workspace/MapEditor';
-import GalleryEditor from '../../../../components/workspace/GalleryEditor';
+import dynamic from 'next/dynamic';
+
+const NoteEditor = dynamic(() => import('../../../../components/workspace/NoteEditor'), { ssr: false });
+const WorkflowEditor = dynamic(() => import('../../../../components/workspace/WorkflowEditor'), { ssr: false });
+const MapEditor = dynamic(() => import('../../../../components/workspace/MapEditor'), { ssr: false });
+const GalleryEditor = dynamic(() => import('../../../../components/workspace/GalleryEditor'), { ssr: false });
+const ComposerEditor = dynamic(() => import('../../../../components/workspace/ComposerEditor'), { ssr: false });
 
 function ArtifactViewerContent() {
   const params = useParams();
@@ -261,6 +264,21 @@ function ArtifactViewerContent() {
     return (
       <WorkspaceLayout breadcrumb={breadcrumb}>
         <GalleryEditor artifact={artifact} />
+        <Snackbar
+          open={!!successMessage}
+          autoHideDuration={3000}
+          onClose={() => setSuccessMessage(null)}
+          message={successMessage}
+          anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+        />
+      </WorkspaceLayout>
+    );
+  }
+
+  if (artifact.type === 'composer') {
+    return (
+      <WorkspaceLayout breadcrumb={breadcrumb}>
+        <ComposerEditor artifact={artifact} />
         <Snackbar
           open={!!successMessage}
           autoHideDuration={3000}

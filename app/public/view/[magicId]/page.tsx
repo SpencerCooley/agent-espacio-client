@@ -4,12 +4,12 @@ import React, { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import NextLink from 'next/link';
 import { Box, Typography, Grid, Paper, Breadcrumbs, Link, Chip } from '@mui/material';
-import { Folder as FolderIcon, InsertDriveFile as FileIcon, Image as ImageIcon, Article as ArticleIcon, Map as MapIcon, Movie as MovieIcon, Audiotrack as AudiotrackIcon, PhotoLibrary as PhotoLibraryIcon } from '@mui/icons-material';
+import { Folder as FolderIcon, InsertDriveFile as FileIcon, Image as ImageIcon,   Article as ArticleIcon, Map as MapIcon, Movie as MovieIcon, Audiotrack as AudiotrackIcon, PhotoLibrary as PhotoLibraryIcon, AutoAwesomeMosaic as ComposerIcon } from '@mui/icons-material';
 import InlineThumbnail from '../../../../components/workspace/InlineThumbnail';
 import { ThemeProvider as MUIThemeProvider, createTheme } from '@mui/material/styles';
-import { themeMap } from '../../../../themes';
 import WorkflowPublicView from '../../../../components/workspace/WorkflowPublicView';
 import GalleryPublicView from '../../../../components/workspace/GalleryPublicView';
+import ComposerPublicView from '../../../../components/workspace/ComposerPublicView';
 import { PublicAssetView, NotePublicView, MapPublicView } from '../../../../components/public/PublicViews';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
@@ -65,8 +65,9 @@ interface PublicViewData {
   items?: PublicItem[];
   total_items?: number;
   public_theme?: {
-    name: string;
+    theme_id: string;
     mode: 'light' | 'dark';
+    definition: any;
   };
 }
 
@@ -99,13 +100,11 @@ export default function PublicViewPage() {
   }, [magicId]);
 
   const publicTheme = React.useMemo(() => {
-    const themeName = data?.public_theme?.name || 'mintCream';
-    const themeMode = data?.public_theme?.mode || 'light';
-    const themeVariant = themeMap[themeName];
-    if (!themeVariant) {
-      return createTheme(themeMap.mintCream.light);
+    const definition = data?.public_theme?.definition;
+    if (definition) {
+      return createTheme(definition);
     }
-    return createTheme(themeVariant[themeMode] || themeVariant.light);
+    return createTheme({ palette: { mode: 'light' } });
   }, [data?.public_theme]);
 
   const getItemIcon = (item: PublicItem) => {
@@ -119,6 +118,7 @@ export default function PublicViewPage() {
       if (item.type === 'note') return <ArticleIcon fontSize="large" />;
       if (item.type === 'map') return <MapIcon fontSize="large" />;
       if (item.type === 'gallery') return <PhotoLibraryIcon fontSize="large" />;
+      if (item.type === 'composer') return <ComposerIcon fontSize="large" />;
       return <ArticleIcon fontSize="large" />;
     }
     return <FileIcon fontSize="large" />;
@@ -363,6 +363,17 @@ export default function PublicViewPage() {
             content={artifact.content}
             name={artifact.name}
             description={artifact.description}
+          />
+        );
+      }
+
+      // Composer artifacts
+      if (artifact.type === 'composer') {
+        return (
+          <ComposerPublicView
+            artifactId={artifact.id}
+            publicMagicId={artifact.public_magic_id}
+            themeMode={data?.public_theme?.mode}
           />
         );
       }
