@@ -26,7 +26,7 @@ import { AudioPlayerThemed } from '../../../../components/ui/AudioPlayer';
 import { assetService, Asset, getAssetDownloadUrl } from '../../../../services/assets';
 import { folderService } from '../../../../services/folders';
 import { useAuthImage } from '../../../../hooks/useAuthImage';
-import { useAuthBlob } from '../../../../hooks/useAuthBlob';
+import { useAuthStreamingUrl } from '../../../../hooks/useAuthStreamingUrl';
 
 function AssetViewerContent() {
   const params = useParams();
@@ -176,10 +176,10 @@ function AssetViewerContent() {
   const imageSrc = useAuthImage(imageUrl);
 
   const videoUrl = asset?.mime_type?.startsWith('video/') ? getAssetDownloadUrl(asset.id) : null;
-  const videoSrc = useAuthBlob(videoUrl);
+  const videoSrc = useAuthStreamingUrl(videoUrl);
 
   const audioUrl = asset?.mime_type?.startsWith('audio/') ? getAssetDownloadUrl(asset.id) : null;
-  const audioSrc = useAuthBlob(audioUrl);
+  const audioSrc = useAuthStreamingUrl(audioUrl);
 
   const handleDownload = async (url: string, filename: string) => {
     const token = localStorage.getItem('accessToken');

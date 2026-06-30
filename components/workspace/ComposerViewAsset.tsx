@@ -1,58 +1,12 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { Box, Typography, CircularProgress } from '@mui/material';
 import { SmartVideoPlayer } from '../ui/SmartVideoPlayer';
 import { AudioPlayerThemed } from '../ui/AudioPlayer';
+import { useAuthStreamingUrl } from '../../hooks/useAuthStreamingUrl';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-
-/**
- * Fetches a protected asset URL with auth and returns a blob URL.
- * Works for video, audio, and any other binary asset.
- */
-function useAuthBlob(url: string | null): string | null {
-  const [blobUrl, setBlobUrl] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!url) {
-      setBlobUrl(null);
-      return;
-    }
-
-    const token = localStorage.getItem('accessToken');
-    if (!token) {
-      setBlobUrl(null);
-      return;
-    }
-
-    let objectUrl: string | null = null;
-    let cancelled = false;
-
-    fetch(url, { headers: { Authorization: `Bearer ${token}` } })
-      .then((res) => {
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        return res.blob();
-      })
-      .then((blob) => {
-        if (cancelled) return;
-        objectUrl = URL.createObjectURL(blob);
-        setBlobUrl(objectUrl);
-      })
-      .catch(() => {
-        if (!cancelled) setBlobUrl(null);
-      });
-
-    return () => {
-      cancelled = true;
-      if (objectUrl) {
-        URL.revokeObjectURL(objectUrl);
-      }
-    };
-  }, [url]);
-
-  return blobUrl;
-}
 
 interface ComposerViewAssetProps {
   item: any;
@@ -70,9 +24,9 @@ export default function ComposerViewAsset({ item, isPreview }: ComposerViewAsset
     ? `${API_BASE_URL}/assets/${item.id}/download`
     : null;
 
-  const blobUrl = useAuthBlob(authUrl);
-  const src = isPreview ? (blobUrl || '') : publicUrl;
-  const isLoading = isPreview && !blobUrl;
+  const streamUrl = useAuthStreamingUrl(authUrl);
+  const src = isPreview ? (streamUrl || '') : publicUrl;
+  const isLoading = isPreview && !streamUrl;
 
   if (!isVideo && !isAudio) {
     return (
