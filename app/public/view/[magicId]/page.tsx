@@ -3,8 +3,8 @@
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import NextLink from 'next/link';
-import { Box, Typography, Grid, Paper, Breadcrumbs, Link, Chip } from '@mui/material';
-import { Folder as FolderIcon, InsertDriveFile as FileIcon, Image as ImageIcon,   Article as ArticleIcon, Map as MapIcon, Movie as MovieIcon, Audiotrack as AudiotrackIcon, PhotoLibrary as PhotoLibraryIcon, AutoAwesomeMosaic as ComposerIcon } from '@mui/icons-material';
+import { Box, Typography, Grid, Paper, Breadcrumbs, Link, Chip, TextField, InputAdornment, CircularProgress, ClickAwayListener, Menu, MenuItem } from '@mui/material';
+import { Folder as FolderIcon, InsertDriveFile as FileIcon, Image as ImageIcon, Article as ArticleIcon, Map as MapIcon, Movie as MovieIcon, Audiotrack as AudiotrackIcon, PhotoLibrary as PhotoLibraryIcon, AutoAwesomeMosaic as ComposerIcon, Search as SearchIcon } from '@mui/icons-material';
 import InlineThumbnail from '../../../../components/workspace/InlineThumbnail';
 import { ThemeProvider as MUIThemeProvider, createTheme } from '@mui/material/styles';
 import WorkflowPublicView from '../../../../components/workspace/WorkflowPublicView';
@@ -78,6 +78,25 @@ export default function PublicViewPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Search state
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<PublicItem[]>([]);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const searchDebounceRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Type filter state
+  type ActiveFilter =
+    | 'all'
+    | { kind: 'folder' }
+    | { kind: 'artifact'; subtype?: string }
+    | { kind: 'asset'; subtype?: string };
+  const [activeFilter, setActiveFilter] = useState<ActiveFilter>('all');
+
+  // Dropdown anchors for filter pills
+  const [artifactFilterAnchor, setArtifactFilterAnchor] = useState<HTMLElement | null>(null);
+  const [assetFilterAnchor, setAssetFilterAnchor] = useState<HTMLElement | null>(null);
+
   useEffect(() => {
     if (!magicId) return;
 
@@ -106,6 +125,91 @@ export default function PublicViewPage() {
     }
     return createTheme({ palette: { mode: 'light' } });
   }, [data?.public_theme]);
+
+  // Search handler
+  const performSearch = async (query: string) => {
+    if (!query.trim() || !magicId) {
+      setSearchResults([]);
+      setSearchLoading(false);
+      return;
+    }
+    setSearchLoading(true);
+    try {
+      const res = await fetch(`${API_BASE_URL}/public/search/${magicId}?q=${encodeURIComponent(query.trim())}`);
+      if (!res.ok) throw new Error('Search failed');
+      const result = await res.json();
+      setSearchResults(result.items?.slice(0, 20) || []);
+    } catch {
+      setSearchResults([]);
+    } finally {
+      setSearchLoading(false);
+    }
+  };
+
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setSearchQuery(value);
+    setSearchOpen(true);
+    if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+    searchDebounceRef.current = setTimeout(() => performSearch(value), 300);
+  };
+
+  const handleClickAway = () => {
+    setSearchOpen(false);
+  };
+
+  const getAssetSubtype = (item: PublicItem): string => {
+    if (item.is_image || item.mime_type?.startsWith('image/')) return 'image';
+    if (item.mime_type?.startsWith('video/')) return 'video';
+    if (item.mime_type?.startsWith('audio/')) return 'audio';
+    return 'other';
+  };
+
+  const currentItems = searchQuery.trim() && searchResults.length > 0 ? searchResults : (data?.items || []);
+
+  const typeCounts = (() => {
+    const baseItems = data?.items || [];
+    const counts = { all: baseItems.length, folder: 0, artifact: {} as Record<string, number>, asset: {} as Record<string, number> };
+    for (const item of baseItems) {
+      if (item.kind === 'folder') counts.folder++;
+      else if (item.kind === 'artifact') {
+        const subtype = item.type || 'artifact';
+        counts.artifact[subtype] = (counts.artifact[subtype] || 0) + 1;
+      } else if (item.kind === 'asset') {
+        const subtype = getAssetSubtype(item);
+        counts.asset[subtype] = (counts.asset[subtype] || 0) + 1;
+      }
+    }
+    return counts;
+  })();
+
+  const filteredItems = currentItems.filter((item) => {
+    if (activeFilter === 'all') return true;
+    if (activeFilter.kind === 'folder') return item.kind === 'folder';
+    if (activeFilter.kind === 'artifact') {
+      if (!activeFilter.subtype) return item.kind === 'artifact';
+      return item.kind === 'artifact' && item.type === activeFilter.subtype;
+    }
+    if (activeFilter.kind === 'asset') {
+      if (!activeFilter.subtype) return item.kind === 'asset';
+      return item.kind === 'asset' && getAssetSubtype(item) === activeFilter.subtype;
+    }
+    return true;
+  });
+
+  const getFilterLabel = (): string => {
+    if (activeFilter === 'all') return '';
+    if (activeFilter.kind === 'folder') return 'Folders';
+    if (activeFilter.kind === 'artifact') {
+      const s = activeFilter.subtype;
+      return !s ? 'Artifacts' : s.charAt(0).toUpperCase() + s.slice(1) + 's';
+    }
+    if (activeFilter.kind === 'asset') {
+      const s = activeFilter.subtype;
+      return !s ? 'Assets' : s.charAt(0).toUpperCase() + s.slice(1) + 's';
+    }
+    return '';
+  };
 
   const getItemIcon = (item: PublicItem) => {
     if (item.kind === 'folder') return <FolderIcon fontSize="large" />;
@@ -171,9 +275,196 @@ export default function PublicViewPage() {
             </Breadcrumbs>
           )}
 
+          {/* Search + Type filter bar */}
+          {data.kind === 'folder' && data.items && data.items.length > 0 && (
+            <Box sx={{ mb: 3 }}>
+              <ClickAwayListener onClickAway={handleClickAway}>
+                <Box sx={{ position: 'relative', maxWidth: 420, mb: 2 }}>
+                  <TextField
+                    size="small"
+                    placeholder="Search this folder..."
+                    value={searchQuery}
+                    onChange={handleSearchChange}
+                    fullWidth
+                    InputProps={{
+                      startAdornment: (
+                        <InputAdornment position="start">
+                          {searchLoading ? (
+                            <CircularProgress size={16} color="inherit" />
+                          ) : (
+                            <SearchIcon sx={{ fontSize: 18, color: 'text.secondary' }} />
+                          )}
+                        </InputAdornment>
+                      ),
+                    }}
+                    sx={{
+                      '& .MuiInputBase-root': {
+                        borderRadius: 2,
+                        bgcolor: 'background.paper',
+                      },
+                    }}
+                  />
+                  {searchOpen && (
+                    <Paper
+                      elevation={3}
+                      sx={{
+                        position: 'absolute',
+                        top: '100%',
+                        left: 0,
+                        right: 0,
+                        mt: 0.5,
+                        maxHeight: 360,
+                        overflowY: 'auto',
+                        zIndex: 1300,
+                        borderRadius: 2,
+                      }}
+                    >
+                      {searchResults.length === 0 ? (
+                        <Box sx={{ p: 2, textAlign: 'center' }}>
+                          <Typography variant="body2" color="text.secondary">
+                            {searchQuery.trim() ? 'No results found' : 'Type to search'}
+                          </Typography>
+                        </Box>
+                      ) : (
+                        searchResults.map((item) => (
+                          <Box
+                            key={`${item.kind}-${item.id}`}
+                            component={NextLink}
+                            href={item.public_magic_id || item.id ? `/public/view/${item.public_magic_id || item.id}` : '#'}
+                            sx={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: 1.5,
+                              px: 2,
+                              py: 1.25,
+                              cursor: 'pointer',
+                              textDecoration: 'none',
+                              color: 'inherit',
+                              transition: 'background-color 0.15s ease',
+                              '&:hover': { bgcolor: 'action.hover' },
+                              borderBottom: '1px solid',
+                              borderColor: 'divider',
+                              '&:last-child': { borderBottom: 'none' },
+                            }}
+                          >
+                            <Box sx={{ color: 'text.secondary' }}>{getItemIcon(item)}</Box>
+                            <Box sx={{ minWidth: 0, flex: 1 }}>
+                              <Typography
+                                variant="body2"
+                                sx={{ fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                              >
+                                {item.name}
+                              </Typography>
+                              <Typography variant="caption" color="text.secondary">
+                                {item.kind === 'artifact' ? (item.type || 'artifact') : item.kind}
+                              </Typography>
+                            </Box>
+                          </Box>
+                        ))
+                      )}
+                    </Paper>
+                  )}
+                </Box>
+              </ClickAwayListener>
+
+              {/* Type filter pills */}
+              {typeCounts.all > 0 && (
+                <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', alignItems: 'center' }}>
+                  <Chip
+                    label={`All (${typeCounts.all})`}
+                    color={activeFilter === 'all' ? 'primary' : 'default'}
+                    variant={activeFilter === 'all' ? 'filled' : 'outlined'}
+                    onClick={() => setActiveFilter('all')}
+                    sx={{ fontWeight: 600 }}
+                  />
+                  {Object.keys(typeCounts.artifact).length > 0 && (
+                    <>
+                      <Chip
+                        label={`Artifacts (${Object.values(typeCounts.artifact).reduce((a, b) => a + b, 0)})`}
+                        color={typeof activeFilter === 'object' && activeFilter.kind === 'artifact' ? 'primary' : 'default'}
+                        variant={typeof activeFilter === 'object' && activeFilter.kind === 'artifact' ? 'filled' : 'outlined'}
+                        onClick={(e) => setArtifactFilterAnchor(e.currentTarget)}
+                        onDelete={typeof activeFilter === 'object' && activeFilter.kind === 'artifact' ? () => setActiveFilter('all') : undefined}
+                        sx={{ fontWeight: 600 }}
+                      />
+                      <Menu
+                        anchorEl={artifactFilterAnchor}
+                        open={Boolean(artifactFilterAnchor)}
+                        onClose={() => setArtifactFilterAnchor(null)}
+                      >
+                        <MenuItem
+                          onClick={() => { setActiveFilter({ kind: 'artifact' }); setArtifactFilterAnchor(null); }}
+                          selected={typeof activeFilter === 'object' && activeFilter.kind === 'artifact' && !activeFilter.subtype}
+                        >
+                          All Artifacts ({Object.values(typeCounts.artifact).reduce((a, b) => a + b, 0)})
+                        </MenuItem>
+                        {Object.entries(typeCounts.artifact)
+                          .sort(([a], [b]) => a.localeCompare(b))
+                          .map(([subtype, count]) => (
+                            <MenuItem
+                              key={subtype}
+                              onClick={() => { setActiveFilter({ kind: 'artifact', subtype }); setArtifactFilterAnchor(null); }}
+                              selected={typeof activeFilter === 'object' && activeFilter.kind === 'artifact' && activeFilter.subtype === subtype}
+                            >
+                              {subtype.charAt(0).toUpperCase() + subtype.slice(1)}s ({count})
+                            </MenuItem>
+                          ))}
+                      </Menu>
+                    </>
+                  )}
+                  {Object.keys(typeCounts.asset).length > 0 && (
+                    <>
+                      <Chip
+                        label={`Assets (${Object.values(typeCounts.asset).reduce((a, b) => a + b, 0)})`}
+                        color={typeof activeFilter === 'object' && activeFilter.kind === 'asset' ? 'primary' : 'default'}
+                        variant={typeof activeFilter === 'object' && activeFilter.kind === 'asset' ? 'filled' : 'outlined'}
+                        onClick={(e) => setAssetFilterAnchor(e.currentTarget)}
+                        onDelete={typeof activeFilter === 'object' && activeFilter.kind === 'asset' ? () => setActiveFilter('all') : undefined}
+                        sx={{ fontWeight: 600 }}
+                      />
+                      <Menu
+                        anchorEl={assetFilterAnchor}
+                        open={Boolean(assetFilterAnchor)}
+                        onClose={() => setAssetFilterAnchor(null)}
+                      >
+                        <MenuItem
+                          onClick={() => { setActiveFilter({ kind: 'asset' }); setAssetFilterAnchor(null); }}
+                          selected={typeof activeFilter === 'object' && activeFilter.kind === 'asset' && !activeFilter.subtype}
+                        >
+                          All Assets ({Object.values(typeCounts.asset).reduce((a, b) => a + b, 0)})
+                        </MenuItem>
+                        {Object.entries(typeCounts.asset)
+                          .sort(([a], [b]) => a.localeCompare(b))
+                          .map(([subtype, count]) => (
+                            <MenuItem
+                              key={subtype}
+                              onClick={() => { setActiveFilter({ kind: 'asset', subtype }); setAssetFilterAnchor(null); }}
+                              selected={typeof activeFilter === 'object' && activeFilter.kind === 'asset' && activeFilter.subtype === subtype}
+                            >
+                              {subtype.charAt(0).toUpperCase() + subtype.slice(1)}s ({count})
+                            </MenuItem>
+                          ))}
+                      </Menu>
+                    </>
+                  )}
+                  {typeCounts.folder > 0 && (
+                    <Chip
+                      label={`Folders (${typeCounts.folder})`}
+                      color={typeof activeFilter === 'object' && activeFilter.kind === 'folder' ? 'primary' : 'default'}
+                      variant={typeof activeFilter === 'object' && activeFilter.kind === 'folder' ? 'filled' : 'outlined'}
+                      onClick={() => setActiveFilter({ kind: 'folder' })}
+                      onDelete={typeof activeFilter === 'object' && activeFilter.kind === 'folder' ? () => setActiveFilter('all') : undefined}
+                      sx={{ fontWeight: 600 }}
+                    />
+                  )}
+                </Box>
+              )}
+            </Box>
+          )}
+
           {/* Items grid */}
           <Grid container spacing={2}>
-            {data.items?.map((item) => {
+            {filteredItems.map((item) => {
               // All items in a public folder are publicly accessible
               // Use magic_id if available, otherwise use regular id (for inherited public items)
               const itemUrl = item.public_magic_id || item.id
@@ -310,6 +601,16 @@ export default function PublicViewPage() {
               );
             })}
           </Grid>
+          {filteredItems.length === 0 && data.items && data.items.length > 0 && (
+            <Box sx={{ textAlign: 'center', py: 6 }}>
+              <Typography variant="h6" color="text.secondary" sx={{ mb: 1 }}>
+                {searchQuery.trim() ? 'No search results' : 'No items match this filter'}
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                {searchQuery.trim() ? 'Try a different search term' : 'Try selecting a different filter'}
+              </Typography>
+            </Box>
+          )}
         </Box>
       );
     }
