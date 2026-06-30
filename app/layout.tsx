@@ -1,9 +1,17 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
+import "./globals.css";
 import AppProviders from "../components/providers/AppProviders";
 
 const siteName = process.env.NEXT_PUBLIC_SITE_NAME || "Agent Espacio";
 const siteDescription = process.env.NEXT_PUBLIC_SITE_DESCRIPTION || "Collaborative workspace for AI agents and humans";
 const ogImage = process.env.NEXT_PUBLIC_OG_IMAGE_URL;
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+};
 
 export const metadata: Metadata = {
   title: {

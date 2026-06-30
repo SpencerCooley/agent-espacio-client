@@ -1,0 +1,23 @@
+/**
+ * Global CSS overrides.
+ *
+ * The input font-size rule prevents iOS Safari from auto-zooming
+ * when an input is focused. Safari zooms in if the computed font
+ * size is below 16px. We force 16px on small screens and let
+ * themes take over on larger screens.
+ */
+
+input,
+textarea,
+select {
+  font-size: 16px !important;
+}
+
+/* On tablets and desktops, let MUI themes control typography */
+@media (min-width: 768px) {
+  input,
+  textarea,
+  select {
+    font-size: inherit !important;
+  }
+}

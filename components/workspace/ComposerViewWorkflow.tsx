@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   ReactFlow,
   ReactFlowProvider,
@@ -10,7 +10,7 @@ import {
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { Box, Button, Typography, Paper } from '@mui/material';
-import { OpenInNew as OpenInNewIcon, AccountTree as AccountTreeIcon } from '@mui/icons-material';
+import { OpenInNew as OpenInNewIcon, AccountTree as AccountTreeIcon, ContentCopy as CopyIcon } from '@mui/icons-material';
 import WorkflowNode from './WorkflowNode';
 
 const nodeTypes = {
@@ -87,6 +87,18 @@ function ComposerViewWorkflowInner({
     ? `/public/view/${publicMagicId}`
     : (isPreview ? window.location.pathname.replace('/preview', '') : undefined);
 
+  const [copied, setCopied] = useState(false);
+
+  const handleCopyJson = async () => {
+    try {
+      await navigator.clipboard.writeText(JSON.stringify(content, null, 2));
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // Ignore copy errors
+    }
+  };
+
   return (
     <Box>
       <Paper
@@ -140,15 +152,24 @@ function ComposerViewWorkflowInner({
       )}
 
       {viewUrl && (
-        <Box sx={{ mt: 2, textAlign: 'right' }}>
+        <Box sx={{ mt: 2, display: 'flex', gap: 1, justifyContent: 'flex-end' }}>
+          <Button
+            size="small"
+            startIcon={<CopyIcon />}
+            onClick={handleCopyJson}
+            variant="outlined"
+          >
+            {copied ? 'Copied!' : 'Copy JSON'}
+          </Button>
           <Button
             size="small"
             endIcon={<OpenInNewIcon />}
             href={viewUrl}
             target="_blank"
             rel="noopener noreferrer"
+            variant="outlined"
           >
-            View workflow
+            View Full Workflow
           </Button>
         </Box>
       )}
