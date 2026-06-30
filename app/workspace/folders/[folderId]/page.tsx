@@ -13,6 +13,7 @@ import {
   Menu,
   MenuItem,
   Fade,
+  Chip,
 } from '@mui/material';
 import { CreateNewFolder, UploadFile, NoteAdd, Share as ShareIcon } from '@mui/icons-material';
 import ProtectedRoute from '../../../../components/auth/ProtectedRoute';
@@ -71,6 +72,18 @@ function FolderExplorerContent() {
   const [isShareLoading, setIsShareLoading] = useState(false);
   const [showSharePanel, setShowSharePanel] = useState(false);
   const [parentIsPublic, setParentIsPublic] = useState(false);
+
+  // Type filter state
+  type ActiveFilter =
+    | 'all'
+    | { kind: 'folder' }
+    | { kind: 'artifact'; subtype?: string }
+    | { kind: 'asset'; subtype?: string };
+  const [activeFilter, setActiveFilter] = useState<ActiveFilter>('all');
+
+  // Dropdown anchors for filter pills
+  const [artifactFilterAnchor, setArtifactFilterAnchor] = useState<HTMLElement | null>(null);
+  const [assetFilterAnchor, setAssetFilterAnchor] = useState<HTMLElement | null>(null);
 
   const siteName = process.env.NEXT_PUBLIC_SITE_NAME || 'Agent Espacio';
 
@@ -385,6 +398,69 @@ function FolderExplorerContent() {
     }
   };
 
+  // Compute type counts from items
+  const getAssetSubtype = (item: FolderItem): string => {
+    if (item.is_image || item.mime_type?.startsWith('image/')) return 'image';
+    if (item.mime_type?.startsWith('video/')) return 'video';
+    if (item.mime_type?.startsWith('audio/')) return 'audio';
+    if (item.is_markdown || item.mime_type === 'text/markdown' || item.mime_type === 'text/x-markdown') return 'markdown';
+    if (item.mime_type === 'application/json') return 'json';
+    return 'other';
+  };
+
+  const rawItems = data?.items ?? [];
+
+  const typeCounts = (() => {
+    const counts = {
+      all: rawItems.length,
+      folder: 0,
+      artifact: {} as Record<string, number>,
+      asset: {} as Record<string, number>,
+    };
+    for (const item of rawItems) {
+      if (item.kind === 'folder') {
+        counts.folder++;
+      } else if (item.kind === 'artifact') {
+        const subtype = item.type || 'artifact';
+        counts.artifact[subtype] = (counts.artifact[subtype] || 0) + 1;
+      } else if (item.kind === 'asset') {
+        const subtype = getAssetSubtype(item);
+        counts.asset[subtype] = (counts.asset[subtype] || 0) + 1;
+      }
+    }
+    return counts;
+  })();
+
+  const filteredItems = rawItems.filter((item) => {
+    if (activeFilter === 'all') return true;
+    if (activeFilter.kind === 'folder') return item.kind === 'folder';
+    if (activeFilter.kind === 'artifact') {
+      if (!activeFilter.subtype) return item.kind === 'artifact';
+      return item.kind === 'artifact' && item.type === activeFilter.subtype;
+    }
+    if (activeFilter.kind === 'asset') {
+      if (!activeFilter.subtype) return item.kind === 'asset';
+      return item.kind === 'asset' && getAssetSubtype(item) === activeFilter.subtype;
+    }
+    return true;
+  });
+
+  const getFilterLabel = (): string => {
+    if (activeFilter === 'all') return '';
+    if (activeFilter.kind === 'folder') return 'Folders';
+    if (activeFilter.kind === 'artifact') {
+      const subtype = activeFilter.subtype;
+      if (!subtype) return 'Artifacts';
+      return subtype.charAt(0).toUpperCase() + subtype.slice(1) + 's';
+    }
+    if (activeFilter.kind === 'asset') {
+      const subtype = activeFilter.subtype;
+      if (!subtype) return 'Assets';
+      return subtype.charAt(0).toUpperCase() + subtype.slice(1) + 's';
+    }
+    return '';
+  };
+
   const breadcrumb: BreadcrumbItem[] = data
     ? [
         { label: 'My Drive', href: '/workspace', folderId: '00000000-0000-0000-0000-000000000001' },
@@ -507,7 +583,9 @@ function FolderExplorerContent() {
             {folder.name}
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            {total_items} {total_items === 1 ? 'item' : 'items'}
+            {activeFilter === 'all'
+              ? `${total_items} ${total_items === 1 ? 'item' : 'items'}`
+              : `Showing ${filteredItems.length} of ${total_items} items · ${getFilterLabel()}`}
             {uploading && ' • Uploading...'}
           </Typography>
         </Box>
@@ -563,7 +641,118 @@ function FolderExplorerContent() {
         </Box>
       </Box>
 
-      {items.length === 0 && !isDragOver ? (
+      {/* Type filter pills */}
+      {(typeCounts.all > 0) && (
+        <Box sx={{ display: 'flex', gap: 1, mb: 3, flexWrap: 'wrap', alignItems: 'center' }}>
+          <Chip
+            label={`All (${typeCounts.all})`}
+            color={activeFilter === 'all' ? 'primary' : 'default'}
+            variant={activeFilter === 'all' ? 'filled' : 'outlined'}
+            onClick={() => setActiveFilter('all')}
+            sx={{ fontWeight: 600 }}
+          />
+
+          {/* Artifacts pill with dropdown */}
+          {Object.keys(typeCounts.artifact).length > 0 && (
+            <>
+              <Chip
+                label={`Artifacts (${Object.values(typeCounts.artifact).reduce((a, b) => a + b, 0)})`}
+                color={typeof activeFilter === 'object' && activeFilter.kind === 'artifact' ? 'primary' : 'default'}
+                variant={typeof activeFilter === 'object' && activeFilter.kind === 'artifact' ? 'filled' : 'outlined'}
+                onClick={(e) => setArtifactFilterAnchor(e.currentTarget)}
+                onDelete={typeof activeFilter === 'object' && activeFilter.kind === 'artifact' ? () => setActiveFilter('all') : undefined}
+                sx={{ fontWeight: 600 }}
+              />
+              <Menu
+                anchorEl={artifactFilterAnchor}
+                open={Boolean(artifactFilterAnchor)}
+                onClose={() => setArtifactFilterAnchor(null)}
+              >
+                <MenuItem
+                  onClick={() => {
+                    setActiveFilter({ kind: 'artifact' });
+                    setArtifactFilterAnchor(null);
+                  }}
+                  selected={typeof activeFilter === 'object' && activeFilter.kind === 'artifact' && !activeFilter.subtype}
+                >
+                  All Artifacts ({Object.values(typeCounts.artifact).reduce((a, b) => a + b, 0)})
+                </MenuItem>
+                {Object.entries(typeCounts.artifact)
+                  .sort(([a], [b]) => a.localeCompare(b))
+                  .map(([subtype, count]) => (
+                    <MenuItem
+                      key={subtype}
+                      onClick={() => {
+                        setActiveFilter({ kind: 'artifact', subtype });
+                        setArtifactFilterAnchor(null);
+                      }}
+                      selected={typeof activeFilter === 'object' && activeFilter.kind === 'artifact' && activeFilter.subtype === subtype}
+                    >
+                      {subtype.charAt(0).toUpperCase() + subtype.slice(1)}s ({count})
+                    </MenuItem>
+                  ))}
+              </Menu>
+            </>
+          )}
+
+          {/* Assets pill with dropdown */}
+          {Object.keys(typeCounts.asset).length > 0 && (
+            <>
+              <Chip
+                label={`Assets (${Object.values(typeCounts.asset).reduce((a, b) => a + b, 0)})`}
+                color={typeof activeFilter === 'object' && activeFilter.kind === 'asset' ? 'primary' : 'default'}
+                variant={typeof activeFilter === 'object' && activeFilter.kind === 'asset' ? 'filled' : 'outlined'}
+                onClick={(e) => setAssetFilterAnchor(e.currentTarget)}
+                onDelete={typeof activeFilter === 'object' && activeFilter.kind === 'asset' ? () => setActiveFilter('all') : undefined}
+                sx={{ fontWeight: 600 }}
+              />
+              <Menu
+                anchorEl={assetFilterAnchor}
+                open={Boolean(assetFilterAnchor)}
+                onClose={() => setAssetFilterAnchor(null)}
+              >
+                <MenuItem
+                  onClick={() => {
+                    setActiveFilter({ kind: 'asset' });
+                    setAssetFilterAnchor(null);
+                  }}
+                  selected={typeof activeFilter === 'object' && activeFilter.kind === 'asset' && !activeFilter.subtype}
+                >
+                  All Assets ({Object.values(typeCounts.asset).reduce((a, b) => a + b, 0)})
+                </MenuItem>
+                {Object.entries(typeCounts.asset)
+                  .sort(([a], [b]) => a.localeCompare(b))
+                  .map(([subtype, count]) => (
+                    <MenuItem
+                      key={subtype}
+                      onClick={() => {
+                        setActiveFilter({ kind: 'asset', subtype });
+                        setAssetFilterAnchor(null);
+                      }}
+                      selected={typeof activeFilter === 'object' && activeFilter.kind === 'asset' && activeFilter.subtype === subtype}
+                    >
+                      {subtype.charAt(0).toUpperCase() + subtype.slice(1)}s ({count})
+                    </MenuItem>
+                  ))}
+              </Menu>
+            </>
+          )}
+
+          {/* Folders pill */}
+          {typeCounts.folder > 0 && (
+            <Chip
+              label={`Folders (${typeCounts.folder})`}
+              color={typeof activeFilter === 'object' && activeFilter.kind === 'folder' ? 'primary' : 'default'}
+              variant={typeof activeFilter === 'object' && activeFilter.kind === 'folder' ? 'filled' : 'outlined'}
+              onClick={() => setActiveFilter({ kind: 'folder' })}
+              onDelete={typeof activeFilter === 'object' && activeFilter.kind === 'folder' ? () => setActiveFilter('all') : undefined}
+              sx={{ fontWeight: 600 }}
+            />
+          )}
+        </Box>
+      )}
+
+      {filteredItems.length === 0 && !isDragOver ? (
         <Box
           sx={{
             display: 'flex',
@@ -575,10 +764,12 @@ function FolderExplorerContent() {
           }}
         >
           <Typography variant="h6" sx={{ mb: 1 }}>
-            This folder is empty
+            {activeFilter === 'all' ? 'This folder is empty' : 'No items match this filter'}
           </Typography>
           <Typography variant="body2">
-            Upload files, create folders, or add artifacts to get started.
+            {activeFilter === 'all'
+              ? 'Upload files, create folders, or add artifacts to get started.'
+              : 'Try selecting a different filter or add new items.'}
           </Typography>
         </Box>
       ) : (
@@ -621,7 +812,7 @@ function FolderExplorerContent() {
             </Box>
           )}
           <Grid container spacing={4} sx={{ opacity: isDragOver ? 0.3 : 1, transition: 'opacity 0.2s ease' }}>
-            {items.map((item: FolderItem) => (
+            {filteredItems.map((item: FolderItem) => (
               <Grid item xs={6} sm={4} md={3} lg={2} key={item.id}>
                 <Fade in={true} timeout={newItemIds.has(item.id) ? 1000 : 0}>
                   <Box>

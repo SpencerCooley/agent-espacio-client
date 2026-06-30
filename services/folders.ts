@@ -69,4 +69,7 @@ export const folderService = {
 
   shareFolder: (folderId: string) =>
     apiClient.post<Folder>(`/folders/${folderId}/share`),
+
+  searchFolderItems: (folderId: string, query: string) =>
+    apiClient.get<FolderContentsResponse>(`/folders/${folderId}/search?q=${encodeURIComponent(query)}`),
 };

@@ -20,6 +20,7 @@ import {
   ArrowDownward as DownIcon,
   Add as AddIcon,
   Save as SaveIcon,
+  OpenInNew as OpenIcon,
 } from '@mui/icons-material';
 import { artifactService, Artifact } from '../../services/artifacts';
 import { assetService } from '../../services/assets';
@@ -166,6 +167,14 @@ export default function ComposerEditor({ artifact }: ComposerEditorProps) {
     return item ? `${item.name} (${item.type}${item.mime_type ? ` - ${item.mime_type}` : ''})` : id;
   };
 
+  const getSectionUrl = (id: string) => {
+    const item = pickerItems.find((i) => i.id === id);
+    if (item?.kind === 'asset') {
+      return `/workspace/assets/${id}`;
+    }
+    return `/workspace/artifacts/${id}`;
+  };
+
   return (
     <Box sx={{ maxWidth: 800, mx: 'auto', px: { xs: 2, md: 3 }, py: 3 }}>
       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3, gap: 2 }}>
@@ -247,6 +256,13 @@ export default function ComposerEditor({ artifact }: ComposerEditorProps) {
               title="Move down"
             >
               <DownIcon fontSize="small" />
+            </IconButton>
+            <IconButton
+              size="small"
+              onClick={() => window.open(getSectionUrl(section.artifact_id), '_blank')}
+              title="Open in workspace"
+            >
+              <OpenIcon fontSize="small" />
             </IconButton>
             <IconButton
               size="small"
