@@ -1,8 +1,7 @@
 'use client';
 
 import { Box } from '@mui/material';
-import { useAuthImage } from '../../hooks/useAuthImage';
-import { getAssetDownloadUrl } from '../../services/assets';
+import { useSignedAssetUrl } from '../../hooks/useSignedAssetUrl';
 import {
   Movie as MovieIcon,
   Audiotrack as AudioIcon,
@@ -39,8 +38,10 @@ export default function InlineThumbnail({
   const thumbnailSize = size > 100 ? 256 : size;
 
   if (variant === 'editor' || variant === 'workspace') {
-    const thumbUrl = needsThumbnail ? getAssetDownloadUrl(id, thumbnailSize) : null;
-    const thumbSrc = useAuthImage(thumbUrl);
+    const thumbSrc = useSignedAssetUrl(
+      needsThumbnail ? id : null,
+      thumbnailSize
+    );
 
     if (needsThumbnail && thumbSrc) {
       return (

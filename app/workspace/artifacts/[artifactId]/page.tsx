@@ -22,6 +22,7 @@ const WorkflowEditor = dynamic(() => import('../../../../components/workspace/Wo
 const MapEditor = dynamic(() => import('../../../../components/workspace/MapEditor'), { ssr: false });
 const GalleryEditor = dynamic(() => import('../../../../components/workspace/GalleryEditor'), { ssr: false });
 const ComposerEditor = dynamic(() => import('../../../../components/workspace/ComposerEditor'), { ssr: false });
+const ComposerMetaPanel = dynamic(() => import('../../../../components/workspace/ComposerMetaPanel'), { ssr: false });
 
 function ArtifactViewerContent() {
   const params = useParams();
@@ -277,7 +278,15 @@ function ArtifactViewerContent() {
 
   if (artifact.type === 'composer') {
     return (
-      <WorkspaceLayout breadcrumb={breadcrumb}>
+      <WorkspaceLayout
+        breadcrumb={breadcrumb}
+        leftPanel={
+          <ComposerMetaPanel
+            artifact={artifact}
+            onArtifactUpdate={(updated) => setArtifact(updated)}
+          />
+        }
+      >
         <ComposerEditor artifact={artifact} />
         <Snackbar
           open={!!successMessage}

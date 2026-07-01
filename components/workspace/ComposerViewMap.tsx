@@ -11,6 +11,7 @@ interface ComposerViewMapProps {
   name: string;
   publicMagicId?: string;
   isPreview?: boolean;
+  isPublicView?: boolean;
 }
 
 const CARTO_VOYAGER_URL = 'https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json';

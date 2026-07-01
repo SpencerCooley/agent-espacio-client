@@ -11,22 +11,24 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 interface ComposerViewAssetProps {
   item: any;
   isPreview?: boolean;
+  isPublicView?: boolean;
 }
 
-export default function ComposerViewAsset({ item, isPreview }: ComposerViewAssetProps) {
+export default function ComposerViewAsset({ item, isPreview, isPublicView }: ComposerViewAssetProps) {
   if (!item) return null;
 
   const isVideo = item.mime_type?.startsWith('video/');
   const isAudio = item.mime_type?.startsWith('audio/');
 
   const publicUrl = `${API_BASE_URL}/public/assets/${item.public_magic_id || item.id}/download`;
-  const authUrl = isPreview
+  // Use signed URL in workspace/preview (non-public view), public URL in public view
+  const authUrl = !isPublicView
     ? `${API_BASE_URL}/assets/${item.id}/download`
     : null;
 
   const streamUrl = useAuthStreamingUrl(authUrl);
-  const src = isPreview ? (streamUrl || '') : publicUrl;
-  const isLoading = isPreview && !streamUrl;
+  const src = isPublicView ? publicUrl : (streamUrl || '');
+  const isLoading = !isPublicView && !streamUrl;
 
   if (!isVideo && !isAudio) {
     return (

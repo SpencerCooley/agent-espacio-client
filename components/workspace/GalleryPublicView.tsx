@@ -14,14 +14,14 @@ import {
   ChevronRight,
   Close,
 } from '@mui/icons-material';
-import { useAuthImage } from '../../hooks/useAuthImage';
-
+import { useSignedAssetUrl } from '../../hooks/useSignedAssetUrl';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
 interface GalleryItem {
   asset_id: string;
   caption: string;
+  signed_url?: string;
 }
 
 interface GalleryContent {
@@ -37,10 +37,17 @@ interface GalleryPublicViewProps {
 }
 
 function getGalleryContent(content: unknown): GalleryContent {
-  const c = (content || {}) as Partial<GalleryContent>;
+  const c = (content || {}) as Partial<GalleryContent> & { items?: Array<{asset_id?: string; caption?: string; association?: {id: string; type?: string}}> };
+  const rawItems = (Array.isArray(c.items) ? c.items : []) as any[];
+  // Normalize items: handle both standalone gallery (asset_id) and composer (association.id)
+  const items = rawItems.map((item: any) => ({
+    asset_id: item.asset_id || item.association?.id || '',
+    caption: item.caption || '',
+    signed_url: item.signed_url || '',
+  })).filter((item) => item.asset_id);
   return {
     layout: c.layout || 'default',
-    items: Array.isArray(c.items) ? c.items : [],
+    items,
   };
 }
 
@@ -52,24 +59,28 @@ function getImageUrl(assetId: string, size?: number, isPreview?: boolean): strin
   return `${API_BASE_URL}/public/assets/${assetId}/download${params}`;
 }
 
-/** Image component that handles auth for preview mode — exact same pattern as FolderItemCard */
+/** Image component that uses pre-signed URL if available, falls back to public/preview URLs */
 function GalleryImg({
   assetId,
+  signedUrl: preSignedUrl,
   size,
   isPreview,
   alt,
   sx,
 }: {
   assetId: string;
+  signedUrl?: string | null;
   size?: number;
   isPreview?: boolean;
   alt?: string;
   sx?: React.ComponentProps<typeof Box>['sx'];
 }) {
-  const url = getImageUrl(assetId, size, isPreview);
-  const blobUrl = useAuthImage(isPreview ? url : null);
+  const signedUrl = useSignedAssetUrl(isPreview ? assetId : null, size);
+  const publicUrl = getImageUrl(assetId, size, isPreview);
 
-  const src = isPreview ? (blobUrl || '') : url;
+  // Priority: pre-signed URL from backend > live signed URL (preview) > public URL
+  const fullPreSignedUrl = preSignedUrl && preSignedUrl.startsWith('/') ? `${API_BASE_URL}${preSignedUrl}` : preSignedUrl;
+  const src = fullPreSignedUrl || (isPreview ? signedUrl || '' : publicUrl);
 
   return (
     <Box
@@ -78,7 +89,7 @@ function GalleryImg({
       alt={alt || ''}
       sx={{
         ...(sx as any),
-        ...(isPreview && !blobUrl ? { bgcolor: 'action.hover', minHeight: 40 } : {}),
+        ...(isPreview && !signedUrl ? { bgcolor: 'action.hover', minHeight: 40 } : {}),
       }}
     />
   );
@@ -126,6 +137,7 @@ function DefaultLayout({
           <Box key={item.asset_id ? `${item.asset_id}-${index}` : `gallery-item-${index}`} sx={{ breakInside: 'avoid' }}>
             <GalleryImg
               assetId={item.asset_id}
+              signedUrl={item.signed_url}
               size={512}
               isPreview={isPreview}
               alt={item.caption || `Image ${index + 1}`}
@@ -261,6 +273,7 @@ function CarouselLayout({
           >
             <GalleryImg
               assetId={item.asset_id}
+              signedUrl={item.signed_url}
               size={256}
               isPreview={isPreview}
               alt={item.caption || `Image ${index + 1}`}
@@ -327,6 +340,7 @@ function CarouselLayout({
               >
                 <GalleryImg
                   assetId={item.asset_id}
+                  signedUrl={item.signed_url}
                   isPreview={isPreview}
                   alt={item.caption || `Image ${index + 1}`}
                   sx={{
@@ -497,6 +511,7 @@ function MasonryLayout({
           >
             <GalleryImg
               assetId={item.asset_id}
+              signedUrl={item.signed_url}
               size={512}
               isPreview={isPreview}
               alt={item.caption || `Image ${index + 1}`}
@@ -584,6 +599,7 @@ function MasonryLayout({
                 >
                   <GalleryImg
                     assetId={item.asset_id}
+                    signedUrl={item.signed_url}
                     isPreview={isPreview}
                     alt={item.caption || `Image ${index + 1}`}
                     sx={{

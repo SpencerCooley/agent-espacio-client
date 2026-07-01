@@ -13,8 +13,7 @@ import {
   Public as PublicIcon,
   PlayArrow as PlayIcon,
 } from '@mui/icons-material';
-import { useAuthImage } from '../../hooks/useAuthImage';
-import { getAssetDownloadUrl } from '../../services/assets';
+import { useSignedAssetUrl } from '../../hooks/useSignedAssetUrl';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
@@ -68,9 +67,11 @@ export default function AssociationMediaCard({ association, variant, onClick }: 
   const isVideo = isAsset && (association.kind?.toLowerCase().includes('video') || association.mime_type?.startsWith('video/'));
   const isMedia = isImage || isVideo;
 
-  // Editor: use authenticated thumbnail URLs for both images and videos
-  const editorThumbUrl = isMedia ? getAssetDownloadUrl(association.id, 256) : null;
-  const editorThumbSrc = useAuthImage(editorThumbUrl);
+  // Editor: use signed thumbnail URLs for both images and videos
+  const editorThumbSrc = useSignedAssetUrl(
+    isMedia ? association.id : null,
+    256
+  );
 
   // Public: use public thumbnail URLs for both images and videos
   const publicThumbUrl = isMedia

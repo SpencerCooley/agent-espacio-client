@@ -6,6 +6,7 @@ export interface Artifact {
   type: string;
   description: string | null;
   content: Record<string, unknown>;
+  meta: Record<string, unknown> | null;
   folder_id: string;
   is_public: boolean;
   public_magic_id: string | null;
@@ -50,6 +51,7 @@ export const artifactService = {
     type: string;
     description: string;
     content: Record<string, unknown>;
+    meta: Record<string, unknown>;
     folder_id: string;
   }>) => apiClient.put<Artifact>(`/artifacts/${artifactId}`, data),
 

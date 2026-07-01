@@ -29,8 +29,8 @@ import {
   Close,
 } from '@mui/icons-material';
 import { artifactService, Artifact } from '../../services/artifacts';
-import { assetService, Asset, getAssetDownloadUrl } from '../../services/assets';
-import { useAuthImage } from '../../hooks/useAuthImage';
+import { assetService, Asset } from '../../services/assets';
+import { useSignedAssetUrl } from '../../hooks/useSignedAssetUrl';
 
 interface GalleryEditorProps {
   artifact: Artifact;
@@ -56,7 +56,7 @@ function getGalleryContent(content: unknown): GalleryContent {
   };
 }
 
-/** Authenticated thumbnail image — exact same pattern as FolderItemCard */
+/** Thumbnail image using signed URL — exact same pattern as FolderItemCard */
 function GalleryThumb({
   assetId,
   size,
@@ -68,8 +68,7 @@ function GalleryThumb({
   alt?: string;
   sx?: React.ComponentProps<typeof Box>['sx'];
 }) {
-  const thumbUrl = getAssetDownloadUrl(assetId, size);
-  const thumbSrc = useAuthImage(thumbUrl);
+  const thumbSrc = useSignedAssetUrl(assetId, size);
 
   return (
     <Box

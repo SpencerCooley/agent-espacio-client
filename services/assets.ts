@@ -1,5 +1,7 @@
 import { apiClient, API_BASE_URL, getToken, ApiError } from './api';
 
+export { API_BASE_URL };
+
 export interface FileMeta {
   width?: number;
   height?: number;
@@ -38,6 +40,19 @@ export const DOWNLOAD_BASE_URL = `${API_BASE_URL}/assets`;
 export function getAssetDownloadUrl(assetId: string, size?: number): string {
   const params = size ? `?size=${size}` : '';
   return `${DOWNLOAD_BASE_URL}/${assetId}/download${params}`;
+}
+
+/**
+ * Fetch a time-bound signed URL for downloading a private asset.
+ * @param assetId - Asset UUID
+ * @param size - Optional thumbnail size
+ */
+export async function getAssetSignedUrl(assetId: string, size?: number): Promise<string> {
+  const url = size
+    ? `/assets/${assetId}/signed-url?size=${size}`
+    : `/assets/${assetId}/signed-url`;
+  const response = await apiClient.post<{ signed_url: string }>(url);
+  return response.signed_url;
 }
 
 export const assetService = {

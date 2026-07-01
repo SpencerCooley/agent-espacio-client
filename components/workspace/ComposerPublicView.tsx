@@ -35,10 +35,12 @@ interface ComposerPublicViewProps {
 function SectionView({
   section,
   isPreview,
+  isPublicView,
   themeMode,
 }: {
   section: CompositionSection;
   isPreview?: boolean;
+  isPublicView?: boolean;
   themeMode?: 'light' | 'dark';
 }) {
   const item = section.artifact;
@@ -68,7 +70,7 @@ function SectionView({
           borderColor: 'divider',
         }}
       >
-        <ComposerViewAsset item={item} isPreview={isPreview} />
+        <ComposerViewAsset item={item} isPreview={isPreview} isPublicView={isPublicView} />
         {section.caption && (
           <Typography
             variant="body2"
@@ -92,6 +94,7 @@ function SectionView({
     name: item.name,
     publicMagicId: item.public_magic_id || item.id,
     isPreview,
+    isPublicView,
     themeMode,
   };
 
@@ -157,6 +160,7 @@ export default function ComposerPublicView({
   isPreview,
   themeMode,
 }: ComposerPublicViewProps) {
+  const isPublicView = !!publicMagicId && !isPreview;
   const [data, setData] = useState<CompositionData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -254,6 +258,7 @@ export default function ComposerPublicView({
           key={`${section.artifact_id}-${index}`}
           section={section}
           isPreview={isPreview}
+          isPublicView={isPublicView}
           themeMode={themeMode}
         />
       ))}

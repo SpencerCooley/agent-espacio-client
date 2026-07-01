@@ -32,8 +32,7 @@ import {
 } from '@mui/icons-material';
 import { useRouter } from 'next/navigation';
 import { FolderItem } from '../../services/folders';
-import { getAssetDownloadUrl } from '../../services/assets';
-import { useAuthImage } from '../../hooks/useAuthImage';
+import { useSignedAssetUrl } from '../../hooks/useSignedAssetUrl';
 
 interface FolderItemCardProps {
   item: FolderItem;
@@ -73,8 +72,10 @@ export default function FolderItemCard({
 
   // Thumbnails: generated for images and videos via backend
   const hasThumbnail = item.kind === 'asset' && item.file_meta?.thumbnails;
-  const thumbUrl = hasThumbnail ? getAssetDownloadUrl(item.id, 256) : null;
-  const thumbSrc = useAuthImage(thumbUrl);
+  const thumbSrc = useSignedAssetUrl(
+    hasThumbnail ? item.id : null,
+    256
+  );
 
   // Drag state for folders (drop targets)
   const [isDragOver, setIsDragOver] = useState(false);

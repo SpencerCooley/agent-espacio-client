@@ -11,6 +11,7 @@ interface ComposerViewNoteProps {
   name: string;
   publicMagicId?: string;
   isPreview?: boolean;
+  isPublicView?: boolean;
 }
 
 /**
@@ -76,12 +77,19 @@ function replaceImageSrcs(content: any, blobMap: Record<string, string>): any {
   return content;
 }
 
-export default function ComposerViewNote({ content, isPreview }: ComposerViewNoteProps) {
+export default function ComposerViewNote({ content, isPreview, isPublicView }: ComposerViewNoteProps) {
   const [processedContent, setProcessedContent] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const blobMapRef = React.useRef<Record<string, string>>({});
 
   useEffect(() => {
+    // Public view: backend already enriched content with signed URLs, skip blob loading
+    if (isPublicView) {
+      setProcessedContent(content);
+      setLoading(false);
+      return;
+    }
+
     const loadImages = async () => {
       const token = localStorage.getItem('accessToken');
       if (!content?.content || !token) {
@@ -134,7 +142,7 @@ export default function ComposerViewNote({ content, isPreview }: ComposerViewNot
       });
       blobMapRef.current = {};
     };
-  }, [content, isPreview]);
+  }, [content, isPreview, isPublicView]);
 
   if (loading) {
     return (

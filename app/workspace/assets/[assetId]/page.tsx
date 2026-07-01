@@ -23,9 +23,9 @@ import WorkspaceLayout from '../../../../components/layout/WorkspaceLayout';
 import MarkdownEditor from '../../../../components/workspace/MarkdownEditor';
 import { SmartVideoPlayer } from '../../../../components/ui/SmartVideoPlayer';
 import { AudioPlayerThemed } from '../../../../components/ui/AudioPlayer';
-import { assetService, Asset, getAssetDownloadUrl } from '../../../../services/assets';
+import { assetService, Asset, getAssetSignedUrl } from '../../../../services/assets';
 import { folderService } from '../../../../services/folders';
-import { useAuthImage } from '../../../../hooks/useAuthImage';
+import { useSignedAssetUrl } from '../../../../hooks/useSignedAssetUrl';
 import { useAuthStreamingUrl } from '../../../../hooks/useAuthStreamingUrl';
 
 function AssetViewerContent() {
@@ -172,21 +172,23 @@ function AssetViewerContent() {
     ? Object.keys(asset.file_meta.thumbnails).map(Number)
     : [];
 
-  const imageUrl = asset?.is_image ? getAssetDownloadUrl(asset.id) : null;
-  const imageSrc = useAuthImage(imageUrl);
+  const imageSrc = useSignedAssetUrl(
+    asset?.is_image ? asset.id : null
+  );
 
-  const videoUrl = asset?.mime_type?.startsWith('video/') ? getAssetDownloadUrl(asset.id) : null;
-  const videoSrc = useAuthStreamingUrl(videoUrl);
+  const videoSrc = useAuthStreamingUrl(
+    asset?.mime_type?.startsWith('video/') ? asset.id : null
+  );
 
-  const audioUrl = asset?.mime_type?.startsWith('audio/') ? getAssetDownloadUrl(asset.id) : null;
-  const audioSrc = useAuthStreamingUrl(audioUrl);
+  const audioSrc = useAuthStreamingUrl(
+    asset?.mime_type?.startsWith('audio/') ? asset.id : null
+  );
 
-  const handleDownload = async (url: string, filename: string) => {
-    const token = localStorage.getItem('accessToken');
+  const handleDownload = async (assetId: string, filename: string, size?: number) => {
     try {
-      const res = await fetch(url, {
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-      });
+      const signedPath = await getAssetSignedUrl(assetId, size);
+      const url = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}${signedPath}`;
+      const res = await fetch(url);
       if (!res.ok) throw new Error('Download failed');
       const blob = await res.blob();
       const blobUrl = URL.createObjectURL(blob);
@@ -268,8 +270,9 @@ function AssetViewerContent() {
                   fullWidth
                   startIcon={<Download />}
                   onClick={() => handleDownload(
-                    getAssetDownloadUrl(asset.id, size),
-                    `${asset.name.replace(/\.[^.]+$/, '')}_${size}px.webp`
+                    asset.id,
+                    `${asset.name.replace(/\.[^.]+$/, '')}_${size}px.webp`,
+                    size
                   )}
                   sx={{ justifyContent: 'flex-start', textTransform: 'none' }}
                 >

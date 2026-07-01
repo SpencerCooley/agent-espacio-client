@@ -1,67 +1,23 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
 import { NodeViewWrapper, type NodeViewProps } from '@tiptap/react';
-import { CircularProgress } from '@mui/material';
-import { API_BASE_URL, getToken } from '../../services/api';
-
-type ImageState =
-  | { status: 'loading' }
-  | { status: 'loaded'; blobUrl: string }
-  | { status: 'error' };
+import { CircularProgress, Box } from '@mui/material';
+import { API_BASE_URL } from '../../services/api';
+import { useSignedAssetUrl } from '../../hooks/useSignedAssetUrl';
 
 export default function AssetImageNodeView(props: NodeViewProps) {
   const { node } = props;
-  const rawSrc: string | undefined = node.attrs.src;
-  const downloadUrl = rawSrc
-    ? rawSrc.startsWith('/') ? `${API_BASE_URL}${rawSrc}` : rawSrc
-    : null;
-  const [state, setState] = useState<ImageState>({ status: 'loading' });
-  const blobUrlRef = useRef<string | null>(null);
 
-  useEffect(() => {
-    if (!downloadUrl) {
-      setState({ status: 'error' });
-      return;
-    }
+  // Backend enrichment injects pre-signed URLs into node attrs for public views
+  const preSignedUrl: string | undefined = node.attrs['signed_url'] || node.attrs['src'];
+  const assetId: string | undefined = node.attrs['data-asset-id'];
+  const thumbSize: number = node.attrs['data-thumb-size'] || 512;
 
-    const token = getToken();
-    if (!token) {
-      setState({ status: 'error' });
-      return;
-    }
-
-    const controller = new AbortController();
-    let cancelled = false;
-
-    fetch(downloadUrl, {
-      headers: { Authorization: `Bearer ${token}` },
-      signal: controller.signal,
-    })
-      .then((r) => {
-        if (!r.ok) throw new Error();
-        return r.blob();
-      })
-      .then((blob) => {
-        if (cancelled) return;
-        const objUrl = URL.createObjectURL(blob);
-        blobUrlRef.current = objUrl;
-        setState({ status: 'loaded', blobUrl: objUrl });
-      })
-      .catch(() => {
-        if (cancelled) return;
-        setState({ status: 'error' });
-      });
-
-    return () => {
-      cancelled = true;
-      controller.abort();
-      if (blobUrlRef.current) {
-        URL.revokeObjectURL(blobUrlRef.current);
-        blobUrlRef.current = null;
-      }
-    };
-  }, [downloadUrl]);
+  // Use pre-signed URL if available (public view with backend enrichment),
+  // otherwise fetch a fresh signed URL (workspace/preview with auth)
+  const fullPreSignedUrl = preSignedUrl && preSignedUrl.startsWith('/') ? `${API_BASE_URL}${preSignedUrl}` : preSignedUrl;
+  const liveSignedUrl = useSignedAssetUrl(fullPreSignedUrl ? null : assetId || null, thumbSize);
+  const signedUrl = fullPreSignedUrl || liveSignedUrl || null;
 
   const textAlign: string | null = node.attrs.textAlign ?? null;
 
@@ -73,13 +29,11 @@ export default function AssetImageNodeView(props: NodeViewProps) {
         width: '100%',
       }}
     >
-      {state.status === 'loading' && <CircularProgress size={16} sx={{ verticalAlign: 'middle' }} />}
-      {state.status === 'error' && (
-        <span style={{ color: 'red', fontSize: '0.8rem' }}>Failed to load image</span>
-      )}
-      {state.status === 'loaded' && (
+      {!signedUrl ? (
+        <CircularProgress size={16} sx={{ verticalAlign: 'middle' }} />
+      ) : (
         <img
-          src={state.blobUrl}
+          src={signedUrl}
           alt={node.attrs.alt || ''}
           draggable={false}
           style={{

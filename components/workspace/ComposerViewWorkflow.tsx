@@ -54,6 +54,7 @@ interface ComposerViewWorkflowProps {
   name: string;
   publicMagicId?: string;
   isPreview?: boolean;
+  isPublicView?: boolean;
   themeMode?: 'light' | 'dark';
 }
 

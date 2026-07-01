@@ -1,21 +1,24 @@
 'use client';
 
 import { useMemo } from 'react';
-import { getToken } from '../services/api';
+import { useSignedAssetUrl } from './useSignedAssetUrl';
 
 /**
- * Returns an authenticated streaming URL by appending the auth token
- * as a query parameter. This allows <video> and <audio> elements to
- * stream content natively with HTTP Range request support, instead of
- * downloading the entire file into memory as a blob.
+ * Returns a signed streaming URL for video/audio assets.
+ *
+ * Accepts either a raw asset download URL (legacy) or an asset ID directly.
+ * Returns a time-bound signed URL that supports HTTP Range requests
+ * for native browser streaming.
  */
-export function useAuthStreamingUrl(url: string | null): string | null {
-  return useMemo(() => {
-    if (!url) return null;
-    const token = getToken();
-    if (!token) return null;
+export function useAuthStreamingUrl(urlOrId: string | null): string | null {
+  const assetId = useMemo(() => {
+    if (!urlOrId) return null;
+    // If it looks like a UUID (no slashes), use it directly
+    if (!urlOrId.includes('/')) return urlOrId;
+    // Otherwise extract from URL path
+    const match = urlOrId.match(/\/assets\/([a-f0-9-]+)\/download/);
+    return match ? match[1] : null;
+  }, [urlOrId]);
 
-    const separator = url.includes('?') ? '&' : '?';
-    return `${url}${separator}access_token=${encodeURIComponent(token)}`;
-  }, [url]);
+  return useSignedAssetUrl(assetId);
 }
