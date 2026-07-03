@@ -10,8 +10,8 @@ import {
   Alert,
   Chip,
 } from '@mui/material';
-import { ThemeProvider as MUIThemeProvider, createTheme } from '@mui/material/styles';
 import NextLink from 'next/link';
+import PublicShell from './PublicShell';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
@@ -44,7 +44,6 @@ interface FeedResponse {
 interface PublicFeedProps {
   tag?: string;
   title?: string;
-  showHeader?: boolean;
 }
 
 type CardSize = 'hero' | 'large' | 'medium' | 'compact';
@@ -222,7 +221,7 @@ function FeedCard({ item, size }: { item: FeedItem; size: CardSize }) {
 /* Main component                                                     */
 /* ------------------------------------------------------------------ */
 
-export default function PublicFeed({ tag, title, showHeader }: PublicFeedProps) {
+export default function PublicFeed({ tag, title }: PublicFeedProps) {
   const [data, setData] = useState<FeedResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -252,32 +251,6 @@ export default function PublicFeed({ tag, title, showHeader }: PublicFeedProps) 
   }, [tag]);
 
   const items = data?.items || [];
-
-  const publicTheme = React.useMemo(() => {
-    const definition = data?.public_theme?.definition;
-    if (definition) {
-      return createTheme(definition);
-    }
-    return null;
-  }, [data?.public_theme]);
-
-  const header = showHeader ? (
-    <Box
-      sx={{
-        px: { xs: 2, md: 4 },
-        py: 3,
-        borderBottom: '1px solid',
-        borderColor: 'divider',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-      }}
-    >
-      <Typography variant="h6" sx={{ fontWeight: 700 }}>
-        Agent Espacio
-      </Typography>
-    </Box>
-  ) : null;
 
   /* ---------------------------------------------------------------- */
   /* Feed grid                                                          */
@@ -334,36 +307,17 @@ export default function PublicFeed({ tag, title, showHeader }: PublicFeedProps) 
     </Box>
   );
 
-  const pageContent = (
-    <Box
-      sx={{
-        minHeight: '100vh',
-        bgcolor: 'background.default',
-        color: 'text.primary',
-      }}
-    >
-      {header}
-      {loading ? (
-        <Box sx={{ p: 4, textAlign: 'center' }}>
-          <CircularProgress size={32} />
-        </Box>
-      ) : error ? (
-        <Box sx={{ p: 4 }}>
-          <Alert severity="error">{error}</Alert>
-        </Box>
-      ) : (
-        feedContent
-      )}
+  const innerContent = loading ? (
+    <Box sx={{ p: 4, textAlign: 'center' }}>
+      <CircularProgress size={32} />
     </Box>
+  ) : error ? (
+    <Box sx={{ p: 4 }}>
+      <Alert severity="error">{error}</Alert>
+    </Box>
+  ) : (
+    feedContent
   );
 
-  if (publicTheme) {
-    return (
-      <MUIThemeProvider theme={publicTheme}>
-        {pageContent}
-      </MUIThemeProvider>
-    );
-  }
-
-  return pageContent;
+  return <PublicShell>{innerContent}</PublicShell>;
 }

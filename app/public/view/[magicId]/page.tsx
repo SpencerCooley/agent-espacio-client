@@ -6,11 +6,11 @@ import NextLink from 'next/link';
 import { Box, Typography, Grid, Paper, Breadcrumbs, Link, Chip, TextField, InputAdornment, CircularProgress, ClickAwayListener, Menu, MenuItem } from '@mui/material';
 import { Folder as FolderIcon, InsertDriveFile as FileIcon, Image as ImageIcon, Article as ArticleIcon, Map as MapIcon, Movie as MovieIcon, Audiotrack as AudiotrackIcon, PhotoLibrary as PhotoLibraryIcon, AutoAwesomeMosaic as ComposerIcon, Search as SearchIcon } from '@mui/icons-material';
 import InlineThumbnail from '../../../../components/workspace/InlineThumbnail';
-import { ThemeProvider as MUIThemeProvider, createTheme } from '@mui/material/styles';
 import WorkflowPublicView from '../../../../components/workspace/WorkflowPublicView';
 import GalleryPublicView from '../../../../components/workspace/GalleryPublicView';
 import ComposerPublicView from '../../../../components/workspace/ComposerPublicView';
 import { PublicAssetView, NotePublicView, MapPublicView } from '../../../../components/public/PublicViews';
+import PublicShell from '../../../../components/public/PublicShell';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
@@ -117,14 +117,6 @@ export default function PublicViewPage() {
         setLoading(false);
       });
   }, [magicId]);
-
-  const publicTheme = React.useMemo(() => {
-    const definition = data?.public_theme?.definition;
-    if (definition) {
-      return createTheme(definition);
-    }
-    return createTheme({ palette: { mode: 'light' } });
-  }, [data?.public_theme]);
 
   // Search handler
   const performSearch = async (query: string) => {
@@ -711,17 +703,14 @@ export default function PublicViewPage() {
     );
   };
 
+  const isFullBleed =
+    data?.kind === 'artifact' &&
+    data.artifact != null &&
+    (data.artifact.type === 'workflow' || data.artifact.type === 'map');
+
   return (
-    <MUIThemeProvider theme={publicTheme}>
-      <Box
-        sx={{
-          bgcolor: 'background.default',
-          color: 'text.primary',
-          minHeight: '100vh',
-        }}
-      >
-        {content()}
-      </Box>
-    </MUIThemeProvider>
+    <PublicShell fullBleed={isFullBleed}>
+      {content()}
+    </PublicShell>
   );
 }

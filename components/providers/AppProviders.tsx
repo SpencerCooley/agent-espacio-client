@@ -8,6 +8,7 @@ import { AppProvider } from '../../context/AppContext';
 import { WebSocketProvider } from '../../context/WebSocketContext';
 import { NotificationProvider } from '../../context/NotificationContext';
 import { ShareProvider } from '../../context/ShareContext';
+import { PublicAppearanceProvider } from '../../context/PublicAppearanceContext';
 import EmotionRegistry from './EmotionRegistry';
 
 function ThemedMUIProvider({ children }: { children: ReactNode }) {
@@ -28,13 +29,15 @@ export default function AppProviders({ children }: { children: ReactNode }) {
       <ThemeProvider>
         <ThemedMUIProvider>
           <AppProvider>
-            <WebSocketProvider>
-              <ShareProvider>
-                <NotificationProvider>
-                  {children}
-                </NotificationProvider>
-              </ShareProvider>
-            </WebSocketProvider>
+            <PublicAppearanceProvider>
+              <WebSocketProvider>
+                <ShareProvider>
+                  <NotificationProvider>
+                    {children}
+                  </NotificationProvider>
+                </ShareProvider>
+              </WebSocketProvider>
+            </PublicAppearanceProvider>
           </AppProvider>
         </ThemedMUIProvider>
       </ThemeProvider>
