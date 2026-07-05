@@ -17,6 +17,7 @@ import {
   AccountCircle,
   Logout,
   Workspaces,
+  OpenInNew,
 } from '@mui/icons-material';
 import Logo from '../Logo';
 import { useApp } from '../../context/AppContext';
@@ -81,6 +82,18 @@ export default function TopBar({ onMenuClick }: TopBarProps) {
           title="Switch to Workspace"
         >
           <Workspaces sx={{ color: 'text.primary' }} />
+        </IconButton>
+
+        {/* Open Public Site - Icon Button */}
+        <IconButton
+          component="a"
+          href="/"
+          target="_blank"
+          rel="noopener noreferrer"
+          sx={{ mr: 1, color: 'text.primary' }}
+          title="View Public Site"
+        >
+          <OpenInNew sx={{ color: 'text.primary' }} />
         </IconButton>
 
         <div>

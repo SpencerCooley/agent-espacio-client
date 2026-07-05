@@ -1,11 +1,13 @@
 'use client';
 
 import { ReactNode } from 'react';
-import { Box, AppBar, Toolbar } from '@mui/material';
+import { Box, AppBar, Toolbar, IconButton, Tooltip } from '@mui/material';
 import { ThemeProvider as MUIThemeProvider } from '@mui/material/styles';
+import { Workspaces } from '@mui/icons-material';
 import Link from 'next/link';
 import DesignCenterPanel from './DesignCenterPanel';
 import { usePublicAppearance } from '../../context/PublicAppearanceContext';
+import { useApp } from '../../context/AppContext';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
@@ -21,6 +23,7 @@ export default function PublicShell({ children, logoText = 'Agent Espacio', full
     themeMode,
     muiTheme,
   } = usePublicAppearance();
+  const { isAuthenticated } = useApp();
 
   const isDarkMode = themeMode === 'dark';
   const logoUrl = (isDarkMode ? branding.logo_dark_url : branding.logo_light_url)
@@ -111,6 +114,27 @@ export default function PublicShell({ children, logoText = 'Agent Espacio', full
                 </Box>
               )}
             </Link>
+
+            {/* Control Center link — workspace is the control center */}
+            {isAuthenticated && (
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Tooltip title="My Workspace">
+                  <IconButton
+                    component={Link}
+                    href="/workspace"
+                    sx={{
+                      color: 'text.primary',
+                      bgcolor: 'action.hover',
+                      '&:hover': {
+                        bgcolor: 'action.selected',
+                      },
+                    }}
+                  >
+                    <Workspaces fontSize="small" />
+                  </IconButton>
+                </Tooltip>
+              </Box>
+            )}
           </Toolbar>
         </AppBar>
 

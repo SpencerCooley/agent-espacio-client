@@ -17,6 +17,7 @@ import {
   People,
   VpnKey,
   Workspaces,
+  OpenInNew,
 } from '@mui/icons-material';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -52,6 +53,21 @@ export default function LeftSidebar({ open, onClose }: LeftSidebarProps) {
             <ListItemText primary="Back to Workspace" />
           </ListItemButton>
         </Link>
+      </ListItem>
+
+      {/* View Public Site */}
+      <ListItem disablePadding>
+        <a
+          href="/"
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{ width: '100%', textDecoration: 'none', color: 'inherit' }}
+        >
+          <ListItemButton onClick={() => isMobile && onClose()}>
+            <ListItemIcon><OpenInNew /></ListItemIcon>
+            <ListItemText primary="View Public Site" />
+          </ListItemButton>
+        </a>
       </ListItem>
       
       <Divider sx={{ my: 1 }} />
