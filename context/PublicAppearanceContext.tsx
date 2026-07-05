@@ -28,6 +28,10 @@ interface PublicAppearanceContextType {
   updatePublicTheme: (themeId: string, mode: 'light' | 'dark') => Promise<void>;
   refreshTheme: () => Promise<void>;
 
+  // Draft for live color preview (set by ThemeTab, consumed by muiTheme)
+  draftDefinition: ThemeDefinition | null;
+  setDraftDefinition: (def: ThemeDefinition | null) => void;
+
   // Combined
   refreshAppearance: () => Promise<void>;
 
@@ -70,6 +74,7 @@ export function PublicAppearanceProvider({ children }: { children: ReactNode }) 
   const [themeMode, setThemeMode] = useState<'light' | 'dark'>('light');
   const [themeDefinition, setThemeDefinition] = useState<ThemeDefinition | null>(null);
   const [themeLoading, setThemeLoading] = useState(true);
+  const [draftDefinition, setDraftDefinition] = useState<ThemeDefinition | null>(null);
 
   // Load branding
   const refreshBranding = useCallback(async () => {
@@ -159,16 +164,17 @@ export function PublicAppearanceProvider({ children }: { children: ReactNode }) 
     }
   }, []);
 
-  // Create MUI theme from definition
+  // Create MUI theme from definition (prefer draft for live preview)
   const muiTheme = useMemo(() => {
-    if (themeDefinition) {
+    const source = draftDefinition || themeDefinition;
+    if (source) {
       const def = themeMode === 'light'
-        ? themeDefinition.light_definition
-        : themeDefinition.dark_definition;
+        ? source.light_definition
+        : source.dark_definition;
       return createTheme(def as ThemeOptions);
     }
     return createTheme(defaultThemeOptions);
-  }, [themeDefinition, themeMode]);
+  }, [draftDefinition, themeDefinition, themeMode]);
 
   return (
     <PublicAppearanceContext.Provider
@@ -183,6 +189,8 @@ export function PublicAppearanceProvider({ children }: { children: ReactNode }) 
         themeLoading,
         updatePublicTheme,
         refreshTheme,
+        draftDefinition,
+        setDraftDefinition,
         refreshAppearance,
         muiTheme,
       }}

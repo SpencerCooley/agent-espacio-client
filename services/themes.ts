@@ -18,4 +18,7 @@ export const themeService = {
 
   getTheme: (id: string) =>
     apiClient.get<ThemeDefinition>(`/themes/${id}`),
+
+  updateTheme: (id: string, data: { name?: string; light_definition?: Record<string, any>; dark_definition?: Record<string, any> }) =>
+    apiClient.put<ThemeDefinition>(`/themes/${id}`, data),
 };

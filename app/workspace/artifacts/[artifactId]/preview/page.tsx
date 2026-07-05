@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { Box, Typography, Paper } from '@mui/material';
+import { createTheme, ThemeProvider as MUIThemeProvider } from '@mui/material/styles';
 import WorkflowPublicView from '../../../../../components/workspace/WorkflowPublicView';
 import GalleryPublicView from '../../../../../components/workspace/GalleryPublicView';
 import ComposerPublicView from '../../../../../components/workspace/ComposerPublicView';
@@ -21,6 +22,11 @@ interface PreviewData {
     description?: string;
     content: any;
     public_magic_id: string;
+  };
+  public_theme?: {
+    theme_id: string;
+    mode: 'light' | 'dark';
+    definition: any;
   };
 }
 
