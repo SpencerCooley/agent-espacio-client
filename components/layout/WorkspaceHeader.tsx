@@ -26,6 +26,7 @@ import {
   Share as ShareIcon,
   Visibility as VisibilityIcon,
   Search as SearchIcon,
+  Public,
   Folder as FolderIcon,
   InsertDriveFile as FileIcon,
   Article as ArticleIcon,
@@ -279,9 +280,28 @@ export default function WorkspaceHeader({
       <Toolbar sx={{ justifyContent: 'space-between' }}>
         {/* Left section: Logo + Breadcrumb */}
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flex: 1, minWidth: 0 }}>
-          <Link href="/workspace" style={{ textDecoration: 'none', display: 'inline-block', flexShrink: 0 }}>
-            <Logo />
-          </Link>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexShrink: 0 }}>
+            <Link href="/workspace" style={{ textDecoration: 'none', display: 'inline-block' }}>
+              <Logo />
+            </Link>
+            <IconButton
+              component="a"
+              href="/"
+              target="_blank"
+              rel="noopener noreferrer"
+              size="small"
+              sx={{
+                color: 'text.secondary',
+                '&:hover': {
+                  color: 'text.primary',
+                  bgcolor: 'action.hover',
+                },
+              }}
+              title="Open Public Feed"
+            >
+              <Public fontSize="small" />
+            </IconButton>
+          </Box>
 
           {breadcrumb && breadcrumb.length > 0 && (
             <Breadcrumbs

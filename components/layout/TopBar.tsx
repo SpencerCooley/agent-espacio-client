@@ -17,7 +17,7 @@ import {
   AccountCircle,
   Logout,
   Workspaces,
-  OpenInNew,
+  Public,
 } from '@mui/icons-material';
 import Logo from '../Logo';
 import { useApp } from '../../context/AppContext';
@@ -68,10 +68,27 @@ export default function TopBar({ onMenuClick }: TopBarProps) {
           <MenuIcon sx={{ color: 'text.primary' }} />
         </IconButton>
         
-        <Box sx={{ flexGrow: 1 }}>
+        <Box sx={{ flexGrow: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
           <Link href="/workspace" style={{ textDecoration: 'none', display: 'inline-block' }}>
             <Logo />
           </Link>
+          <IconButton
+            component="a"
+            href="/"
+            target="_blank"
+            rel="noopener noreferrer"
+            size="small"
+            sx={{
+              color: 'text.secondary',
+              '&:hover': {
+                color: 'text.primary',
+                bgcolor: 'action.hover',
+              },
+            }}
+            title="Open Public Feed"
+          >
+            <Public fontSize="small" />
+          </IconButton>
         </Box>
 
         {/* Workspace Toggle - Icon Button */}
@@ -82,18 +99,6 @@ export default function TopBar({ onMenuClick }: TopBarProps) {
           title="Switch to Workspace"
         >
           <Workspaces sx={{ color: 'text.primary' }} />
-        </IconButton>
-
-        {/* Open Public Site - Icon Button */}
-        <IconButton
-          component="a"
-          href="/"
-          target="_blank"
-          rel="noopener noreferrer"
-          sx={{ mr: 1, color: 'text.primary' }}
-          title="View Public Site"
-        >
-          <OpenInNew sx={{ color: 'text.primary' }} />
         </IconButton>
 
         <div>

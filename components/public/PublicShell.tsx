@@ -146,6 +146,7 @@ export default function PublicShell({ children, logoText = 'Agent Espacio', full
             width: '100%',
             minWidth: 0,
             overflowX: 'hidden',
+            ...(fullBleed ? { display: 'flex', flexDirection: 'column' } : {}),
           }}
         >
           {bgUrl && !fullBleed ? (

@@ -321,6 +321,7 @@ interface MapViewProps {
   description?: string;
   // For preview mode - use authenticated URLs
   isPreview?: boolean;
+  themeMode?: 'light' | 'dark';
 }
 
 function getFeatureColor(feature: any): string {
@@ -335,7 +336,7 @@ function getFeatureStrokeWidth(feature: any): number {
   return feature?.properties?.style?.strokeWidth ?? 2;
 }
 
-export function MapPublicView({ content, name, description, isPreview }: MapViewProps) {
+export function MapPublicView({ content, name, description, isPreview, themeMode }: MapViewProps) {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const [tooltip, setTooltip] = useState<{
@@ -667,8 +668,8 @@ export function MapPublicView({ content, name, description, isPreview }: MapView
   }, [content, viewport, style]);
 
   return (
-    <Box sx={{ width: '100vw', height: '100vh', position: 'relative' }}>
-      <Box ref={mapContainerRef} sx={{ height: '100%', width: '100%' }} />
+    <Box sx={{ width: '100%', flex: 1, position: 'relative', display: 'flex', flexDirection: 'column' }}>
+      <Box ref={mapContainerRef} sx={{ flex: 1, width: '100%' }} />
       
       {/* Name and description card */}
       {(name || description) && (

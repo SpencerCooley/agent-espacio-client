@@ -3,7 +3,6 @@
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { Box, Typography, Paper } from '@mui/material';
-import { createTheme, ThemeProvider as MUIThemeProvider } from '@mui/material/styles';
 import WorkflowPublicView from '../../../../../components/workspace/WorkflowPublicView';
 import GalleryPublicView from '../../../../../components/workspace/GalleryPublicView';
 import ComposerPublicView from '../../../../../components/workspace/ComposerPublicView';
@@ -67,39 +66,38 @@ export default function ArtifactPreviewPage() {
       });
   }, [artifactId, authLoading]);
 
-  const theme = React.useMemo(() => {
-    const definition = data?.public_theme?.definition;
-    if (definition) {
-      return createTheme(definition);
-    }
-    return createTheme({ palette: { mode: 'light' } });
-  }, [data?.public_theme]);
-
   if (loading) {
     return (
-      <Box sx={{ p: 4, textAlign: 'center' }}>
-        <Typography>Loading preview...</Typography>
-      </Box>
+      <PublicShell>
+        <Box sx={{ p: 4, textAlign: 'center' }}>
+          <Typography>Loading preview...</Typography>
+        </Box>
+      </PublicShell>
     );
   }
 
   if (error) {
     return (
-      <Box sx={{ p: 4, textAlign: 'center' }}>
-        <Typography color="error">Error: {error}</Typography>
-      </Box>
+      <PublicShell>
+        <Box sx={{ p: 4, textAlign: 'center' }}>
+          <Typography color="error">Error: {error}</Typography>
+        </Box>
+      </PublicShell>
     );
   }
 
   if (!data || !data.artifact) {
     return (
-      <Box sx={{ p: 4, textAlign: 'center' }}>
-        <Typography>No artifact data</Typography>
-      </Box>
+      <PublicShell>
+        <Box sx={{ p: 4, textAlign: 'center' }}>
+          <Typography>No artifact data</Typography>
+        </Box>
+      </PublicShell>
     );
   }
 
   const artifact = data.artifact;
+  const isFullBleed = ['workflow', 'map', 'gallery', 'composer'].includes(artifact.type);
 
   const content = () => {
     // Workflow artifacts render full page (no container)
@@ -122,6 +120,7 @@ export default function ArtifactPreviewPage() {
           name={artifact.name}
           description={artifact.description}
           isPreview
+          themeMode={data?.public_theme?.mode}
         />
       );
     }
@@ -176,16 +175,8 @@ export default function ArtifactPreviewPage() {
   };
 
   return (
-    <MUIThemeProvider theme={theme}>
-      <Box
-        sx={{
-          bgcolor: 'background.default',
-          color: 'text.primary',
-          minHeight: '100vh',
-        }}
-      >
-        {content()}
-      </Box>
-    </MUIThemeProvider>
+    <PublicShell fullBleed={isFullBleed}>
+      {content()}
+    </PublicShell>
   );
 }

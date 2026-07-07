@@ -645,6 +645,7 @@ export default function PublicViewPage() {
             content={artifact.content}
             name={artifact.name}
             description={artifact.description}
+            themeMode={data?.public_theme?.mode}
           />
         );
       }
