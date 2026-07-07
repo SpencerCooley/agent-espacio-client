@@ -338,6 +338,7 @@ function getFeatureStrokeWidth(feature: any): number {
 
 export function MapPublicView({ content, name, description, isPreview, themeMode }: MapViewProps) {
   const mapContainerRef = useRef<HTMLDivElement>(null);
+  const tooltipContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const [tooltip, setTooltip] = useState<{
     visible: boolean;
@@ -420,6 +421,12 @@ export function MapPublicView({ content, name, description, isPreview, themeMode
     }
   }
 
+  function getTooltipCoords(clientX: number, clientY: number) {
+    if (!tooltipContainerRef.current) return { x: clientX, y: clientY };
+    const rect = tooltipContainerRef.current.getBoundingClientRect();
+    return { x: clientX - rect.left, y: clientY - rect.top };
+  }
+
   useEffect(() => {
     if (!mapContainerRef.current) return;
 
@@ -460,10 +467,11 @@ export function MapPublicView({ content, name, description, isPreview, themeMode
             .addTo(map);
 
           el.addEventListener('mousemove', (e) => {
+            const coords = getTooltipCoords(e.clientX, e.clientY);
             setTooltip({
               visible: true,
-              x: e.clientX,
-              y: e.clientY,
+              x: coords.x,
+              y: coords.y,
               name: feature.properties?.name || 'Point',
               description: feature.properties?.description || '',
             });
@@ -555,10 +563,14 @@ export function MapPublicView({ content, name, description, isPreview, themeMode
           map.on('mousemove', `${id}-fill`, (e) => {
             if (e.features && e.features.length > 0) {
               const f = e.features[0];
+              const originalEvent = (e as any).originalEvent as MouseEvent | undefined;
+              const coords = originalEvent
+                ? getTooltipCoords(originalEvent.clientX, originalEvent.clientY)
+                : { x: e.point.x, y: e.point.y };
               setTooltip({
                 visible: true,
-                x: e.point.x,
-                y: e.point.y,
+                x: coords.x,
+                y: coords.y,
                 name: f.properties?.name || (geometryType === 'Polygon' ? 'Polygon' : 'Line'),
                 description: f.properties?.description || '',
               });
@@ -609,10 +621,14 @@ export function MapPublicView({ content, name, description, isPreview, themeMode
             map.on('mousemove', `${id}-line`, (e) => {
               if (e.features && e.features.length > 0) {
                 const f = e.features[0];
+                const originalEvent = (e as any).originalEvent as MouseEvent | undefined;
+                const coords = originalEvent
+                  ? getTooltipCoords(originalEvent.clientX, originalEvent.clientY)
+                  : { x: e.point.x, y: e.point.y };
                 setTooltip({
                   visible: true,
-                  x: e.point.x,
-                  y: e.point.y,
+                  x: coords.x,
+                  y: coords.y,
                   name: f.properties?.name || 'Line',
                   description: f.properties?.description || '',
                 });
@@ -668,7 +684,7 @@ export function MapPublicView({ content, name, description, isPreview, themeMode
   }, [content, viewport, style]);
 
   return (
-    <Box sx={{ width: '100%', flex: 1, position: 'relative', display: 'flex', flexDirection: 'column' }}>
+    <Box ref={tooltipContainerRef} sx={{ width: '100%', flex: 1, position: 'relative', display: 'flex', flexDirection: 'column' }}>
       <Box ref={mapContainerRef} sx={{ flex: 1, width: '100%' }} />
       
       {/* Name and description card */}
