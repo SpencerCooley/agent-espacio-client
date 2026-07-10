@@ -180,6 +180,11 @@ function AssetViewerContent() {
     asset?.mime_type?.startsWith('video/') ? asset.id : null
   );
 
+  const videoPosterSrc = useSignedAssetUrl(
+    asset?.mime_type?.startsWith('video/') ? asset.id : null,
+    512
+  );
+
   const audioSrc = useAuthStreamingUrl(
     asset?.mime_type?.startsWith('audio/') ? asset.id : null
   );
@@ -454,6 +459,7 @@ function AssetViewerContent() {
                 src={videoSrc} 
                 name={asset.name}
                 maxHeight="calc(100vh - 200px)"
+                poster={videoPosterSrc || undefined}
               />
             ) : (
               <Typography color="text.secondary">Loading video...</Typography>

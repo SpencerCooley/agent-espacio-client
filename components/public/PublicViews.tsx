@@ -38,6 +38,7 @@ export function PublicAssetView({
   const isVideo = mime_type?.startsWith('video/');
   const isAudio = mime_type?.startsWith('audio/');
   const downloadUrl = customDownloadUrl || `${API_BASE_URL}/public/assets/${public_magic_id || id}/download`;
+  const posterUrl = isVideo ? `${downloadUrl}?size=512` : undefined;
 
   const [markdownContent, setMarkdownContent] = useState<string | null>(null);
   const [loadingMarkdown, setLoadingMarkdown] = useState(false);
@@ -82,7 +83,7 @@ export function PublicAssetView({
           sx={{ maxWidth: '100%', maxHeight: '80vh', borderRadius: 2, display: 'block', mx: 'auto' }}
         />
       ) : isVideo ? (
-        <SmartVideoPlayer src={downloadUrl} name={name} />
+        <SmartVideoPlayer src={downloadUrl} name={name} poster={posterUrl} />
       ) : isAudio ? (
         <AudioPlayerThemed src={downloadUrl} name={name} height={200} />
       ) : isMarkdown ? (

@@ -5,6 +5,7 @@ import { Box, Typography, CircularProgress } from '@mui/material';
 import { SmartVideoPlayer } from '../ui/SmartVideoPlayer';
 import { AudioPlayerThemed } from '../ui/AudioPlayer';
 import { useAuthStreamingUrl } from '../../hooks/useAuthStreamingUrl';
+import { useSignedAssetUrl } from '../../hooks/useSignedAssetUrl';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
@@ -28,6 +29,7 @@ export default function ComposerViewAsset({ item, isPreview, isPublicView }: Com
 
   const streamUrl = useAuthStreamingUrl(authUrl);
   const src = isPublicView ? publicUrl : (streamUrl || '');
+  const posterUrl = useSignedAssetUrl(item?.id || null, 512);
   const isLoading = !isPublicView && !streamUrl;
 
   if (!isVideo && !isAudio) {
@@ -61,7 +63,7 @@ export default function ComposerViewAsset({ item, isPreview, isPublicView }: Com
       )}
 
       {isVideo && !isLoading && (
-        <SmartVideoPlayer src={src} name={item.name} />
+        <SmartVideoPlayer src={src} name={item.name} poster={posterUrl || undefined} />
       )}
 
       {isAudio && !isLoading && (

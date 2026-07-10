@@ -8,6 +8,7 @@ interface SmartVideoPlayerProps {
   name?: string;
   maxHeight?: string;
   showLoadingText?: boolean;
+  poster?: string;
 }
 
 /**
@@ -24,6 +25,7 @@ export function SmartVideoPlayer({
   src,
   name,
   maxHeight = '80vh',
+  poster,
 }: SmartVideoPlayerProps) {
   const [hasError, setHasError] = React.useState(false);
 
@@ -55,6 +57,7 @@ export function SmartVideoPlayer({
         playsInline
         crossOrigin="anonymous"
         src={src}
+        poster={poster}
         onError={handleError}
         sx={{
           maxWidth: '100%',
