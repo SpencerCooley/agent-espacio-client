@@ -24,6 +24,7 @@ import {
 } from '@mui/icons-material';
 import { artifactService, Artifact } from '../../services/artifacts';
 import { assetService } from '../../services/assets';
+import { folderService } from '../../services/folders';
 
 interface ComposerSection {
   artifact_id: string;
@@ -48,19 +49,69 @@ interface PickerItem {
 
 export default function ComposerEditor({ artifact }: ComposerEditorProps) {
   const [sections, setSections] = useState<ComposerSection[]>([]);
-  const [pickerItems, setPickerItems] = useState<PickerItem[]>([]);
-  const [loadingPicker, setLoadingPicker] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [newSectionId, setNewSectionId] = useState<string | null>(null);
   const [name, setName] = useState(artifact.name);
 
+  // Debounced search state
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<PickerItem[]>([]);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [knownItems, setKnownItems] = useState<PickerItem[]>([]);
+  const [selectedPickerItem, setSelectedPickerItem] = useState<PickerItem | null>(null);
+
   // Load initial content
   useEffect(() => {
     const content = (artifact.content as unknown) as ComposerContent;
     setSections(content?.sections || []);
     setName(artifact.name);
+  }, [artifact]);
+
+  // Load metadata for already-referenced sections on mount
+  useEffect(() => {
+    const content = (artifact.content as unknown) as ComposerContent;
+    const sectionIds = (content?.sections || []).map((s) => s.artifact_id);
+    if (sectionIds.length === 0) return;
+
+    let cancelled = false;
+    const loadKnown = async () => {
+      const items: PickerItem[] = [];
+      await Promise.all(
+        sectionIds.map(async (id) => {
+          try {
+            const art = await artifactService.getArtifact(id);
+            if (art.id !== artifact.id && art.type !== 'composer') {
+              items.push({ id: art.id, name: art.name, type: art.type, kind: 'artifact' as const });
+            }
+          } catch {
+            try {
+              const asset = await assetService.getAsset(id);
+              const mime = asset.mime_type || '';
+              if (mime.startsWith('video/') || mime.startsWith('audio/')) {
+                items.push({
+                  id: asset.id,
+                  name: asset.name,
+                  type: 'asset',
+                  kind: 'asset' as const,
+                  mime_type: asset.mime_type,
+                });
+              }
+            } catch {
+              // ignore
+            }
+          }
+        })
+      );
+      if (!cancelled) {
+        setKnownItems(items);
+      }
+    };
+
+    loadKnown();
+    return () => { cancelled = true; };
   }, [artifact]);
 
   const handleNameChange = useCallback(async (newName: string) => {
@@ -74,54 +125,75 @@ export default function ComposerEditor({ artifact }: ComposerEditorProps) {
     }
   }, [artifact.id, artifact.name]);
 
-  // Load all available artifacts and assets for picker
+  // Debounced search for artifacts and assets
   useEffect(() => {
-    const loadItems = async () => {
-      try {
-        setLoadingPicker(true);
-        const [artifactsRes, assetsRes] = await Promise.all([
-          artifactService.listArtifacts(),
-          assetService.listAssets(),
-        ]);
+    if (!searchOpen || searchQuery.trim().length < 2) {
+      setSearchResults([]);
+      return;
+    }
 
-        const artifactItems: PickerItem[] = (artifactsRes.artifacts || [])
-          .filter((a: Artifact) => a.id !== artifact.id && a.type !== 'composer')
-          .map((a: Artifact) => ({
-            id: a.id,
-            name: a.name,
-            type: a.type,
-            kind: 'artifact',
+    setSearchLoading(true);
+    const timer = setTimeout(async () => {
+      try {
+        const rootFolderId = '00000000-0000-0000-0000-000000000001';
+        const res = await folderService.searchFolderItems(rootFolderId, searchQuery.trim());
+
+        const artifactItems: PickerItem[] = (res.items || [])
+          .filter((item: any) => item.kind === 'artifact')
+          .filter((item: any) => item.id !== artifact.id && item.type !== 'composer')
+          .map((item: any) => ({
+            id: item.id,
+            name: item.name,
+            type: item.type,
+            kind: 'artifact' as const,
           }));
 
-        const assetItems: PickerItem[] = (assetsRes.assets || [])
-          .filter((a: any) => {
-            const mime = a.mime_type || '';
+        const assetItems: PickerItem[] = (res.items || [])
+          .filter((item: any) => item.kind === 'asset')
+          .filter((item: any) => {
+            const mime = item.mime_type || '';
             return mime.startsWith('video/') || mime.startsWith('audio/');
           })
-          .map((a: any) => ({
-            id: a.id,
-            name: a.name,
+          .map((item: any) => ({
+            id: item.id,
+            name: item.name,
             type: 'asset',
-            kind: 'asset',
-            mime_type: a.mime_type,
+            kind: 'asset' as const,
+            mime_type: item.mime_type,
           }));
 
-        setPickerItems([...artifactItems, ...assetItems]);
-      } catch (e) {
-        console.error('Failed to load picker items', e);
-      } finally {
-        setLoadingPicker(false);
-      }
-    };
+        const results = [...artifactItems, ...assetItems];
+        setSearchResults(results);
 
-    loadItems();
-  }, [artifact.id]);
+        // Merge into known items cache so existing sections can resolve labels
+        setKnownItems((prev) => {
+          const merged = [...prev];
+          for (const item of results) {
+            if (!merged.find((p) => p.id === item.id)) {
+              merged.push(item);
+            }
+          }
+          return merged;
+        });
+      } catch (e) {
+        console.error('Search failed', e);
+        setSearchResults([]);
+      } finally {
+        setSearchLoading(false);
+      }
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [searchQuery, searchOpen, artifact.id]);
 
   const handleAddSection = useCallback(() => {
-    if (!newSectionId) return;
+    if (!newSectionId || !selectedPickerItem) return;
     setSections((prev) => [...prev, { artifact_id: newSectionId, caption: '' }]);
     setNewSectionId(null);
-  }, [newSectionId]);
+    setSelectedPickerItem(null);
+    setSearchQuery('');
+    setSearchResults([]);
+  }, [newSectionId, selectedPickerItem]);
 
   const handleRemoveSection = useCallback((index: number) => {
     setSections((prev) => prev.filter((_, i) => i !== index));
@@ -163,12 +235,12 @@ export default function ComposerEditor({ artifact }: ComposerEditorProps) {
   }, [artifact.id, sections]);
 
   const getItemLabel = (id: string) => {
-    const item = pickerItems.find((i) => i.id === id);
+    const item = knownItems.find((i) => i.id === id);
     return item ? `${item.name} (${item.type}${item.mime_type ? ` - ${item.mime_type}` : ''})` : id;
   };
 
   const getSectionUrl = (id: string) => {
-    const item = pickerItems.find((i) => i.id === id);
+    const item = knownItems.find((i) => i.id === id);
     if (item?.kind === 'asset') {
       return `/workspace/assets/${id}`;
     }
@@ -310,7 +382,7 @@ export default function ComposerEditor({ artifact }: ComposerEditorProps) {
         </Typography>
         <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'flex-start' }}>
           <Autocomplete
-            options={pickerItems}
+            options={searchResults}
             getOptionLabel={(item) =>
               typeof item === 'string'
                 ? item
@@ -326,15 +398,30 @@ export default function ComposerEditor({ artifact }: ComposerEditorProps) {
                 </Box>
               </li>
             )}
-            value={pickerItems.find((i) => i.id === newSectionId) || null}
+            value={selectedPickerItem}
             onChange={(_, value) => {
               if (value && typeof value !== 'string') {
                 setNewSectionId(value.id);
+                setSelectedPickerItem(value);
+                setSearchOpen(false);
+                setKnownItems((prev) => {
+                  if (prev.find((p) => p.id === value.id)) return prev;
+                  return [...prev, value];
+                });
               } else {
                 setNewSectionId(null);
+                setSelectedPickerItem(null);
               }
             }}
-            loading={loadingPicker}
+            onInputChange={(_, value) => {
+              setSearchQuery(value);
+            }}
+            open={searchOpen}
+            onOpen={() => setSearchOpen(true)}
+            onClose={() => setSearchOpen(false)}
+            filterOptions={(x) => x}
+            loading={searchLoading}
+            noOptionsText={searchQuery.trim().length < 2 ? 'Type at least 2 characters' : 'No results'}
             fullWidth
             size="small"
             renderInput={(params) => (
