@@ -30,6 +30,7 @@ import {
 } from '@mui/icons-material';
 import { artifactService, Artifact } from '../../services/artifacts';
 import { assetService, Asset } from '../../services/assets';
+import { folderService } from '../../services/folders';
 import { useSignedAssetUrl } from '../../hooks/useSignedAssetUrl';
 
 interface GalleryEditorProps {
@@ -97,8 +98,10 @@ export default function GalleryEditor({ artifact }: GalleryEditorProps) {
 
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const [addDialogOpen, setAddDialogOpen] = useState(false);
-  const [availableAssets, setAvailableAssets] = useState<Asset[]>([]);
-  const [assetsLoading, setAssetsLoading] = useState(false);
+  const [searchResults, setSearchResults] = useState<Asset[]>([]);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchOpen, setSearchOpen] = useState(false);
   const [selectedAsset, setSelectedAsset] = useState<Asset | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
@@ -317,17 +320,64 @@ export default function GalleryEditor({ artifact }: GalleryEditorProps) {
 
   const openAddDialog = () => {
     setAddDialogOpen(true);
-    setAssetsLoading(true);
-    assetService
-      .listAssets(undefined, 'image/')
-      .then((res) => {
-        const all = res.assets || [];
-        const existing = new Set(content.items.map((i) => i.asset_id));
-        setAvailableAssets(all.filter((a) => !existing.has(a.id)));
-      })
-      .catch(() => setAvailableAssets([]))
-      .finally(() => setAssetsLoading(false));
+    setSearchQuery('');
+    setSearchResults([]);
+    setSelectedAsset(null);
   };
+
+  // Debounced search for image assets in the add-existing dialog
+  useEffect(() => {
+    if (!addDialogOpen || !searchOpen || searchQuery.trim().length < 2) {
+      setSearchResults([]);
+      return;
+    }
+
+    setSearchLoading(true);
+    const timer = setTimeout(async () => {
+      try {
+        const rootFolderId = '00000000-0000-0000-0000-000000000001';
+        const res = await folderService.searchFolderItems(rootFolderId, searchQuery.trim());
+
+        const existing = new Set(content.items.map((i) => i.asset_id));
+
+        const imageItems: Asset[] = (res.items || [])
+          .filter((item: any) => item.kind === 'asset')
+          .filter((item: any) => {
+            const mime = item.mime_type || '';
+            return mime.startsWith('image/');
+          })
+          .filter((item: any) => !existing.has(item.id))
+          .map((item: any) => ({
+            id: item.id,
+            name: item.name,
+            storage_filename: '',
+            mime_type: item.mime_type,
+            size_bytes: 0,
+            human_readable_size: '',
+            folder_id: null,
+            is_image: true,
+            is_markdown: false,
+            file_extension: '',
+            file_meta: null,
+            is_public: item.is_public ?? false,
+            public_magic_id: item.public_magic_id ?? null,
+            descendant_of: null,
+            created_at: item.created_at,
+            updated_at: item.updated_at,
+            created_by_id: null,
+          }));
+
+        setSearchResults(imageItems);
+      } catch (e) {
+        console.error('Image search failed', e);
+        setSearchResults([]);
+      } finally {
+        setSearchLoading(false);
+      }
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [addDialogOpen, searchQuery, searchOpen, content.items]);
 
   const handleAddExisting = () => {
     if (!selectedAsset) return;
@@ -642,22 +692,34 @@ export default function GalleryEditor({ artifact }: GalleryEditorProps) {
       <Dialog open={addDialogOpen} onClose={() => setAddDialogOpen(false)} maxWidth="sm" fullWidth>
         <DialogTitle>Add existing images</DialogTitle>
         <DialogContent>
-          {assetsLoading ? (
+          {searchLoading ? (
             <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
               <CircularProgress size={32} />
             </Box>
-          ) : availableAssets.length === 0 ? (
+          ) : searchQuery.trim().length < 2 ? (
             <Typography color="text.secondary" align="center" sx={{ py: 4 }}>
-              No more image assets available in the workspace.
+              Type at least 2 characters to search for images.
+            </Typography>
+          ) : searchResults.length === 0 ? (
+            <Typography color="text.secondary" align="center" sx={{ py: 4 }}>
+              No matching image assets found.
             </Typography>
           ) : (
             <Autocomplete
-              options={availableAssets}
+              options={searchResults}
               getOptionLabel={(option) => option.name}
               value={selectedAsset}
-              onChange={(_event, newValue) => setSelectedAsset(newValue)}
+              onChange={(_event, newValue) => {
+                setSelectedAsset(newValue);
+                if (newValue) setSearchOpen(false);
+              }}
+              onInputChange={(_, value) => setSearchQuery(value)}
+              open={searchOpen}
+              onOpen={() => setSearchOpen(true)}
+              onClose={() => setSearchOpen(false)}
+              filterOptions={(x) => x}
               renderOption={(props, option) => (
-                <Box component="li" {...props} sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                <Box component="li" {...props} key={option.id} sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
                   <GalleryThumb
                     assetId={option.id}
                     size={256}

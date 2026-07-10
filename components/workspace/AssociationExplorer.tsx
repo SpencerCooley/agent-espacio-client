@@ -28,8 +28,7 @@ import DescriptionIcon from '@mui/icons-material/Description';
 import DataObjectIcon from '@mui/icons-material/DataObject';
 import MovieIcon from '@mui/icons-material/Movie';
 import AudiotrackIcon from '@mui/icons-material/Audiotrack';
-import { artifactService, Artifact } from '../../services/artifacts';
-import { assetService, Asset } from '../../services/assets';
+import { folderService } from '../../services/folders';
 
 interface AssociationExplorerProps {
   open: boolean;
@@ -48,55 +47,62 @@ interface ExplorerItem {
 }
 
 export default function AssociationExplorer({ open, onClose, onSelect }: AssociationExplorerProps) {
-  const [items, setItems] = useState<ExplorerItem[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [searchResults, setSearchResults] = useState<ExplorerItem[]>([]);
+  const [searchLoading, setSearchLoading] = useState(false);
   const [search, setSearch] = useState('');
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  // Debounced search when dialog is open and user types
   useEffect(() => {
-    if (!open) return;
+    if (!open || search.trim().length < 2) {
+      setSearchResults([]);
+      return;
+    }
 
-    setLoading(true);
+    setSearchLoading(true);
     setError(null);
 
-    Promise.all([
-      artifactService.listArtifacts(),
-      assetService.listAssets(),
-    ])
-      .then(([artifactsRes, assetsRes]) => {
-        const artifacts: ExplorerItem[] = (artifactsRes.artifacts || []).map((a: Artifact) => ({
-          type: 'artifact',
-          id: a.id,
-          name: a.name,
-          kind: a.type,
-        }));
+    const timer = setTimeout(async () => {
+      try {
+        const rootFolderId = '00000000-0000-0000-0000-000000000001';
+        const res = await folderService.searchFolderItems(rootFolderId, search.trim());
 
-        const assets: ExplorerItem[] = (assetsRes.assets || []).map((a: Asset) => ({
-          type: 'asset',
-          id: a.id,
-          name: a.name,
-          kind: a.mime_type?.split('/')[0] || 'file',
-          mime_type: a.mime_type,
-          is_image: a.is_image,
-          public_magic_id: a.public_magic_id,
-        }));
+        const artifacts: ExplorerItem[] = (res.items || [])
+          .filter((item: any) => item.kind === 'artifact')
+          .map((item: any) => ({
+            type: 'artifact' as const,
+            id: item.id,
+            name: item.name,
+            kind: item.type,
+          }));
 
-        setItems([...artifacts, ...assets]);
-      })
-      .catch(() => {
-        setError('Failed to load items');
-      })
-      .finally(() => {
-        setLoading(false);
-      });
-  }, [open]);
+        const assets: ExplorerItem[] = (res.items || [])
+          .filter((item: any) => item.kind === 'asset')
+          .map((item: any) => ({
+            type: 'asset' as const,
+            id: item.id,
+            name: item.name,
+            kind: item.mime_type?.split('/')[0] || 'file',
+            mime_type: item.mime_type,
+            is_image: item.mime_type?.startsWith('image/'),
+            public_magic_id: item.public_magic_id ?? null,
+          }));
 
-  const filteredItems = items.filter((item) =>
-    item.name.toLowerCase().includes(search.toLowerCase())
-  );
+        setSearchResults([...artifacts, ...assets]);
+      } catch {
+        setError('Failed to search items');
+      } finally {
+        setSearchLoading(false);
+      }
+    }, 300);
 
-  const selectedItem = items.find((i) => i.id === selectedId);
+    return () => clearTimeout(timer);
+  }, [open, search]);
+
+  const filteredItems = searchResults;
+
+  const selectedItem = searchResults.find((i) => i.id === selectedId);
 
   const getIcon = (item: ExplorerItem) => {
     if (item.type === 'artifact') {
@@ -138,10 +144,14 @@ export default function AssociationExplorer({ open, onClose, onSelect }: Associa
         />
 
         {/* Content */}
-        {loading ? (
-          <Typography color="text.secondary">Loading...</Typography>
+        {searchLoading ? (
+          <Typography color="text.secondary">Searching...</Typography>
         ) : error ? (
           <Typography color="error">{error}</Typography>
+        ) : search.trim().length < 2 ? (
+          <Box sx={{ textAlign: 'center', py: 4, color: 'text.secondary' }}>
+            <Typography variant="body2">Type at least 2 characters to search</Typography>
+          </Box>
         ) : filteredItems.length === 0 ? (
           <Box sx={{ textAlign: 'center', py: 4, color: 'text.secondary' }}>
             <Typography variant="body2">No items found</Typography>

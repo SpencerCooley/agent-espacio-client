@@ -27,6 +27,7 @@ import {
 import { Artifact, artifactService } from '../../services/artifacts';
 import { feedService } from '../../services/feed';
 import { Asset, assetService } from '../../services/assets';
+import { folderService } from '../../services/folders';
 import { useSignedAssetUrl } from '../../hooks/useSignedAssetUrl';
 
 interface ComposerMetaPanelProps {
@@ -51,8 +52,11 @@ export default function ComposerMetaPanel({ artifact, onArtifactUpdate }: Compos
   const [coverAssetId, setCoverAssetId] = useState<string | null>(
     typeof artifact.meta?.cover_asset_id === 'string' ? artifact.meta.cover_asset_id : null
   );
-  const [imageAssets, setImageAssets] = useState<Asset[]>([]);
-  const [loadingImages, setLoadingImages] = useState(false);
+  const [knownImageAssets, setKnownImageAssets] = useState<Asset[]>([]);
+  const [imageSearchQuery, setImageSearchQuery] = useState('');
+  const [imageSearchResults, setImageSearchResults] = useState<Asset[]>([]);
+  const [imageSearchLoading, setImageSearchLoading] = useState(false);
+  const [imageSearchOpen, setImageSearchOpen] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [isDragOver, setIsDragOver] = useState(false);
   const dragCounterRef = useRef(0);
@@ -66,16 +70,81 @@ export default function ComposerMetaPanel({ artifact, onArtifactUpdate }: Compos
       .finally(() => setCheckingFeed(false));
   }, [artifact.id]);
 
-  // Load image assets for picker
+  // Load currently selected cover asset on mount so it can display in the picker
   useEffect(() => {
-    setLoadingImages(true);
-    assetService.listAssets(undefined, 'image/')
-      .then((res) => {
-        setImageAssets(res.assets || []);
+    const currentId = typeof artifact.meta?.cover_asset_id === 'string' ? artifact.meta.cover_asset_id : null;
+    if (!currentId) return;
+    assetService.getAsset(currentId)
+      .then((asset) => {
+        setKnownImageAssets((prev) => {
+          if (prev.find((a) => a.id === asset.id)) return prev;
+          return [...prev, asset];
+        });
       })
-      .catch((err) => console.error('Failed to load image assets', err))
-      .finally(() => setLoadingImages(false));
-  }, []);
+      .catch((err) => console.error('Failed to load current cover asset', err));
+  }, [artifact.meta?.cover_asset_id]);
+
+  // Debounced search for image assets
+  useEffect(() => {
+    if (!imageSearchOpen || imageSearchQuery.trim().length < 2) {
+      setImageSearchResults([]);
+      return;
+    }
+
+    setImageSearchLoading(true);
+    const timer = setTimeout(async () => {
+      try {
+        const rootFolderId = '00000000-0000-0000-0000-000000000001';
+        const res = await folderService.searchFolderItems(rootFolderId, imageSearchQuery.trim());
+
+        const imageItems: Asset[] = (res.items || [])
+          .filter((item: any) => item.kind === 'asset')
+          .filter((item: any) => {
+            const mime = item.mime_type || '';
+            return mime.startsWith('image/');
+          })
+          .map((item: any) => ({
+            id: item.id,
+            name: item.name,
+            storage_filename: '',
+            mime_type: item.mime_type,
+            size_bytes: 0,
+            human_readable_size: '',
+            folder_id: null,
+            is_image: true,
+            is_markdown: false,
+            file_extension: '',
+            file_meta: null,
+            is_public: item.is_public ?? false,
+            public_magic_id: item.public_magic_id ?? null,
+            descendant_of: null,
+            created_at: item.created_at,
+            updated_at: item.updated_at,
+            created_by_id: null,
+          }));
+
+        setImageSearchResults(imageItems);
+
+        // Merge into known cache so selected assets survive dropdown closes
+        setKnownImageAssets((prev) => {
+          const merged = [...prev];
+          for (const item of imageItems) {
+            if (!merged.find((a) => a.id === item.id)) {
+              merged.push(item);
+            }
+          }
+          return merged;
+        });
+      } catch (e) {
+        console.error('Image search failed', e);
+        setImageSearchResults([]);
+      } finally {
+        setImageSearchLoading(false);
+      }
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [imageSearchQuery, imageSearchOpen]);
 
   // Toggle feed inclusion
   const handleFeedToggle = useCallback(async () => {
@@ -205,7 +274,8 @@ export default function ComposerMetaPanel({ artifact, onArtifactUpdate }: Compos
       const result = await assetService.uploadAsset(file, artifact.folder_id || undefined);
       const uploadedAsset = result.asset || result;
       if (uploadedAsset?.id) {
-        setImageAssets((prev) => [uploadedAsset, ...prev]);
+        setKnownImageAssets((prev) => [uploadedAsset, ...prev]);
+        setImageSearchResults((prev) => [uploadedAsset, ...prev]);
         await saveCoverAssetId(uploadedAsset.id);
       }
     } catch (err: any) {
@@ -322,7 +392,7 @@ export default function ComposerMetaPanel({ artifact, onArtifactUpdate }: Compos
               </Box>
 
               <Autocomplete
-                options={imageAssets}
+                options={imageSearchResults}
                 getOptionLabel={(item) =>
                   typeof item === 'string' ? item : item.name
                 }
@@ -337,9 +407,22 @@ export default function ComposerMetaPanel({ artifact, onArtifactUpdate }: Compos
                     </li>
                   );
                 }}
-                value={imageAssets.find((a) => a.id === coverAssetId) || null}
-                onChange={(_, value) => handleCoverSelect(value as Asset | null)}
-                loading={loadingImages}
+                value={knownImageAssets.find((a) => a.id === coverAssetId) || null}
+                onChange={(_, value) => {
+                  handleCoverSelect(value as Asset | null);
+                  if (value && typeof value !== 'string') {
+                    setImageSearchOpen(false);
+                  }
+                }}
+                onInputChange={(_, value) => {
+                  setImageSearchQuery(value);
+                }}
+                open={imageSearchOpen}
+                onOpen={() => setImageSearchOpen(true)}
+                onClose={() => setImageSearchOpen(false)}
+                filterOptions={(x) => x}
+                loading={imageSearchLoading}
+                noOptionsText={imageSearchQuery.trim().length < 2 ? 'Type at least 2 characters' : 'No results'}
                 fullWidth
                 size="small"
                 renderInput={(params) => (
