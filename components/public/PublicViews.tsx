@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState, useRef, useCallback } from 'react';
-import { Box, Typography, Paper, Chip, Button, IconButton } from '@mui/material';
+import { Box, Typography, Paper, Chip, Button, IconButton, Select, MenuItem, FormControl } from '@mui/material';
 import { Download as DownloadIcon, Close as CloseIcon, Article as ArticleIcon, Map as MapIcon, Movie as MovieIcon, Description as MarkdownIcon, DataObject as JsonIcon } from '@mui/icons-material';
 import InlineThumbnail from '../workspace/InlineThumbnail';
 import { SmartVideoPlayer } from '../ui/SmartVideoPlayer';
@@ -265,16 +265,12 @@ function renderNode(node: any, isPreview?: boolean): string {
     case 'horizontalRule':
       return '<hr />';
     case 'image':
-      let src = attrs.src || '';
+      // Backend enrichment injects signed_url for preview/public views
+      let src = attrs.signed_url || attrs.src || '';
       const alt = escapeHtml(attrs.alt || '');
-      const assetMatch = src.match(/\/assets\/([a-f0-9-]+)\/download/);
-      if (assetMatch) {
-        const assetId = assetMatch[1];
-        if (isPreview) {
-          src = `${API_BASE_URL}/assets/${assetId}/download`;
-        } else {
-          src = `${API_BASE_URL}/public/assets/${assetId}/download`;
-        }
+      // Ensure signed_url is absolute
+      if (src.startsWith('/')) {
+        src = `${API_BASE_URL}${src}`;
       }
       const align = attrs.textAlign;
       let imgStyle = 'max-width: 100%; display: block; margin: 8px 0;';
@@ -337,10 +333,73 @@ function getFeatureStrokeWidth(feature: any): number {
   return feature?.properties?.style?.strokeWidth ?? 2;
 }
 
+const CARTO_VOYAGER_URL = 'https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json';
+const CARTO_DARK_MATTER_URL = 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json';
+
+const GOOGLE_SATELLITE_STYLE = {
+  version: 8 as const,
+  sources: {
+    satellite: {
+      type: 'raster' as const,
+      tiles: [
+        'https://mt0.google.com/vt/lyrs=s&x={x}&y={y}&z={z}',
+        'https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}',
+        'https://mt2.google.com/vt/lyrs=s&x={x}&y={y}&z={z}',
+        'https://mt3.google.com/vt/lyrs=s&x={x}&y={y}&z={z}',
+      ],
+      tileSize: 256,
+      attribution: 'Imagery © Google',
+      maxzoom: 22,
+    },
+  },
+  layers: [
+    { id: 'satellite', type: 'raster' as const, source: 'satellite', minzoom: 0, maxzoom: 22 },
+  ],
+};
+
+const OSM_STYLE = {
+  version: 8 as const,
+  sources: {
+    osm: {
+      type: 'raster' as const,
+      tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
+      tileSize: 256,
+      attribution: '© OpenStreetMap contributors',
+      maxzoom: 19,
+    },
+  },
+  layers: [
+    { id: 'osm', type: 'raster' as const, source: 'osm', minzoom: 0, maxzoom: 19 },
+  ],
+};
+
+const MAP_STYLES = [
+  { key: 'carto-voyager', label: 'Streets' },
+  { key: 'dark-matter', label: 'Dark' },
+  { key: 'osm', label: 'OSM' },
+  { key: 'google-satellite', label: 'Satellite' },
+];
+
+function getStyleUrl(mapStyle: string) {
+  switch (mapStyle) {
+    case 'google-satellite':
+      return GOOGLE_SATELLITE_STYLE;
+    case 'dark-matter':
+      return CARTO_DARK_MATTER_URL;
+    case 'osm':
+      return OSM_STYLE;
+    case 'carto-voyager':
+    default:
+      return CARTO_VOYAGER_URL;
+  }
+}
+
 export function MapPublicView({ content, name, description, isPreview, themeMode }: MapViewProps) {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const tooltipContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
+  const markersRef = useRef<maplibregl.Marker[]>([]);
+  const cleanupRef = useRef<(() => void) | null>(null);
   const [tooltip, setTooltip] = useState<{
     visible: boolean;
     x: number;
@@ -356,6 +415,8 @@ export function MapPublicView({ content, name, description, isPreview, themeMode
     associations: Association[];
   }>({ open: false, featureName: '', featureDescription: '', associations: [] });
   const cursorRef = useRef<'default' | 'pointer'>('default');
+  const currentStyleRef = useRef(content?.style || 'carto-voyager');
+  const [viewerStyle, setViewerStyle] = useState(content?.style || 'carto-voyager');
 
   const viewport = content?.viewport || {
     latitude: 20,
@@ -364,63 +425,7 @@ export function MapPublicView({ content, name, description, isPreview, themeMode
     pitch: 0,
     bearing: 0,
   };
-  const style = content?.style || 'carto-voyager';
-
-  const CARTO_VOYAGER_URL = 'https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json';
-  const CARTO_DARK_MATTER_URL = 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json';
-
-  const GOOGLE_SATELLITE_STYLE = {
-    version: 8 as const,
-    sources: {
-      satellite: {
-        type: 'raster' as const,
-        tiles: [
-          'https://mt0.google.com/vt/lyrs=s&x={x}&y={y}&z={z}',
-          'https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}',
-          'https://mt2.google.com/vt/lyrs=s&x={x}&y={y}&z={z}',
-          'https://mt3.google.com/vt/lyrs=s&x={x}&y={y}&z={z}',
-        ],
-        tileSize: 256,
-        attribution: 'Imagery © Google',
-        maxzoom: 22,
-      },
-    },
-    layers: [
-      { id: 'satellite', type: 'raster' as const, source: 'satellite', minzoom: 0, maxzoom: 22 },
-    ],
-  };
-
-  const OSM_STYLE = {
-    version: 8 as const,
-    sources: {
-      osm: {
-        type: 'raster' as const,
-        tiles: [
-          'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-        ],
-        tileSize: 256,
-        attribution: '© OpenStreetMap contributors',
-        maxzoom: 19,
-      },
-    },
-    layers: [
-      { id: 'osm', type: 'raster' as const, source: 'osm', minzoom: 0, maxzoom: 19 },
-    ],
-  };
-
-  function getStyleUrl(mapStyle: string) {
-    switch (mapStyle) {
-      case 'google-satellite':
-        return GOOGLE_SATELLITE_STYLE;
-      case 'dark-matter':
-        return CARTO_DARK_MATTER_URL;
-      case 'osm':
-        return OSM_STYLE;
-      case 'carto-voyager':
-      default:
-        return CARTO_VOYAGER_URL;
-    }
-  }
+  const savedStyle = content?.style || 'carto-voyager';
 
   function getTooltipCoords(clientX: number, clientY: number) {
     if (!tooltipContainerRef.current) return { x: clientX, y: clientY };
@@ -428,72 +433,229 @@ export function MapPublicView({ content, name, description, isPreview, themeMode
     return { x: clientX - rect.left, y: clientY - rect.top };
   }
 
-  useEffect(() => {
-    if (!mapContainerRef.current) return;
-
-    const map = new maplibregl.Map({
-      container: mapContainerRef.current,
-      style: getStyleUrl(style),
-      center: [viewport.longitude, viewport.latitude],
-      zoom: viewport.zoom,
-      pitch: viewport.pitch,
-      bearing: viewport.bearing,
-    });
-
-    map.addControl(new maplibregl.NavigationControl(), 'top-right');
-    mapRef.current = map;
+  const renderGeoJSON = useCallback((map: maplibregl.Map) => {
+    // Clear any existing markers
+    markersRef.current.forEach((m) => m.remove());
+    markersRef.current = [];
 
     const geojson = content?.geojson;
-    if (geojson && geojson.features && geojson.features.length > 0) {
-      const points = geojson.features.filter((f: any) => f.geometry?.type === 'Point');
-      const linesAndPolygons = geojson.features.filter(
-        (f: any) => f.geometry?.type === 'LineString' || f.geometry?.type === 'MultiLineString' || f.geometry?.type === 'Polygon' || f.geometry?.type === 'MultiPolygon'
+    if (!geojson?.features?.length) return () => {};
+
+    const points = geojson.features.filter((f: any) => f.geometry?.type === 'Point');
+    const linesAndPolygons = geojson.features.filter(
+      (f: any) => f.geometry?.type === 'LineString' || f.geometry?.type === 'MultiLineString' || f.geometry?.type === 'Polygon' || f.geometry?.type === 'MultiPolygon'
+    );
+
+    const eventHandlers: { event: string; layerId: string; handler: any }[] = [];
+
+    points.forEach((feature: any) => {
+      const coords = feature.geometry.coordinates;
+      const color = getFeatureColor(feature);
+      const el = document.createElement('div');
+      el.style.width = '24px';
+      el.style.height = '24px';
+      el.style.borderRadius = '50%';
+      el.style.backgroundColor = color;
+      el.style.border = '2px solid white';
+      el.style.boxShadow = '0 2px 4px rgba(0,0,0,0.3)';
+      el.style.cursor = 'pointer';
+
+      const marker = new maplibregl.Marker({ element: el })
+        .setLngLat([coords[0], coords[1]])
+        .addTo(map);
+      markersRef.current.push(marker);
+
+      el.addEventListener('mousemove', (e) => {
+        const coords = getTooltipCoords(e.clientX, e.clientY);
+        setTooltip({
+          visible: true,
+          x: coords.x,
+          y: coords.y,
+          name: feature.properties?.name || 'Point',
+          description: feature.properties?.description || '',
+        });
+        if (cursorRef.current !== 'pointer') {
+          map.getCanvas().style.cursor = 'pointer';
+          cursorRef.current = 'pointer';
+        }
+        setHoveredFeatureId(feature.id);
+      });
+
+      el.addEventListener('mouseleave', () => {
+        setTooltip((prev) => ({ ...prev, visible: false }));
+        if (cursorRef.current !== 'default') {
+          map.getCanvas().style.cursor = '';
+          cursorRef.current = 'default';
+        }
+        setHoveredFeatureId(null);
+      });
+
+      el.addEventListener('click', () => {
+        const props = feature.properties;
+        const rawAssociations = props?.associations;
+        const associations: Association[] = rawAssociations
+          ? (typeof rawAssociations === 'string' ? JSON.parse(rawAssociations) : rawAssociations)
+          : [];
+        if (associations.length === 1) {
+          const assoc = associations[0];
+          const url = isPreview
+            ? (assoc.type === 'asset' ? `/workspace/assets/${assoc.id}` : `/workspace/artifacts/${assoc.id}/preview`)
+            : `/public/view/${assoc.public_magic_id || assoc.id}`;
+          window.open(url, '_blank');
+        } else if (associations.length > 1) {
+          setAssociationPanel({
+            open: true,
+            featureName: feature.properties?.name || 'Point',
+            featureDescription: feature.properties?.description || '',
+            associations,
+          });
+        }
+      });
+    });
+
+    linesAndPolygons.forEach((feature: any) => {
+      const id = `feature-${feature.id || Math.random().toString(36).substr(2, 9)}`;
+      const sourceId = `${id}-source`;
+
+      map.addSource(sourceId, {
+        type: 'geojson',
+        data: feature,
+      });
+
+      const geometryType = feature.geometry?.type;
+      const color = getFeatureColor(feature);
+      const fillOpacity = getFeatureFillOpacity(feature);
+      const strokeWidth = getFeatureStrokeWidth(feature);
+
+      if (geometryType === 'Polygon' || geometryType === 'MultiPolygon') {
+        map.addLayer({
+          id: `${id}-fill`,
+          type: 'fill',
+          source: sourceId,
+          paint: {
+            'fill-color': color,
+            'fill-opacity': fillOpacity,
+          },
+        });
+
+        map.addLayer({
+          id: `${id}-outline`,
+          type: 'line',
+          source: sourceId,
+          paint: {
+            'line-color': color,
+            'line-width': strokeWidth,
+          },
+        });
+      } else if (geometryType === 'LineString' || geometryType === 'MultiLineString') {
+        map.addLayer({
+          id: `${id}-line`,
+          type: 'line',
+          source: sourceId,
+          paint: {
+            'line-color': color,
+            'line-width': strokeWidth,
+          },
+        });
+      }
+
+      const onFillMove = (e: any) => {
+        if (e.features && e.features.length > 0) {
+          const f = e.features[0];
+          const originalEvent = (e as any).originalEvent as MouseEvent | undefined;
+          const coords = originalEvent
+            ? getTooltipCoords(originalEvent.clientX, originalEvent.clientY)
+            : { x: e.point.x, y: e.point.y };
+          setTooltip({
+            visible: true,
+            x: coords.x,
+            y: coords.y,
+            name: f.properties?.name || (geometryType === 'Polygon' ? 'Polygon' : 'Line'),
+            description: f.properties?.description || '',
+          });
+          if (cursorRef.current !== 'pointer') {
+            map.getCanvas().style.cursor = 'pointer';
+            cursorRef.current = 'pointer';
+          }
+          setHoveredFeatureId(id);
+        }
+      };
+      const onFillLeave = () => {
+        setTooltip((prev) => ({ ...prev, visible: false }));
+        if (cursorRef.current !== 'default') {
+          map.getCanvas().style.cursor = '';
+          cursorRef.current = 'default';
+        }
+        setHoveredFeatureId(null);
+      };
+      const onFillClick = (e: any) => {
+        if (e.features && e.features.length > 0) {
+          const f = e.features[0];
+          const props = f.properties;
+          const rawAssociations = props?.associations;
+          const associations: Association[] = rawAssociations
+            ? (typeof rawAssociations === 'string' ? JSON.parse(rawAssociations) : rawAssociations)
+            : [];
+          if (associations.length === 1) {
+            const assoc = associations[0];
+            const url = isPreview
+              ? (assoc.type === 'asset' ? `/workspace/assets/${assoc.id}` : `/workspace/artifacts/${assoc.id}/preview`)
+              : `/public/view/${assoc.public_magic_id || assoc.id}`;
+            window.open(url, '_blank');
+          } else if (associations.length > 1) {
+            setAssociationPanel({
+              open: true,
+              featureName: f.properties?.name || (geometryType === 'Polygon' ? 'Polygon' : 'Line'),
+              featureDescription: f.properties?.description || '',
+              associations,
+            });
+          }
+        }
+      };
+
+      map.on('mousemove', `${id}-fill`, onFillMove);
+      map.on('mouseleave', `${id}-fill`, onFillLeave);
+      map.on('click', `${id}-fill`, onFillClick);
+      eventHandlers.push(
+        { event: 'mousemove', layerId: `${id}-fill`, handler: onFillMove },
+        { event: 'mouseleave', layerId: `${id}-fill`, handler: onFillLeave },
+        { event: 'click', layerId: `${id}-fill`, handler: onFillClick }
       );
 
-      map.once('style.load', () => {
-        points.forEach((feature: any) => {
-          const coords = feature.geometry.coordinates;
-          const color = getFeatureColor(feature);
-          const el = document.createElement('div');
-          el.style.width = '24px';
-          el.style.height = '24px';
-          el.style.borderRadius = '50%';
-          el.style.backgroundColor = color;
-          el.style.border = '2px solid white';
-          el.style.boxShadow = '0 2px 4px rgba(0,0,0,0.3)';
-          el.style.cursor = 'pointer';
-
-          const marker = new maplibregl.Marker({ element: el })
-            .setLngLat([coords[0], coords[1]])
-            .addTo(map);
-
-          el.addEventListener('mousemove', (e) => {
-            const coords = getTooltipCoords(e.clientX, e.clientY);
+      if (geometryType === 'LineString' || geometryType === 'MultiLineString') {
+        const onLineMove = (e: any) => {
+          if (e.features && e.features.length > 0) {
+            const f = e.features[0];
+            const originalEvent = (e as any).originalEvent as MouseEvent | undefined;
+            const coords = originalEvent
+              ? getTooltipCoords(originalEvent.clientX, originalEvent.clientY)
+              : { x: e.point.x, y: e.point.y };
             setTooltip({
               visible: true,
               x: coords.x,
               y: coords.y,
-              name: feature.properties?.name || 'Point',
-              description: feature.properties?.description || '',
+              name: f.properties?.name || 'Line',
+              description: f.properties?.description || '',
             });
             if (cursorRef.current !== 'pointer') {
               map.getCanvas().style.cursor = 'pointer';
               cursorRef.current = 'pointer';
             }
-            setHoveredFeatureId(feature.id);
-          });
-
-          el.addEventListener('mouseleave', () => {
-            setTooltip(prev => ({ ...prev, visible: false }));
-            if (cursorRef.current !== 'default') {
-              map.getCanvas().style.cursor = '';
-              cursorRef.current = 'default';
-            }
-            setHoveredFeatureId(null);
-          });
-
-          el.addEventListener('click', () => {
-            const props = feature.properties;
+            setHoveredFeatureId(id);
+          }
+        };
+        const onLineLeave = () => {
+          setTooltip((prev) => ({ ...prev, visible: false }));
+          if (cursorRef.current !== 'default') {
+            map.getCanvas().style.cursor = '';
+            cursorRef.current = 'default';
+          }
+          setHoveredFeatureId(null);
+        };
+        const onLineClick = (e: any) => {
+          if (e.features && e.features.length > 0) {
+            const f = e.features[0];
+            const props = f.properties;
             const rawAssociations = props?.associations;
             const associations: Association[] = rawAssociations
               ? (typeof rawAssociations === 'string' ? JSON.parse(rawAssociations) : rawAssociations)
@@ -507,186 +669,95 @@ export function MapPublicView({ content, name, description, isPreview, themeMode
             } else if (associations.length > 1) {
               setAssociationPanel({
                 open: true,
-                featureName: feature.properties?.name || 'Point',
-                featureDescription: feature.properties?.description || '',
+                featureName: f.properties?.name || 'Line',
+                featureDescription: f.properties?.description || '',
                 associations,
               });
             }
-          });
-        });
-
-        linesAndPolygons.forEach((feature: any) => {
-          const id = `feature-${feature.id || Math.random().toString(36).substr(2, 9)}`;
-          const sourceId = `${id}-source`;
-
-          map.addSource(sourceId, {
-            type: 'geojson',
-            data: feature,
-          });
-
-          const geometryType = feature.geometry?.type;
-          const color = getFeatureColor(feature);
-          const fillOpacity = getFeatureFillOpacity(feature);
-          const strokeWidth = getFeatureStrokeWidth(feature);
-
-          if (geometryType === 'Polygon' || geometryType === 'MultiPolygon') {
-            map.addLayer({
-              id: `${id}-fill`,
-              type: 'fill',
-              source: sourceId,
-              paint: {
-                'fill-color': color,
-                'fill-opacity': fillOpacity,
-              },
-            });
-
-            map.addLayer({
-              id: `${id}-outline`,
-              type: 'line',
-              source: sourceId,
-              paint: {
-                'line-color': color,
-                'line-width': strokeWidth,
-              },
-            });
-          } else if (geometryType === 'LineString' || geometryType === 'MultiLineString') {
-            map.addLayer({
-              id: `${id}-line`,
-              type: 'line',
-              source: sourceId,
-              paint: {
-                'line-color': color,
-                'line-width': strokeWidth,
-              },
-            });
           }
+        };
 
-          map.on('mousemove', `${id}-fill`, (e) => {
-            if (e.features && e.features.length > 0) {
-              const f = e.features[0];
-              const originalEvent = (e as any).originalEvent as MouseEvent | undefined;
-              const coords = originalEvent
-                ? getTooltipCoords(originalEvent.clientX, originalEvent.clientY)
-                : { x: e.point.x, y: e.point.y };
-              setTooltip({
-                visible: true,
-                x: coords.x,
-                y: coords.y,
-                name: f.properties?.name || (geometryType === 'Polygon' ? 'Polygon' : 'Line'),
-                description: f.properties?.description || '',
-              });
-              if (cursorRef.current !== 'pointer') {
-                map.getCanvas().style.cursor = 'pointer';
-                cursorRef.current = 'pointer';
-              }
-              setHoveredFeatureId(id);
-            }
-          });
-
-          map.on('mouseleave', `${id}-fill`, () => {
-            setTooltip(prev => ({ ...prev, visible: false }));
-            if (cursorRef.current !== 'default') {
-              map.getCanvas().style.cursor = '';
-              cursorRef.current = 'default';
-            }
-            setHoveredFeatureId(null);
-          });
-
-          map.on('click', `${id}-fill`, (e) => {
-            if (e.features && e.features.length > 0) {
-              const f = e.features[0];
-              const props = f.properties;
-              const rawAssociations = props?.associations;
-              const associations: Association[] = rawAssociations
-                ? (typeof rawAssociations === 'string' ? JSON.parse(rawAssociations) : rawAssociations)
-                : [];
-              if (associations.length === 1) {
-                const assoc = associations[0];
-                const url = isPreview
-                  ? (assoc.type === 'asset' ? `/workspace/assets/${assoc.id}` : `/workspace/artifacts/${assoc.id}/preview`)
-                  : `/public/view/${assoc.public_magic_id || assoc.id}`;
-                window.open(url, '_blank');
-              } else if (associations.length > 1) {
-                setAssociationPanel({
-                  open: true,
-                  featureName: f.properties?.name || (geometryType === 'Polygon' ? 'Polygon' : 'Line'),
-                  featureDescription: f.properties?.description || '',
-                  associations,
-                });
-              }
-            }
-          });
-
-          // Line layer events (for LineString and MultiLineString)
-          if (geometryType === 'LineString' || geometryType === 'MultiLineString') {
-            map.on('mousemove', `${id}-line`, (e) => {
-              if (e.features && e.features.length > 0) {
-                const f = e.features[0];
-                const originalEvent = (e as any).originalEvent as MouseEvent | undefined;
-                const coords = originalEvent
-                  ? getTooltipCoords(originalEvent.clientX, originalEvent.clientY)
-                  : { x: e.point.x, y: e.point.y };
-                setTooltip({
-                  visible: true,
-                  x: coords.x,
-                  y: coords.y,
-                  name: f.properties?.name || 'Line',
-                  description: f.properties?.description || '',
-                });
-                if (cursorRef.current !== 'pointer') {
-                  map.getCanvas().style.cursor = 'pointer';
-                  cursorRef.current = 'pointer';
-                }
-                setHoveredFeatureId(id);
-              }
-            });
-
-            map.on('mouseleave', `${id}-line`, () => {
-              setTooltip(prev => ({ ...prev, visible: false }));
-              if (cursorRef.current !== 'default') {
-                map.getCanvas().style.cursor = '';
-                cursorRef.current = 'default';
-              }
-              setHoveredFeatureId(null);
-            });
-
-            map.on('click', `${id}-line`, (e) => {
-              if (e.features && e.features.length > 0) {
-                const f = e.features[0];
-                const props = f.properties;
-                const rawAssociations = props?.associations;
-                const associations: Association[] = rawAssociations
-                  ? (typeof rawAssociations === 'string' ? JSON.parse(rawAssociations) : rawAssociations)
-                  : [];
-                if (associations.length === 1) {
-                  const assoc = associations[0];
-                  const url = isPreview
-                    ? (assoc.type === 'asset' ? `/workspace/assets/${assoc.id}` : `/workspace/artifacts/${assoc.id}/preview`)
-                    : `/public/view/${assoc.public_magic_id || assoc.id}`;
-                  window.open(url, '_blank');
-                } else if (associations.length > 1) {
-                  setAssociationPanel({
-                    open: true,
-                    featureName: f.properties?.name || 'Line',
-                    featureDescription: f.properties?.description || '',
-                    associations,
-                  });
-                }
-              }
-            });
-          }
-        });
-      });
-    }
+        map.on('mousemove', `${id}-line`, onLineMove);
+        map.on('mouseleave', `${id}-line`, onLineLeave);
+        map.on('click', `${id}-line`, onLineClick);
+        eventHandlers.push(
+          { event: 'mousemove', layerId: `${id}-line`, handler: onLineMove },
+          { event: 'mouseleave', layerId: `${id}-line`, handler: onLineLeave },
+          { event: 'click', layerId: `${id}-line`, handler: onLineClick }
+        );
+      }
+    });
 
     return () => {
-      map.remove();
+      markersRef.current.forEach((m) => m.remove());
+      markersRef.current = [];
+      eventHandlers.forEach(({ event, layerId, handler }) => {
+        map.off(event as any, layerId, handler);
+      });
     };
-  }, [content, viewport, style]);
+  }, [content, isPreview]);
+
+  // Initial map creation
+  useEffect(() => {
+    if (!mapContainerRef.current) return;
+
+    const map = new maplibregl.Map({
+      container: mapContainerRef.current,
+      style: getStyleUrl(savedStyle),
+      center: [viewport.longitude, viewport.latitude],
+      zoom: viewport.zoom,
+      pitch: viewport.pitch,
+      bearing: viewport.bearing,
+    });
+
+    map.addControl(new maplibregl.NavigationControl(), 'top-right');
+    mapRef.current = map;
+
+    map.once('style.load', () => {
+      cleanupRef.current = renderGeoJSON(map);
+      currentStyleRef.current = savedStyle;
+    });
+
+    return () => {
+      if (cleanupRef.current) {
+        cleanupRef.current();
+        cleanupRef.current = null;
+      }
+      map.remove();
+      mapRef.current = null;
+    };
+  }, [content, viewport, savedStyle, renderGeoJSON]);
+
+  // Viewer-driven style switch
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || viewerStyle === currentStyleRef.current) return;
+
+    const center = map.getCenter();
+    const zoom = map.getZoom();
+    const pitch = map.getPitch();
+    const bearing = map.getBearing();
+
+    if (cleanupRef.current) {
+      cleanupRef.current();
+      cleanupRef.current = null;
+    }
+
+    map.once('style.load', () => {
+      map.setCenter(center);
+      map.setZoom(zoom);
+      map.setPitch(pitch);
+      map.setBearing(bearing);
+      cleanupRef.current = renderGeoJSON(map);
+      currentStyleRef.current = viewerStyle;
+    });
+
+    map.setStyle(getStyleUrl(viewerStyle));
+  }, [viewerStyle, savedStyle, renderGeoJSON]);
 
   return (
     <Box ref={tooltipContainerRef} sx={{ width: '100%', flex: 1, position: 'relative', display: 'flex', flexDirection: 'column' }}>
-      <Box ref={mapContainerRef} sx={{ flex: 1, width: '100%' }} />
+      <Box ref={mapContainerRef} sx={{ flex: 1, width: '100%', position: 'relative', zIndex: 1 }} />
       
       {/* Name and description card */}
       {(name || description) && (
@@ -745,6 +816,57 @@ export function MapPublicView({ content, name, description, isPreview, themeMode
           )}
         </Box>
       )}
+
+      {/* Style switcher — compact select dropdown */}
+      <Box
+        sx={{
+          position: 'fixed',
+          bottom: 24,
+          left: 24,
+          zIndex: 9999,
+        }}
+      >
+        <Paper
+          sx={{
+            borderRadius: 1,
+            boxShadow: 2,
+            border: '1px solid',
+            borderColor: 'divider',
+            bgcolor: 'background.paper',
+            px: 1.5,
+            py: 1,
+          }}
+        >
+          <FormControl size="small" sx={{ minWidth: 140 }}>
+            <Select
+              value={viewerStyle}
+              onChange={(e) => setViewerStyle(e.target.value)}
+              displayEmpty
+              variant="standard"
+              MenuProps={{
+                anchorOrigin: { vertical: 'top', horizontal: 'left' },
+                transformOrigin: { vertical: 'bottom', horizontal: 'left' },
+                PaperProps: {
+                  sx: { mb: 1 },
+                },
+              }}
+              sx={{
+                fontSize: '0.8rem',
+                fontWeight: 500,
+                '&:before': { borderBottom: 'none' },
+                '&:after': { borderBottom: 'none' },
+                '&:hover:not(.Mui-disabled):before': { borderBottom: 'none' },
+              }}
+            >
+              {MAP_STYLES.map((s) => (
+                <MenuItem key={s.key} value={s.key} sx={{ fontSize: '0.8rem' }}>
+                  {s.label}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+        </Paper>
+      </Box>
 
       {/* Association panel */}
       {associationPanel.open && (

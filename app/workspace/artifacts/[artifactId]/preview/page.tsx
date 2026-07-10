@@ -97,7 +97,7 @@ export default function ArtifactPreviewPage() {
   }
 
   const artifact = data.artifact;
-  const isFullBleed = ['workflow', 'map', 'gallery', 'composer'].includes(artifact.type);
+  const isFullBleed = ['workflow', 'map'].includes(artifact.type);
 
   const content = () => {
     // Workflow artifacts render full page (no container)

@@ -8,14 +8,17 @@ import { useSignedAssetUrl } from '../../hooks/useSignedAssetUrl';
 export default function AssetImageNodeView(props: NodeViewProps) {
   const { node } = props;
 
-  // Backend enrichment injects pre-signed URLs into node attrs for public views
-  const preSignedUrl: string | undefined = node.attrs['signed_url'] || node.attrs['src'];
+  // Backend enrichment injects proper signed URLs into node.attrs['signed_url'].
+  // node.attrs['src'] is a raw download URL (requires auth) — never trust it as signed.
+  const preSignedUrl: string | undefined = node.attrs['signed_url'];
   const assetId: string | undefined = node.attrs['data-asset-id'];
   const thumbSize: number = node.attrs['data-thumb-size'] || 512;
 
-  // Use pre-signed URL if available (public view with backend enrichment),
-  // otherwise fetch a fresh signed URL (workspace/preview with auth)
-  const fullPreSignedUrl = preSignedUrl && preSignedUrl.startsWith('/') ? `${API_BASE_URL}${preSignedUrl}` : preSignedUrl;
+  // Use backend-injected signed_url if available (public/preview view),
+  // otherwise fetch a fresh signed URL via the hook (workspace editor)
+  const fullPreSignedUrl = preSignedUrl && preSignedUrl.startsWith('/')
+    ? `${API_BASE_URL}${preSignedUrl}`
+    : preSignedUrl;
   const liveSignedUrl = useSignedAssetUrl(fullPreSignedUrl ? null : assetId || null, thumbSize);
   const signedUrl = fullPreSignedUrl || liveSignedUrl || null;
 
