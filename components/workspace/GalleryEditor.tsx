@@ -692,56 +692,48 @@ export default function GalleryEditor({ artifact }: GalleryEditorProps) {
       <Dialog open={addDialogOpen} onClose={() => setAddDialogOpen(false)} maxWidth="sm" fullWidth>
         <DialogTitle>Add existing images</DialogTitle>
         <DialogContent>
-          {searchLoading ? (
-            <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
-              <CircularProgress size={32} />
-            </Box>
-          ) : searchQuery.trim().length < 2 ? (
-            <Typography color="text.secondary" align="center" sx={{ py: 4 }}>
-              Type at least 2 characters to search for images.
-            </Typography>
-          ) : searchResults.length === 0 ? (
-            <Typography color="text.secondary" align="center" sx={{ py: 4 }}>
-              No matching image assets found.
-            </Typography>
-          ) : (
-            <Autocomplete
-              options={searchResults}
-              getOptionLabel={(option) => option.name}
-              value={selectedAsset}
-              onChange={(_event, newValue) => {
-                setSelectedAsset(newValue);
-                if (newValue) setSearchOpen(false);
-              }}
-              onInputChange={(_, value) => setSearchQuery(value)}
-              open={searchOpen}
-              onOpen={() => setSearchOpen(true)}
-              onClose={() => setSearchOpen(false)}
-              filterOptions={(x) => x}
-              renderOption={(props, option) => (
-                <Box component="li" {...props} key={option.id} sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                  <GalleryThumb
-                    assetId={option.id}
-                    size={256}
-                    alt={option.name}
-                    sx={{ width: 40, height: 40, objectFit: 'cover', borderRadius: 0.5, flexShrink: 0 }}
-                  />
-                  <Typography variant="body2" noWrap>
-                    {option.name}
-                  </Typography>
-                </Box>
-              )}
-              renderInput={(params) => (
-                <TextField
-                  {...params}
-                  label="Search images"
-                  placeholder="Type to search by name..."
-                  margin="normal"
+          <Autocomplete
+            options={searchResults}
+            getOptionLabel={(option) => option.name}
+            value={selectedAsset}
+            onChange={(_event, newValue) => {
+              setSelectedAsset(newValue);
+              if (newValue) setSearchOpen(false);
+            }}
+            onInputChange={(_, value) => setSearchQuery(value)}
+            open={searchOpen}
+            onOpen={() => setSearchOpen(true)}
+            onClose={() => setSearchOpen(false)}
+            filterOptions={(x) => x}
+            loading={searchLoading}
+            noOptionsText={
+              searchQuery.trim().length < 2
+                ? 'Type at least 2 characters'
+                : 'No matching images'
+            }
+            renderOption={(props, option) => (
+              <Box component="li" {...props} key={option.id} sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                <GalleryThumb
+                  assetId={option.id}
+                  size={256}
+                  alt={option.name}
+                  sx={{ width: 40, height: 40, objectFit: 'cover', borderRadius: 0.5, flexShrink: 0 }}
                 />
-              )}
-              fullWidth
-            />
-          )}
+                <Typography variant="body2" noWrap>
+                  {option.name}
+                </Typography>
+              </Box>
+            )}
+            renderInput={(params) => (
+              <TextField
+                {...params}
+                label="Search images"
+                placeholder="Type to search by name..."
+                margin="normal"
+              />
+            )}
+            fullWidth
+          />
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setAddDialogOpen(false)} sx={{ textTransform: 'none' }}>
