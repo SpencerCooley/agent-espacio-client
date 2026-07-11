@@ -603,8 +603,8 @@ function MasonryLayout({
                     isPreview={isPreview}
                     alt={item.caption || `Image ${index + 1}`}
                     sx={{
-                      width: '100%',
-                      height: '100%',
+                      maxWidth: '100%',
+                      maxHeight: '80vh',
                       objectFit: 'contain',
                       borderRadius: 1,
                     }}
