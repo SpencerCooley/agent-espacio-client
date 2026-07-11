@@ -32,6 +32,26 @@ interface ComposerPublicViewProps {
   themeMode?: 'light' | 'dark';
 }
 
+function CoverImage({ coverUrl }: { coverUrl: string }) {
+  if (!coverUrl) return null;
+
+  return (
+    <Box
+      component="img"
+      src={coverUrl}
+      alt=""
+      sx={{
+        width: '100%',
+        height: 300,
+        objectFit: 'cover',
+        borderRadius: 2,
+        mb: 3,
+        display: 'block',
+      }}
+    />
+  );
+}
+
 function SectionView({
   section,
   isPreview,
@@ -239,6 +259,9 @@ export default function ComposerPublicView({
   }
 
   const composer = data.composer;
+  const coverUrl = composer.cover_url
+    ? `${API_BASE_URL}${composer.cover_url}`
+    : null;
 
   return (
     <Box sx={{ maxWidth: 1200, mx: 'auto', px: { xs: 2, md: 6 }, py: 4 }}>
@@ -246,9 +269,13 @@ export default function ComposerPublicView({
         {composer.name}
       </Typography>
       {composer.description && (
-        <Typography variant="body1" color="text.secondary" sx={{ mb: 4 }}>
+        <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
           {composer.description}
         </Typography>
+      )}
+
+      {coverUrl && (
+        <CoverImage coverUrl={coverUrl} />
       )}
 
       <Divider sx={{ mb: 4 }} />
