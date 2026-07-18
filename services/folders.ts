@@ -32,6 +32,8 @@ export interface FolderItem {
   is_image?: boolean;
   is_markdown?: boolean;
   file_meta?: FileMeta | null;
+  is_public?: boolean;
+  public_magic_id?: string | null;
   created_at: string;
   updated_at: string;
 }
