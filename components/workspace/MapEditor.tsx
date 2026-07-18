@@ -520,7 +520,6 @@ export default function MapEditor({ artifact }: MapEditorProps) {
 
       marker.getElement().addEventListener('click', (e) => {
         e.stopPropagation();
-        console.log('[Marker click] selecting feature:', feature.id, feature.properties?.name);
         handleSelectFeature(feature.id);
       });
 
@@ -1394,15 +1393,12 @@ export default function MapEditor({ artifact }: MapEditorProps) {
 
   const handleAddAssociation = (item: { type: 'artifact' | 'asset'; id: string; name: string; kind?: string; mime_type?: string; is_image?: boolean; public_magic_id?: string | null }) => {
     const currentSelectedId = selectedFeatureIdRef.current;
-    console.log('[handleAddAssociation] selectedFeatureIdRef.current:', currentSelectedId);
     if (!currentSelectedId) {
-      console.log('[handleAddAssociation] returning early because selectedFeatureIdRef.current is null');
       return;
     }
 
     const currentGeoJSON = geoJSONRef.current;
     const targetFeature = currentGeoJSON.features.find((f: any) => f.id === currentSelectedId);
-    console.log('[handleAddAssociation] targetFeature:', targetFeature?.geometry?.type, targetFeature?.properties?.name);
 
     const newGeoJSON = {
       ...currentGeoJSON,
@@ -1547,12 +1543,8 @@ export default function MapEditor({ artifact }: MapEditorProps) {
         // Only deselect if the click was not on a marker (point geometry)
         const target = e.originalEvent?.target as HTMLElement;
         const isMarkerClick = !!target?.closest('.maplibregl-marker');
-        console.log('[Map click] simple_select mode, target:', target?.className, 'isMarkerClick:', isMarkerClick);
         if (!isMarkerClick) {
-          console.log('[Map click] deselecting');
           handleSelectFeature(null);
-        } else {
-          console.log('[Map click] ignoring marker click');
         }
       }
     });
