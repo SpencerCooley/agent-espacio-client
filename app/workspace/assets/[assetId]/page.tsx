@@ -214,6 +214,10 @@ function AssetViewerContent() {
     ? `${typeof window !== 'undefined' ? window.location.origin : ''}/public/view/${assetId}`
     : '';
 
+  // Video / audio detection (needed by left panel and main view)
+  const isVideoAsset = asset?.mime_type?.startsWith('video/');
+  const isAudioAsset = asset?.mime_type?.startsWith('audio/');
+
   // Left panel: file metadata + share
   const leftPanel = asset ? (
     <Box sx={{ p: 2 }}>
@@ -286,6 +290,25 @@ function AssetViewerContent() {
               </Box>
             );
           })}
+        </>
+      )}
+
+      {(isVideoAsset || isAudioAsset) && (
+        <>
+          <Divider sx={{ my: 2 }} />
+          <Typography variant="subtitle2" sx={{ mb: 1.5, fontWeight: 600 }}>
+            Download
+          </Typography>
+          <Button
+            size="small"
+            variant="outlined"
+            fullWidth
+            startIcon={<Download />}
+            onClick={() => handleDownload(asset.id, asset.name)}
+            sx={{ justifyContent: 'flex-start', textTransform: 'none' }}
+          >
+            Original file ({asset.human_readable_size})
+          </Button>
         </>
       )}
 
@@ -404,10 +427,6 @@ function AssetViewerContent() {
     );
   }
 
-  // Video detection
-  const isVideo = asset.mime_type?.startsWith('video/');
-  const isAudio = asset.mime_type?.startsWith('audio/');
-
   return (
     <WorkspaceLayout breadcrumb={breadcrumb} leftPanel={leftPanel}>
       <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
@@ -442,7 +461,7 @@ function AssetViewerContent() {
               <Typography color="text.secondary">Loading image...</Typography>
             )}
           </Paper>
-        ) : isVideo ? (
+        ) : isVideoAsset ? (
           <Paper
             sx={{
               p: 2,
@@ -465,7 +484,7 @@ function AssetViewerContent() {
               <Typography color="text.secondary">Loading video...</Typography>
             )}
           </Paper>
-        ) : isAudio ? (
+        ) : isAudioAsset ? (
           <Paper
             sx={{
               p: 2,

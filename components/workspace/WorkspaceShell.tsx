@@ -1,6 +1,8 @@
 'use client';
 
-import { Box } from '@mui/material';
+import { useState } from 'react';
+import { Box, Drawer, Button, IconButton } from '@mui/material';
+import { MenuOpen as MenuOpenIcon, Close as CloseIcon } from '@mui/icons-material';
 import { ReactNode } from 'react';
 
 interface WorkspaceShellProps {
@@ -18,8 +20,14 @@ interface WorkspaceShellProps {
  * - Right panel (optional, 320px, collapsible)
  *
  * No global scroll. Each panel scrolls independently.
+ *
+ * Mobile behaviour:
+ * - Left panel is hidden by default and slides in via a Drawer when toggled.
+ * - A "Details" button appears at the top of the main content to open it.
  */
 export default function WorkspaceShell({ leftPanel, rightPanel, children }: WorkspaceShellProps) {
+  const [drawerOpen, setDrawerOpen] = useState(false);
+
   return (
     <Box
       sx={{
@@ -29,7 +37,7 @@ export default function WorkspaceShell({ leftPanel, rightPanel, children }: Work
         mt: 8, // Space for fixed AppBar (64px)
       }}
     >
-      {/* Left Panel */}
+      {/* Desktop Left Panel */}
       {leftPanel && (
         <Box
           sx={{
@@ -47,18 +55,56 @@ export default function WorkspaceShell({ leftPanel, rightPanel, children }: Work
         </Box>
       )}
 
-        {/* Main Content Panel */}
-        <Box
+      {/* Mobile Left Panel Drawer */}
+      {leftPanel && (
+        <Drawer
+          anchor="left"
+          open={drawerOpen}
+          onClose={() => setDrawerOpen(false)}
           sx={{
-            flex: 1,
-            overflowY: 'auto',
-            overflowX: 'hidden',
-            minWidth: 0,
-            p: { xs: 1.5, md: 3 },
+            display: { xs: 'block', md: 'none' },
+            '& .MuiDrawer-paper': {
+              width: 280,
+              overflowY: 'auto',
+              overflowX: 'hidden',
+              bgcolor: 'background.paper',
+            },
           }}
         >
-          {children}
-        </Box>
+          <Box sx={{ display: 'flex', justifyContent: 'flex-end', p: 1 }}>
+            <IconButton size="small" onClick={() => setDrawerOpen(false)}>
+              <CloseIcon />
+            </IconButton>
+          </Box>
+          {leftPanel}
+        </Drawer>
+      )}
+
+      {/* Main Content Panel */}
+      <Box
+        sx={{
+          flex: 1,
+          overflowY: 'auto',
+          overflowX: 'hidden',
+          minWidth: 0,
+          p: { xs: 1.5, md: 3 },
+        }}
+      >
+        {/* Mobile toggle for left panel */}
+        {leftPanel && (
+          <Box sx={{ display: { xs: 'block', md: 'none' }, mb: 1.5 }}>
+            <Button
+              size="small"
+              variant="outlined"
+              startIcon={<MenuOpenIcon />}
+              onClick={() => setDrawerOpen(true)}
+            >
+              Details
+            </Button>
+          </Box>
+        )}
+        {children}
+      </Box>
 
       {/* Right Panel */}
       {rightPanel && (

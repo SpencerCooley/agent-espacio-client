@@ -9,6 +9,7 @@ import {
   CircularProgress,
   Alert,
   Chip,
+  Button,
 } from '@mui/material';
 import NextLink from 'next/link';
 import PublicShell from './PublicShell';
@@ -155,7 +156,7 @@ function FeedCard({ item, size }: { item: FeedItem; size: CardSize }) {
         href={itemUrl}
         underline="none"
         color="inherit"
-        sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}
+        sx={{ display: 'flex', flexDirection: 'column', flex: 1 }}
       >
         {coverUrl && (
           <Box
@@ -203,22 +204,25 @@ function FeedCard({ item, size }: { item: FeedItem; size: CardSize }) {
               {item.description}
             </Typography>
           )}
-
-          {visibleTags.length > 0 && (
-            <Box sx={{ display: 'flex', gap: 0.5, mt: 'auto', pt: 1, flexWrap: 'wrap' }}>
-              {visibleTags.map((t: string) => (
-                <Chip
-                  key={t}
-                  label={t}
-                  size={cfg.tagSize}
-                  variant="outlined"
-                  sx={{ fontSize: '0.7rem', height: 22, textTransform: 'lowercase' }}
-                />
-              ))}
-            </Box>
-          )}
         </Box>
       </Link>
+
+      {visibleTags.length > 0 && (
+        <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap', px: cfg.padding, pb: cfg.padding, pt: 0 }}>
+          {visibleTags.map((t: string) => (
+            <Chip
+              key={t}
+              component={NextLink}
+              href={`/feed?tag=${encodeURIComponent(t)}`}
+              label={t}
+              size={cfg.tagSize}
+              variant="outlined"
+              clickable
+              sx={{ fontSize: '0.7rem', height: 22, textTransform: 'lowercase' }}
+            />
+          ))}
+        </Box>
+      )}
     </Paper>
   );
 }
@@ -228,42 +232,67 @@ function FeedCard({ item, size }: { item: FeedItem; size: CardSize }) {
 /* ------------------------------------------------------------------ */
 
 export default function PublicFeed({ tag, title }: PublicFeedProps) {
-  const [data, setData] = useState<FeedResponse | null>(null);
+  const [items, setItems] = useState<FeedItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [hasMore, setHasMore] = useState(false);
+  const [offset, setOffset] = useState(0);
 
-  useEffect(() => {
+  const pageLimit = tag ? 10 : 20;
+
+  const fetchFeed = React.useCallback(async (currentOffset: number, append: boolean) => {
     const url = new URL(`${API_BASE_URL}/feed`);
     if (tag) url.searchParams.set('tag', tag);
-    url.searchParams.set('limit', '20');
-    url.searchParams.set('offset', '0');
+    url.searchParams.set('limit', String(pageLimit));
+    url.searchParams.set('offset', String(currentOffset));
 
-    fetch(url.toString())
-      .then(async (res) => {
-        if (!res.ok) {
-          const err = await res.json().catch(() => ({}));
-          throw new Error(err.detail || 'Failed to load feed');
-        }
-        return res.json();
-      })
-      .then((result) => {
-        setData(result);
-        setLoading(false);
-      })
-      .catch((err) => {
-        setError(err.message || 'Failed to load feed');
-        setLoading(false);
-      });
-  }, [tag]);
+    const res = await fetch(url.toString());
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || 'Failed to load feed');
+    }
+    const result: FeedResponse = await res.json();
 
-  const items = data?.items || [];
+    setItems((prev) => (append ? [...prev, ...result.items] : result.items));
+    setHasMore(result.has_more);
+    setOffset(currentOffset + pageLimit);
+  }, [tag, pageLimit]);
 
-  const featuredItems = items.filter(
-    (item) => item.featured_level === 1 || item.featured_level === 2 || item.featured_level === 3
-  );
-  const latestItems = items.filter(
-    (item) => item.featured_level == null || item.featured_level === 0
-  );
+  useEffect(() => {
+    setItems([]);
+    setLoading(true);
+    setError(null);
+    setHasMore(false);
+    setOffset(0);
+
+    fetchFeed(0, false)
+      .catch((err) => setError(err.message || 'Failed to load feed'))
+      .finally(() => setLoading(false));
+  }, [fetchFeed, tag]);
+
+  const handleLoadMore = async () => {
+    if (isLoadingMore || !hasMore) return;
+    setIsLoadingMore(true);
+    try {
+      await fetchFeed(offset, true);
+    } catch (err: any) {
+      setError(err.message || 'Failed to load more');
+    } finally {
+      setIsLoadingMore(false);
+    }
+  };
+
+  const featuredItems = tag
+    ? []
+    : items.filter(
+        (item) => item.featured_level === 1 || item.featured_level === 2 || item.featured_level === 3
+      );
+  const latestItems = tag
+    ? items
+    : items.filter(
+        (item) => item.featured_level == null || item.featured_level === 0
+      );
 
   /* ---------------------------------------------------------------- */
   /* Feed grid                                                          */
@@ -280,19 +309,23 @@ export default function PublicFeed({ tag, title }: PublicFeedProps) {
         </Typography>
       )}
 
-      {items.length === 0 && (
+      {items.length === 0 && !loading && (
         <Box sx={{ textAlign: 'center', py: 8 }}>
           <Typography variant="h6" color="text.secondary" sx={{ mb: 1 }}>
-            No featured compositions yet
+            {tag
+              ? `No compositions tagged with ${tag}`
+              : 'No featured compositions yet'}
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            Compositions added to the curated feed will appear here.
+            {tag
+              ? 'Compositions with this tag will appear here.'
+              : 'Compositions added to the curated feed will appear here.'}
           </Typography>
         </Box>
       )}
 
-      {/* Featured section */}
-      {featuredItems.length > 0 && (
+      {/* Main feed: Featured section */}
+      {!tag && featuredItems.length > 0 && (
         <Box
           sx={{
             display: 'grid',
@@ -320,8 +353,8 @@ export default function PublicFeed({ tag, title }: PublicFeedProps) {
         </Box>
       )}
 
-      {/* Latest section */}
-      {latestItems.length > 0 && (
+      {/* Main feed: Latest section */}
+      {!tag && latestItems.length > 0 && (
         <>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, my: 3 }}>
             <Box sx={{ flex: 1, height: 1, bgcolor: 'divider' }} />
@@ -345,6 +378,49 @@ export default function PublicFeed({ tag, title }: PublicFeedProps) {
             ))}
           </Box>
         </>
+      )}
+
+      {/* Tag feed: chronological grid */}
+      {tag && latestItems.length > 0 && (
+        <Box
+          sx={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(12, 1fr)',
+            gap: 2.5,
+          }}
+        >
+          {latestItems.map((item, index) => {
+            const size = getCardSize(index);
+            const colSpan = SIZE_CONFIG[size].colSpan;
+            const mobileSpan = index === 0 ? 12 : 6;
+
+            return (
+              <Box
+                key={item.id}
+                sx={{
+                  gridColumn: { xs: `span ${mobileSpan}`, md: `span ${colSpan}` },
+                }}
+              >
+                <FeedCard item={item} size={size} />
+              </Box>
+            );
+          })}
+        </Box>
+      )}
+
+      {/* Load more button for tag feeds */}
+      {tag && !loading && hasMore && (
+        <Box sx={{ textAlign: 'center', mt: 4 }}>
+          <Button
+            variant="outlined"
+            size="large"
+            onClick={handleLoadMore}
+            disabled={isLoadingMore}
+            startIcon={isLoadingMore ? <CircularProgress size={16} /> : undefined}
+          >
+            {isLoadingMore ? 'Loading...' : 'Load more'}
+          </Button>
+        </Box>
       )}
     </Box>
   );

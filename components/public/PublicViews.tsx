@@ -24,14 +24,14 @@ interface AssetViewProps {
   downloadUrl?: string;
 }
 
-export function PublicAssetView({ 
-  id, 
-  name, 
-  mime_type, 
-  human_readable_size, 
-  is_image, 
+export function PublicAssetView({
+  id,
+  name,
+  mime_type,
+  human_readable_size,
+  is_image,
   public_magic_id,
-  downloadUrl: customDownloadUrl 
+  downloadUrl: customDownloadUrl
 }: AssetViewProps) {
   const isImage = is_image;
   const isMarkdown = mime_type === 'text/markdown' || mime_type === 'text/x-markdown';
@@ -42,6 +42,7 @@ export function PublicAssetView({
 
   const [markdownContent, setMarkdownContent] = useState<string | null>(null);
   const [loadingMarkdown, setLoadingMarkdown] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
 
   useEffect(() => {
     if (isMarkdown) {
@@ -60,6 +61,25 @@ export function PublicAssetView({
     }
   }, [isMarkdown, downloadUrl]);
 
+  const handleDownload = async () => {
+    setIsDownloading(true);
+    try {
+      const res = await fetch(downloadUrl);
+      if (!res.ok) throw new Error('Download failed');
+      const blob = await res.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = blobUrl;
+      a.download = name;
+      a.click();
+      URL.revokeObjectURL(blobUrl);
+    } catch (err) {
+      console.error('Download failed:', err);
+    } finally {
+      setIsDownloading(false);
+    }
+  };
+
   return (
     <Box sx={{ p: 3, maxWidth: 1200, mx: 'auto' }}>
       <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, alignItems: { xs: 'flex-start', sm: 'center' }, justifyContent: 'space-between', gap: { xs: 1, sm: 0 }, mb: 3 }}>
@@ -68,10 +88,10 @@ export function PublicAssetView({
           variant="outlined"
           size="small"
           startIcon={<DownloadIcon />}
-          href={downloadUrl}
-          download={name}
+          onClick={handleDownload}
+          disabled={isDownloading}
         >
-          Download
+          {isDownloading ? 'Downloading...' : 'Download'}
         </Button>
       </Box>
 
