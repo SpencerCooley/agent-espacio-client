@@ -4,6 +4,7 @@ export interface FeedItem {
   id: string;
   artifact_id: string;
   sort_order: number;
+  featured_level: number | null;
   created_at: string;
   updated_at: string;
 }
@@ -24,4 +25,8 @@ export const feedService = {
   /** Update sort order of a feed item. */
   reorderFeedItem: (artifactId: string, sortOrder: number) =>
     apiClient.put<FeedItem>(`/feed/items/${artifactId}/order?sort_order=${sortOrder}`),
+
+  /** Update the featured level (1, 2, 3, or 0/null to clear) of a feed item. */
+  updateFeaturedLevel: (artifactId: string, level: number | null) =>
+    apiClient.put<FeedItem>(`/feed/items/${artifactId}/featured?featured_level=${level ?? 0}`),
 };

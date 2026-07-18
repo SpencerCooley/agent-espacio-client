@@ -28,6 +28,7 @@ interface FeedItem {
   updated_at?: string;
   meta?: any;
   cover_url?: string | null;
+  featured_level?: number | null;
 }
 
 interface FeedResponse {
@@ -109,6 +110,11 @@ function getCardSize(index: number): CardSize {
   if (index >= 1 && index <= 2) return 'large';
   if (index >= 3 && index <= 5) return 'medium';
   return 'compact';
+}
+
+function getFeaturedCardSize(level: number): CardSize {
+  if (level === 1) return 'hero';
+  return 'large';
 }
 
 /* ------------------------------------------------------------------ */
@@ -252,6 +258,13 @@ export default function PublicFeed({ tag, title }: PublicFeedProps) {
 
   const items = data?.items || [];
 
+  const featuredItems = items.filter(
+    (item) => item.featured_level === 1 || item.featured_level === 2 || item.featured_level === 3
+  );
+  const latestItems = items.filter(
+    (item) => item.featured_level == null || item.featured_level === 0
+  );
+
   /* ---------------------------------------------------------------- */
   /* Feed grid                                                          */
   /* ---------------------------------------------------------------- */
@@ -278,32 +291,61 @@ export default function PublicFeed({ tag, title }: PublicFeedProps) {
         </Box>
       )}
 
-      <Box
-        sx={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(12, 1fr)',
-          gap: 2.5,
-        }}
-      >
-        {items.map((item, index) => {
-          const size = getCardSize(index);
-          const colSpan = SIZE_CONFIG[size].colSpan;
+      {/* Featured section */}
+      {featuredItems.length > 0 && (
+        <Box
+          sx={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(12, 1fr)',
+            gap: 2.5,
+            mb: latestItems.length > 0 ? 4 : 0,
+          }}
+        >
+          {featuredItems.map((item) => {
+            const size = getFeaturedCardSize(item.featured_level || 1);
+            const colSpan = SIZE_CONFIG[size].colSpan;
+            const mobileSpan = item.featured_level === 1 ? 12 : 6;
 
-          // Mobile: first card full width, rest 2 per row (span 6)
-          const mobileSpan = index === 0 ? 12 : 6;
+            return (
+              <Box
+                key={item.id}
+                sx={{
+                  gridColumn: { xs: `span ${mobileSpan}`, md: `span ${colSpan}` },
+                }}
+              >
+                <FeedCard item={item} size={size} />
+              </Box>
+            );
+          })}
+        </Box>
+      )}
 
-          return (
-            <Box
-              key={item.id}
-              sx={{
-                gridColumn: { xs: `span ${mobileSpan}`, md: `span ${colSpan}` },
-              }}
-            >
-              <FeedCard item={item} size={size} />
-            </Box>
-          );
-        })}
-      </Box>
+      {/* Latest section */}
+      {latestItems.length > 0 && (
+        <>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, my: 3 }}>
+            <Box sx={{ flex: 1, height: 1, bgcolor: 'divider' }} />
+            <Typography variant="h5" sx={{ fontWeight: 600, color: 'text.secondary' }}>
+              Latest
+            </Typography>
+            <Box sx={{ flex: 1, height: 1, bgcolor: 'divider' }} />
+          </Box>
+
+          <Box
+            sx={{
+              display: 'grid',
+              gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(3, 1fr)' },
+              gap: 2.5,
+            }}
+          >
+            {latestItems.map((item) => (
+              <Box key={item.id}>
+                <FeedCard item={item} size="medium" />
+              </Box>
+            ))}
+          </Box>
+        </>
+      )}
     </Box>
   );
 

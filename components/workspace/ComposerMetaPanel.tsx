@@ -9,6 +9,7 @@ import {
   FormControlLabel,
   Chip,
   Button,
+  ButtonGroup,
   Divider,
   Alert,
   CircularProgress,
@@ -40,6 +41,8 @@ export default function ComposerMetaPanel({ artifact, onArtifactUpdate }: Compos
   const [checkingFeed, setCheckingFeed] = useState(true);
   const [feedActionLoading, setFeedActionLoading] = useState(false);
   const [feedError, setFeedError] = useState<string | null>(null);
+  const [featuredLevel, setFeaturedLevel] = useState<number | null>(null);
+  const [featuredLoading, setFeaturedLoading] = useState(false);
 
   const [description, setDescription] = useState(artifact.description || '');
   const [descriptionSaving, setDescriptionSaving] = useState(false);
@@ -65,8 +68,14 @@ export default function ComposerMetaPanel({ artifact, onArtifactUpdate }: Compos
   useEffect(() => {
     setCheckingFeed(true);
     feedService.getFeedItemStatus(artifact.id)
-      .then(() => setInFeed(true))
-      .catch(() => setInFeed(false))
+      .then((feedItem) => {
+        setInFeed(true);
+        setFeaturedLevel(feedItem.featured_level ?? null);
+      })
+      .catch(() => {
+        setInFeed(false);
+        setFeaturedLevel(null);
+      })
       .finally(() => setCheckingFeed(false));
   }, [artifact.id]);
 
@@ -154,9 +163,11 @@ export default function ComposerMetaPanel({ artifact, onArtifactUpdate }: Compos
       if (inFeed) {
         await feedService.removeFromFeed(artifact.id);
         setInFeed(false);
+        setFeaturedLevel(null);
       } else {
-        await feedService.addToFeed(artifact.id);
+        const feedItem = await feedService.addToFeed(artifact.id);
         setInFeed(true);
+        setFeaturedLevel(feedItem.featured_level ?? null);
       }
     } catch (err: any) {
       setFeedError(err.message || 'Failed to update feed status');
@@ -164,6 +175,20 @@ export default function ComposerMetaPanel({ artifact, onArtifactUpdate }: Compos
       setFeedActionLoading(false);
     }
   }, [artifact.id, inFeed]);
+
+  // Update featured level (1, 2, 3, or 0/X for not featured)
+  const handleFeaturedLevelChange = useCallback(async (level: number | null) => {
+    setFeaturedLoading(true);
+    setFeedError(null);
+    try {
+      const feedItem = await feedService.updateFeaturedLevel(artifact.id, level);
+      setFeaturedLevel(feedItem.featured_level ?? null);
+    } catch (err: any) {
+      setFeedError(err.message || 'Failed to update featured level');
+    } finally {
+      setFeaturedLoading(false);
+    }
+  }, [artifact.id]);
 
   // Save description
   const handleDescriptionSave = useCallback(async () => {
@@ -331,6 +356,48 @@ export default function ComposerMetaPanel({ artifact, onArtifactUpdate }: Compos
             ? 'This composition appears on the home page.'
             : 'Add to the curated feed to feature on the home page.'}
         </Typography>
+
+        {inFeed && (
+          <Box sx={{ mt: 2, ml: 4 }}>
+            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.75 }}>
+              Featured slot:
+            </Typography>
+            <ButtonGroup
+              variant="contained"
+              size="small"
+              disabled={featuredLoading}
+              aria-label="Featured slot"
+            >
+              <Button
+                color={featuredLevel === 1 ? 'primary' : 'inherit'}
+                onClick={() => handleFeaturedLevelChange(1)}
+              >
+                1
+              </Button>
+              <Button
+                color={featuredLevel === 2 ? 'primary' : 'inherit'}
+                onClick={() => handleFeaturedLevelChange(2)}
+              >
+                2
+              </Button>
+              <Button
+                color={featuredLevel === 3 ? 'primary' : 'inherit'}
+                onClick={() => handleFeaturedLevelChange(3)}
+              >
+                3
+              </Button>
+              <Button
+                color={featuredLevel === null || featuredLevel === 0 ? 'primary' : 'inherit'}
+                onClick={() => handleFeaturedLevelChange(null)}
+              >
+                X
+              </Button>
+            </ButtonGroup>
+            {featuredLoading && (
+              <CircularProgress size={14} thickness={4} sx={{ ml: 1, verticalAlign: 'middle' }} />
+            )}
+          </Box>
+        )}
       </Paper>
 
       <Divider sx={{ my: 2 }} />
