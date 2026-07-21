@@ -23,6 +23,7 @@ const MapEditor = dynamic(() => import('../../../../components/workspace/MapEdit
 const GalleryEditor = dynamic(() => import('../../../../components/workspace/GalleryEditor'), { ssr: false });
 const ComposerEditor = dynamic(() => import('../../../../components/workspace/ComposerEditor'), { ssr: false });
 const ComposerMetaPanel = dynamic(() => import('../../../../components/workspace/ComposerMetaPanel'), { ssr: false });
+const RepoViewer = dynamic(() => import('../../../../components/workspace/RepoViewer'), { ssr: false });
 
 function ArtifactViewerContent() {
   const params = useParams();
@@ -288,6 +289,21 @@ function ArtifactViewerContent() {
         }
       >
         <ComposerEditor artifact={artifact} />
+        <Snackbar
+          open={!!successMessage}
+          autoHideDuration={3000}
+          onClose={() => setSuccessMessage(null)}
+          message={successMessage}
+          anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+        />
+      </WorkspaceLayout>
+    );
+  }
+
+  if (artifact.type === 'repo') {
+    return (
+      <WorkspaceLayout breadcrumb={breadcrumb}>
+        <RepoViewer artifact={artifact} />
         <Snackbar
           open={!!successMessage}
           autoHideDuration={3000}
