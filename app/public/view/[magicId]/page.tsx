@@ -9,6 +9,7 @@ import InlineThumbnail from '../../../../components/workspace/InlineThumbnail';
 import WorkflowPublicView from '../../../../components/workspace/WorkflowPublicView';
 import GalleryPublicView from '../../../../components/workspace/GalleryPublicView';
 import ComposerPublicView from '../../../../components/workspace/ComposerPublicView';
+import RepoPublicView from '../../../../components/workspace/RepoPublicView';
 import { PublicAssetView, NotePublicView, MapPublicView } from '../../../../components/public/PublicViews';
 import PublicShell from '../../../../components/public/PublicShell';
 
@@ -672,6 +673,17 @@ export default function PublicViewPage() {
         );
       }
 
+      // Repo artifacts
+      if (artifact.type === 'repo') {
+        return (
+          <RepoPublicView
+            artifactId={artifact.id}
+            publicMagicId={artifact.public_magic_id}
+            themeMode={data?.public_theme?.mode}
+          />
+        );
+      }
+
       return (
         <Box sx={{ p: 3, maxWidth: 1200, mx: 'auto' }}>
           <Typography variant="h5" sx={{ mb: 2 }}>
@@ -707,7 +719,7 @@ export default function PublicViewPage() {
   const isFullBleed =
     data?.kind === 'artifact' &&
     data.artifact != null &&
-    (data.artifact.type === 'workflow' || data.artifact.type === 'map');
+    (data.artifact.type === 'workflow' || data.artifact.type === 'map' || data.artifact.type === 'repo');
 
   return (
     <PublicShell fullBleed={isFullBleed}>

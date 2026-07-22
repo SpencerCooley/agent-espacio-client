@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   Box,
   Typography,
@@ -18,12 +18,8 @@ import {
   Chip,
   IconButton,
   Tooltip,
-  TextField,
   Button,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
+  TextField,
 } from '@mui/material';
 import {
   Folder as FolderIcon,
@@ -31,47 +27,98 @@ import {
   ContentCopy as CopyIcon,
   ArrowBack as BackIcon,
   Terminal as TerminalIcon,
-  Key as KeyIcon,
-  Delete as DeleteIcon,
+  History as HistoryIcon,
 } from '@mui/icons-material';
-import { Artifact } from '../../services/artifacts';
-import { repoService, RepoMetadata, RepoTreeItem, RepoCommit, SshKey } from '../../services/repos';
+import { Artifact, artifactService } from '../../services/artifacts';
+import { repoService, RepoMetadata, RepoTreeItem, RepoCommit, RepoCommitDetail } from '../../services/repos';
+import CodeBlock from './CodeBlock';
+import DiffViewer from './DiffViewer';
 
 interface RepoViewerProps {
   artifact: Artifact;
 }
 
 export default function RepoViewer({ artifact }: RepoViewerProps) {
+  const [name, setName] = useState(artifact.name);
+  const lastSavedName = useRef(artifact.name);
+  const nameSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [description, setDescription] = useState(artifact.description || '');
+  const lastSavedDescription = useRef(artifact.description || '');
+  const descriptionSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [metadata, setMetadata] = useState<RepoMetadata | null>(null);
   const [treeItems, setTreeItems] = useState<RepoTreeItem[]>([]);
-  const [currentPath, setCurrentPath] = useState('');
+  const [currentPath, setCurrentPath] = useState(
+    decodeURIComponent(window.location.hash.slice(1) || '')
+  );
+  const navigatingFromPopState = useRef(false);
   const [fileContent, setFileContent] = useState<string | null>(null);
   const [fileName, setFileName] = useState('');
   const [commits, setCommits] = useState<RepoCommit[]>([]);
-  const [sshKeys, setSshKeys] = useState<SshKey[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [sshDialogOpen, setSshDialogOpen] = useState(false);
-  const [newKeyName, setNewKeyName] = useState('');
-  const [newKeyValue, setNewKeyValue] = useState('');
-  const [addingKey, setAddingKey] = useState(false);
-  const [keyError, setKeyError] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+  const [viewMode, setViewMode] = useState<'files' | 'history' | 'commit'>('files');
+  const [selectedCommit, setSelectedCommit] = useState<RepoCommitDetail | null>(null);
+  const [commitLoading, setCommitLoading] = useState(false);
 
   const artifactId = artifact.id;
+
+  const handleNameChange = (newName: string) => {
+    setName(newName);
+    if (nameSaveTimer.current) clearTimeout(nameSaveTimer.current);
+    nameSaveTimer.current = setTimeout(() => {
+      if (newName !== lastSavedName.current) {
+        artifactService.updateArtifact(artifact.id, { name: newName })
+          .then(() => { lastSavedName.current = newName; })
+          .catch((err) => console.error('Failed to save name:', err));
+      }
+    }, 1500);
+  };
+
+  const handleNameBlur = () => {
+    if (nameSaveTimer.current) clearTimeout(nameSaveTimer.current);
+    if (name !== lastSavedName.current) {
+      artifactService.updateArtifact(artifact.id, { name })
+        .then(() => { lastSavedName.current = name; })
+        .catch((err) => console.error('Failed to save name:', err));
+    }
+  };
+
+  const handleDescriptionChange = (newDesc: string) => {
+    setDescription(newDesc);
+    if (descriptionSaveTimer.current) clearTimeout(descriptionSaveTimer.current);
+    descriptionSaveTimer.current = setTimeout(() => {
+      if (newDesc !== lastSavedDescription.current) {
+        artifactService.updateArtifact(artifact.id, { description: newDesc })
+          .then(() => { lastSavedDescription.current = newDesc; })
+          .catch((err) => console.error('Failed to save description:', err));
+      }
+    }, 1500);
+  };
+
+  const handleDescriptionBlur = () => {
+    if (descriptionSaveTimer.current) clearTimeout(descriptionSaveTimer.current);
+    if (description !== lastSavedDescription.current) {
+      artifactService.updateArtifact(artifact.id, { description })
+        .then(() => { lastSavedDescription.current = description; })
+        .catch((err) => console.error('Failed to save description:', err));
+    }
+  };
 
   // Load metadata on mount
   useEffect(() => {
     setLoading(true);
     setError(null);
+    const hashPath = decodeURIComponent(window.location.hash.slice(1) || '');
 
     repoService.getMetadata(artifactId)
       .then((data) => {
         setMetadata(data);
-        // Load root tree
-        return repoService.getTree(artifactId);
+        return repoService.getTree(artifactId, 'HEAD', hashPath || undefined);
       })
       .then((tree) => {
         setTreeItems(tree.items);
+        setCurrentPath(hashPath);
         setLoading(false);
       })
       .catch((err) => {
@@ -87,21 +134,62 @@ export default function RepoViewer({ artifact }: RepoViewerProps) {
       .catch(() => {}); // Non-critical
   }, [artifactId]);
 
-  // Load SSH keys
-  const loadSshKeys = useCallback(() => {
-    repoService.listSshKeys()
-      .then((data) => setSshKeys(data.keys))
-      .catch(() => {});
-  }, []);
-
+  // Handle browser back/forward
   useEffect(() => {
-    loadSshKeys();
-  }, [loadSshKeys]);
+    const onPopState = () => {
+      navigatingFromPopState.current = true;
+      const state = history.state as { path?: string; file?: string } | null;
+      const hashPath = decodeURIComponent(window.location.hash.slice(1) || '');
+      const targetPath = state?.path || hashPath;
+
+      if (state?.file) {
+        setCurrentPath(targetPath);
+        setFileContent(null);
+        setLoading(true);
+        Promise.all([
+          repoService.getTree(artifactId, 'HEAD', targetPath || undefined),
+          repoService.getFile(artifactId, state.file),
+        ])
+          .then(([tree, file]) => {
+            setTreeItems(tree.items);
+            setFileContent(file.content);
+            setFileName(file.path);
+            setLoading(false);
+            navigatingFromPopState.current = false;
+          })
+          .catch((err) => {
+            setError(err.message || 'Failed to load');
+            setLoading(false);
+            navigatingFromPopState.current = false;
+          });
+      } else {
+        setCurrentPath(targetPath);
+        setFileContent(null);
+        setLoading(true);
+        repoService.getTree(artifactId, 'HEAD', targetPath || undefined)
+          .then((tree) => {
+            setTreeItems(tree.items);
+            setLoading(false);
+            navigatingFromPopState.current = false;
+          })
+          .catch((err) => {
+            setError(err.message || 'Failed to load directory');
+            setLoading(false);
+            navigatingFromPopState.current = false;
+          });
+      }
+    };
+    window.addEventListener('popstate', onPopState);
+    return () => window.removeEventListener('popstate', onPopState);
+  }, [artifactId]);
 
   const handleNavigate = (item: RepoTreeItem) => {
     if (item.type === 'tree') {
       setFileContent(null);
       setLoading(true);
+      if (!navigatingFromPopState.current) {
+        window.history.pushState({ path: item.path }, '', `#${item.path}`);
+      }
       repoService.getTree(artifactId, 'HEAD', item.path)
         .then((tree) => {
           setTreeItems(tree.items);
@@ -113,7 +201,11 @@ export default function RepoViewer({ artifact }: RepoViewerProps) {
           setLoading(false);
         });
     } else {
+      if (viewMode !== 'files') setViewMode('files');
       setLoading(true);
+      if (!navigatingFromPopState.current) {
+        window.history.pushState({ path: currentPath, file: item.path }, '', `#${currentPath}`);
+      }
       repoService.getFile(artifactId, item.path)
         .then((file) => {
           setFileContent(file.content);
@@ -134,6 +226,9 @@ export default function RepoViewer({ artifact }: RepoViewerProps) {
       : '';
     setFileContent(null);
     setLoading(true);
+    if (!navigatingFromPopState.current) {
+      window.history.pushState({ path: parentPath }, '', `#${parentPath}`);
+    }
     repoService.getTree(artifactId, 'HEAD', parentPath || undefined)
       .then((tree) => {
         setTreeItems(tree.items);
@@ -144,33 +239,6 @@ export default function RepoViewer({ artifact }: RepoViewerProps) {
         setError(err.message || 'Failed to load directory');
         setLoading(false);
       });
-  };
-
-  const handleAddSshKey = () => {
-    if (!newKeyName.trim() || !newKeyValue.trim()) return;
-    setAddingKey(true);
-    setKeyError(null);
-    repoService.addSshKey({ name: newKeyName.trim(), public_key: newKeyValue.trim() })
-      .then(() => {
-        setNewKeyName('');
-        setNewKeyValue('');
-        setSshDialogOpen(false);
-        loadSshKeys();
-      })
-      .catch((err) => {
-        setKeyError(err.message || 'Failed to add SSH key');
-      })
-      .finally(() => setAddingKey(false));
-  };
-
-  const handleDeleteKey = (keyId: number) => {
-    repoService.deleteSshKey(keyId)
-      .then(() => loadSshKeys())
-      .catch((err) => setError(err.message || 'Failed to delete key'));
-  };
-
-  const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text);
   };
 
   if (loading && !metadata) {
@@ -194,10 +262,22 @@ export default function RepoViewer({ artifact }: RepoViewerProps) {
       {/* Header */}
       <Box sx={{ p: 2, borderBottom: 1, borderColor: 'divider' }}>
         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
-          <Typography variant="h6" sx={{ fontWeight: 600 }}>
-            {artifact.name}
-          </Typography>
-          <Box sx={{ display: 'flex', gap: 1 }}>
+          <TextField
+            value={name}
+            onChange={(e) => handleNameChange(e.target.value)}
+            onBlur={handleNameBlur}
+            variant="standard"
+            placeholder="Repository name"
+            fullWidth
+            sx={{
+              '& .MuiInput-root': { fontSize: '1.25rem', fontWeight: 600 },
+              '& .MuiInput-root::before': { border: 'none' },
+              '& .MuiInput-root::after': { border: 'none' },
+              '& .MuiInput-root:hover::before': { border: 'none' },
+              mr: 2,
+            }}
+          />
+          <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
             <Chip
               icon={<TerminalIcon />}
               label="Repository"
@@ -205,8 +285,38 @@ export default function RepoViewer({ artifact }: RepoViewerProps) {
               color="primary"
               variant="outlined"
             />
+            {metadata?.git_remote_url && (
+              <Tooltip title={copied ? 'Copied!' : 'Copy SSH URL'}>
+                <IconButton
+                  size="small"
+                  onClick={() => {
+                    navigator.clipboard.writeText(metadata.git_remote_url);
+                    setCopied(true);
+                    setTimeout(() => setCopied(false), 2000);
+                  }}
+                >
+                  <CopyIcon fontSize="small" />
+                </IconButton>
+              </Tooltip>
+            )}
           </Box>
         </Box>
+        <TextField
+          value={description}
+          onChange={(e) => handleDescriptionChange(e.target.value)}
+          onBlur={handleDescriptionBlur}
+          variant="standard"
+          placeholder="Add a description..."
+          fullWidth
+          multiline
+          maxRows={3}
+          sx={{
+            '& .MuiInput-root': { fontSize: '0.875rem' },
+            '& .MuiInput-root::before': { border: 'none' },
+            '& .MuiInput-root::after': { border: 'none' },
+            '& .MuiInput-root:hover::before': { border: 'none' },
+          }}
+        />
 
         {metadata && (
           <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, alignItems: 'center' }}>
@@ -219,41 +329,6 @@ export default function RepoViewer({ artifact }: RepoViewerProps) {
               </Typography>
             )}
           </Box>
-        )}
-
-        {/* Git Remote URL */}
-        {metadata?.git_remote_url && (
-          <Paper
-            variant="outlined"
-            sx={{
-              mt: 2,
-              p: 1.5,
-              display: 'flex',
-              alignItems: 'center',
-              gap: 1,
-              bgcolor: 'action.hover',
-            }}
-          >
-            <TerminalIcon fontSize="small" color="action" />
-            <Typography
-              variant="body2"
-              component="code"
-              sx={{
-                flex: 1,
-                fontFamily: 'monospace',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                whiteSpace: 'nowrap',
-              }}
-            >
-              {metadata.git_remote_url}
-            </Typography>
-            <Tooltip title="Copy">
-              <IconButton size="small" onClick={() => copyToClipboard(metadata.git_remote_url)}>
-                <CopyIcon fontSize="small" />
-              </IconButton>
-            </Tooltip>
-          </Paper>
         )}
       </Box>
 
@@ -337,209 +412,177 @@ export default function RepoViewer({ artifact }: RepoViewerProps) {
 
           <Divider />
 
-          {/* Commits preview */}
-          <Box sx={{ p: 2, borderTop: 1, borderColor: 'divider', maxHeight: 200, overflowY: 'auto' }}>
-            <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 600 }}>
-              Recent Commits
-            </Typography>
-            {commits.length === 0 ? (
-              <Typography variant="caption" color="text.secondary">
-                No commits yet
+          {/* Commits toolbar + preview */}
+          <Box sx={{ borderTop: 1, borderColor: 'divider' }}>
+            <Box sx={{ px: 1, py: 0.5, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <Typography variant="subtitle2" sx={{ fontWeight: 600, px: 1 }}>
+                Recent Commits
               </Typography>
-            ) : (
-              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                {commits.slice(0, 5).map((commit) => (
-                  <Box key={commit.hash}>
-                    <Typography variant="caption" sx={{ fontFamily: 'monospace', color: 'primary.main' }}>
-                      {commit.hash}
-                    </Typography>
-                    <Typography variant="caption" display="block" noWrap>
-                      {commit.message}
-                    </Typography>
+              <Tooltip title={viewMode === 'history' ? 'Show files' : 'Full history'}>
+                <IconButton
+                  size="small"
+                  onClick={() => {
+                    if (viewMode === 'history') {
+                      setViewMode('files');
+                    } else {
+                      setViewMode('history');
+                      setSelectedCommit(null);
+                      setFileContent(null);
+                    }
+                  }}
+                  sx={{ color: viewMode === 'history' ? 'primary.main' : 'text.secondary' }}
+                >
+                  <HistoryIcon fontSize="small" />
+                </IconButton>
+              </Tooltip>
+            </Box>
+              <Box sx={{ px: 2, pb: 2, maxHeight: 200, overflowY: 'auto' }}>
+                {commits.length === 0 ? (
+                  <Typography variant="caption" color="text.secondary">
+                    No commits yet
+                  </Typography>
+                ) : (
+                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                    {commits.slice(0, 5).map((commit) => (
+                      <Box key={commit.hash}>
+                        <Typography variant="caption" sx={{ fontFamily: 'monospace', color: 'primary.main' }}>
+                          {commit.hash}
+                        </Typography>
+                        <Typography variant="caption" display="block" noWrap>
+                          {commit.message}
+                        </Typography>
+                      </Box>
+                    ))}
                   </Box>
-                ))}
+                )}
               </Box>
-            )}
+            </Box>
           </Box>
-        </Box>
 
-        {/* Main panel: File content or readme */}
+        {/* Main panel: File content, commit history, or commit detail */}
         <Box sx={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-          {fileContent !== null ? (
+          {viewMode === 'commit' && selectedCommit ? (
+            <DiffViewer commit={selectedCommit} />
+          ) : viewMode === 'history' ? (
+            <Box sx={{ flex: 1, overflowY: 'auto' }}>
+              {commits.length === 0 ? (
+                <Box sx={{ p: 3, textAlign: 'center' }}>
+                  <Typography variant="body2" color="text.secondary">
+                    No commits yet
+                  </Typography>
+                </Box>
+              ) : (
+                <List dense disablePadding>
+                  {commits.map((commit) => {
+                    const date = new Date(commit.date);
+                    return (
+                      <ListItem key={commit.hash} disablePadding>
+                        <ListItemButton
+                          onClick={async () => {
+                            setCommitLoading(true);
+                            try {
+                              const detail = await repoService.getCommitDetail(artifactId, commit.hash);
+                              setSelectedCommit(detail);
+                              setViewMode('commit');
+                            } catch (err: any) {
+                              console.error('Failed to load commit:', err?.message || err);
+                            }
+                            setCommitLoading(false);
+                          }}
+                          sx={{ py: 1.25, px: 2, flexDirection: 'column', alignItems: 'flex-start', gap: 0.25 }}
+                        >
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, width: '100%' }}>
+                            <Typography
+                              variant="caption"
+                              sx={{
+                                fontFamily: 'monospace',
+                                fontSize: '0.7rem',
+                                color: 'primary.main',
+                                bgcolor: 'action.hover',
+                                px: 0.75,
+                                py: 0.25,
+                                borderRadius: 0.5,
+                                lineHeight: 1.3,
+                              }}
+                            >
+                              {commit.hash}
+                            </Typography>
+                            <Typography variant="body2" noWrap sx={{ fontWeight: 500, flex: 1, minWidth: 0 }}>
+                              {commit.message}
+                            </Typography>
+                          </Box>
+                          <Typography variant="caption" color="text.secondary">
+                            {commit.author} · {date.toLocaleDateString()} {date.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}
+                          </Typography>
+                        </ListItemButton>
+                      </ListItem>
+                    );
+                  })}
+                </List>
+              )}
+            </Box>
+          ) : fileContent !== null ? (
             <>
-              <Box
-                sx={{
-                  p: 1.5,
-                  borderBottom: 1,
-                  borderColor: 'divider',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                }}
-              >
-                <Typography variant="subtitle2" sx={{ fontFamily: 'monospace' }}>
-                  {fileName}
-                </Typography>
+              <Box sx={{ px: 2, py: 1, borderBottom: 1, borderColor: 'divider', display: 'flex', justifyContent: 'flex-end' }}>
                 <Button size="small" onClick={() => setFileContent(null)}>
                   Close
                 </Button>
               </Box>
-              <Box
-                component="pre"
-                sx={{
-                  flex: 1,
-                  overflow: 'auto',
-                  p: 2,
-                  m: 0,
-                  fontFamily: 'monospace',
-                  fontSize: '0.875rem',
-                  lineHeight: 1.5,
-                  bgcolor: 'background.paper',
-                }}
-              >
-                <code>{fileContent}</code>
+              <Box sx={{ flex: 1, overflow: 'hidden' }}>
+                <CodeBlock code={fileContent} filename={fileName} />
               </Box>
             </>
           ) : (
             <Box sx={{ flex: 1, overflow: 'auto', p: 3 }}>
-              {/* Setup instructions */}
-              <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
-                Repository Setup
-              </Typography>
-
-              <Paper variant="outlined" sx={{ p: 3, mb: 3 }}>
-                <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 600 }}>
-                  1. Add your SSH key
-                </Typography>
-                <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                  Register your SSH public key to push code to this repository.
-                </Typography>
-
-                {sshKeys.length > 0 ? (
-                  <Box sx={{ mb: 2 }}>
-                    <Typography variant="caption" color="success.main" sx={{ mb: 1, display: 'block' }}>
-                      {sshKeys.length} SSH key{sshKeys.length !== 1 ? 's' : ''} registered
+              {metadata?.commit_count === 0 ? (
+                <>
+                  <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
+                    Repository Setup
+                  </Typography>
+                  <Paper variant="outlined" sx={{ p: 3, mb: 2 }}>
+                    <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 600 }}>
+                      1. Add your SSH key
                     </Typography>
-                    {sshKeys.map((key) => (
-                      <Paper
-                        key={key.id}
-                        variant="outlined"
-                        sx={{
-                          p: 1,
-                          mb: 1,
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'space-between',
-                        }}
-                      >
-                        <Box>
-                          <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                            {key.name}
-                          </Typography>
-                          <Typography variant="caption" color="text.secondary" sx={{ fontFamily: 'monospace' }}>
-                            {key.fingerprint}
-                          </Typography>
-                        </Box>
-                        <IconButton size="small" color="error" onClick={() => handleDeleteKey(key.id)}>
-                          <DeleteIcon fontSize="small" />
-                        </IconButton>
-                      </Paper>
-                    ))}
-                  </Box>
-                ) : (
-                  <Alert severity="warning" sx={{ mb: 2 }}>
-                    No SSH keys registered. You must add a key before pushing.
-                  </Alert>
-                )}
-
-                <Button
-                  variant="outlined"
-                  size="small"
-                  startIcon={<KeyIcon />}
-                  onClick={() => { setKeyError(null); setSshDialogOpen(true); }}
-                >
-                  {sshKeys.length > 0 ? 'Add Another Key' : 'Add SSH Key'}
-                </Button>
-              </Paper>
-
-              <Paper variant="outlined" sx={{ p: 3 }}>
-                <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 600 }}>
-                  2. Push code
-                </Typography>
-                <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                  Configure your local git repository to push to Espacio:
-                </Typography>
-
-                <Box
-                  component="pre"
-                  sx={{
-                    p: 2,
-                    bgcolor: 'action.hover',
-                    borderRadius: 1,
-                    fontFamily: 'monospace',
-                    fontSize: '0.8125rem',
-                    overflow: 'auto',
-                  }}
-                >
-                  <code>
-                    {`# Add remote\n`}
-                    {metadata?.git_remote_url ? `git remote add origin ${metadata.git_remote_url}\n` : '# Git remote URL will appear here after loading\n'}
-                    {`\n# Push your code\n`}
-                    {`git push -u origin master`}
-                  </code>
+                    <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                      Register your SSH key in Settings, then push code from your machine.
+                    </Typography>
+                    <Button variant="outlined" size="small" href="/workspace/settings">
+                      Go to Settings
+                    </Button>
+                  </Paper>
+                  <Paper variant="outlined" sx={{ p: 3 }}>
+                    <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 600 }}>
+                      2. Push code
+                    </Typography>
+                    <Box
+                      component="pre"
+                      sx={{
+                        p: 2,
+                        bgcolor: 'action.hover',
+                        borderRadius: 1,
+                        fontFamily: 'monospace',
+                        fontSize: '0.8125rem',
+                        overflow: 'auto',
+                      }}
+                    >
+                      <code>
+                        {`git remote add origin ${metadata?.git_remote_url || 'ssh://git@<host>:2222/repos/<id>.git'}\n`}
+                        {`git push -u origin master`}
+                      </code>
+                    </Box>
+                  </Paper>
+                </>
+              ) : (
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
+                  <Typography variant="body2" color="text.secondary">
+                    Select a file to view its contents
+                  </Typography>
                 </Box>
-              </Paper>
+              )}
             </Box>
           )}
         </Box>
       </Box>
-
-      {/* SSH Key Dialog */}
-      <Dialog open={sshDialogOpen} onClose={() => setSshDialogOpen(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>Add SSH Key</DialogTitle>
-        <DialogContent>
-          {keyError && (
-            <Alert severity="error" sx={{ mb: 2 }}>
-              {keyError}
-            </Alert>
-          )}
-          <TextField
-            autoFocus
-            margin="dense"
-            label="Key Name"
-            placeholder="e.g., MacBook Pro"
-            fullWidth
-            variant="outlined"
-            value={newKeyName}
-            onChange={(e) => setNewKeyName(e.target.value)}
-            sx={{ mb: 2 }}
-          />
-          <TextField
-            margin="dense"
-            label="Public Key"
-            placeholder="ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAI..."
-            fullWidth
-            variant="outlined"
-            multiline
-            rows={4}
-            value={newKeyValue}
-            onChange={(e) => setNewKeyValue(e.target.value)}
-          />
-          <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
-            Paste your public key (usually in ~/.ssh/id_ed25519.pub or ~/.ssh/id_rsa.pub)
-          </Typography>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setSshDialogOpen(false)}>Cancel</Button>
-          <Button
-            onClick={handleAddSshKey}
-            variant="contained"
-            disabled={!newKeyName.trim() || !newKeyValue.trim() || addingKey}
-          >
-            {addingKey ? 'Adding...' : 'Add Key'}
-          </Button>
-        </DialogActions>
-      </Dialog>
     </Box>
   );
 }

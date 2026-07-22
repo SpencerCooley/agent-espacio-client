@@ -1,8 +1,11 @@
 import { apiClient } from './api';
 
 export interface RepoMetadata {
+  name: string;
+  description: string | null;
   artifact_id: string;
   git_remote_url: string;
+  clone_url: string;
   default_branch: string;
   last_commit: {
     hash: string;
@@ -36,6 +39,26 @@ export interface RepoCommit {
 
 export interface RepoCommits {
   commits: RepoCommit[];
+}
+
+export interface RepoDiffFile {
+  path: string;
+  status: string;
+  additions: number;
+  deletions: number;
+  patch: string | null;
+}
+
+export interface RepoCommitDetail {
+  hash: string;
+  short_hash: string;
+  message: string;
+  author: string;
+  date: string;
+  parent_hash: string | null;
+  files: RepoDiffFile[];
+  total_additions: number;
+  total_deletions: number;
 }
 
 export interface RepoFile {
@@ -81,13 +104,16 @@ export const repoService = {
     return apiClient.get<RepoCommits>(`/artifacts/${artifactId}/repo/commits${query ? `?${query}` : ''}`);
   },
 
+  getCommitDetail: (artifactId: string, commitHash: string) =>
+    apiClient.get<RepoCommitDetail>(`/artifacts/${artifactId}/repo/commits/${commitHash}`),
+
   // SSH key management
   listSshKeys: () =>
-    apiClient.get<{ keys: SshKey[] }>('/users/me/ssh-keys'),
+    apiClient.get<{ keys: SshKey[]; total: number }>('/ssh-keys'),
 
   addSshKey: (data: { name: string; public_key: string }) =>
-    apiClient.post<SshKey>('/users/me/ssh-keys', data),
+    apiClient.post<SshKey>('/ssh-keys', data),
 
   deleteSshKey: (keyId: number) =>
-    apiClient.delete(`/users/me/ssh-keys/${keyId}`),
+    apiClient.delete(`/ssh-keys/${keyId}`),
 };

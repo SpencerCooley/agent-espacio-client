@@ -6,6 +6,7 @@ import { Box, Typography, Paper } from '@mui/material';
 import WorkflowPublicView from '../../../../../components/workspace/WorkflowPublicView';
 import GalleryPublicView from '../../../../../components/workspace/GalleryPublicView';
 import ComposerPublicView from '../../../../../components/workspace/ComposerPublicView';
+import RepoPublicView from '../../../../../components/workspace/RepoPublicView';
 import { NotePublicView, MapPublicView } from '../../../../../components/public/PublicViews';
 import PublicShell from '../../../../../components/public/PublicShell';
 import { useApp } from '../../../../../context/AppContext';
@@ -97,7 +98,7 @@ export default function ArtifactPreviewPage() {
   }
 
   const artifact = data.artifact;
-  const isFullBleed = ['workflow', 'map'].includes(artifact.type);
+  const isFullBleed = ['workflow', 'map', 'repo'].includes(artifact.type);
 
   const content = () => {
     // Workflow artifacts render full page (no container)
@@ -141,6 +142,18 @@ export default function ArtifactPreviewPage() {
     if (artifact.type === 'composer') {
       return (
         <ComposerPublicView
+          artifactId={artifact.id}
+          publicMagicId={artifact.public_magic_id}
+          isPreview
+          themeMode={data?.public_theme?.mode}
+        />
+      );
+    }
+
+    // Repo artifacts
+    if (artifact.type === 'repo') {
+      return (
+        <RepoPublicView
           artifactId={artifact.id}
           publicMagicId={artifact.public_magic_id}
           isPreview

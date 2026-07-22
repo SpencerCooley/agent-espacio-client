@@ -10,6 +10,7 @@ const ComposerViewMap = dynamic(() => import('./ComposerViewMap'), { ssr: false 
 const ComposerViewGallery = dynamic(() => import('./ComposerViewGallery'), { ssr: false });
 const ComposerViewWorkflow = dynamic(() => import('./ComposerViewWorkflow'), { ssr: false });
 const ComposerViewAsset = dynamic(() => import('./ComposerViewAsset'), { ssr: false });
+const ComposerViewRepo = dynamic(() => import('./ComposerViewRepo'), { ssr: false });
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
@@ -112,6 +113,7 @@ function SectionView({
   const viewProps = {
     content: item.content,
     name: item.name,
+    description: item.description || null,
     publicMagicId: item.public_magic_id || item.id,
     isPreview,
     isPublicView,
@@ -131,6 +133,9 @@ function SectionView({
       break;
     case 'workflow':
       Component = ComposerViewWorkflow;
+      break;
+    case 'repo':
+      Component = ComposerViewRepo;
       break;
     default:
       return (

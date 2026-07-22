@@ -1,11 +1,12 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import ProtectedRoute from '../../../components/auth/ProtectedRoute';
 import WorkspaceLayout from '../../../components/layout/WorkspaceLayout';
 import { useApp } from '../../../context/AppContext';
 import { useThemeContext } from '../../../context/ThemeContext';
 import { settingsService, PublicTheme } from '../../../services/settings';
+import { repoService, SshKey } from '../../../services/repos';
 import {
   Typography,
   Paper,
@@ -24,12 +25,21 @@ import {
   Select,
   MenuItem,
   SelectChangeEvent,
+  TextField,
+  Button,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Alert,
 } from '@mui/material';
 import {
   Brightness4 as DarkModeIcon,
   Brightness7 as LightModeIcon,
   Person as PersonIcon,
-  VpnKey as KeyIcon,
+  VpnKey as VpnKeyIcon,
+  Key as KeyIcon,
+  Delete as DeleteIcon,
   ArrowBack as ArrowBackIcon,
   Palette as PaletteIcon,
   Language as LanguageIcon,
@@ -207,6 +217,152 @@ function BrandingSection() {
   );
 }
 
+function SshKeysSection() {
+  const [keys, setKeys] = useState<SshKey[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [newKeyName, setNewKeyName] = useState('');
+  const [newKeyValue, setNewKeyValue] = useState('');
+  const [adding, setAdding] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const loadKeys = useCallback(() => {
+    repoService.listSshKeys()
+      .then((data) => setKeys(data.keys))
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
+
+  useEffect(() => {
+    loadKeys();
+  }, [loadKeys]);
+
+  const handleAdd = () => {
+    if (!newKeyName.trim() || !newKeyValue.trim()) return;
+    setAdding(true);
+    setError(null);
+    repoService.addSshKey({ name: newKeyName.trim(), public_key: newKeyValue.trim() })
+      .then(() => {
+        setNewKeyName('');
+        setNewKeyValue('');
+        setDialogOpen(false);
+        loadKeys();
+      })
+      .catch((err) => {
+        setError(err.message || 'Failed to add SSH key');
+      })
+      .finally(() => setAdding(false));
+  };
+
+  const handleDelete = (keyId: number) => {
+    repoService.deleteSshKey(keyId)
+      .then(() => loadKeys())
+      .catch((err) => setError(err.message || 'Failed to delete key'));
+  };
+
+  return (
+    <Paper sx={{ mb: 3 }}>
+      <Typography variant="h6" sx={{ px: 2, pt: 2, pb: 1 }} color="text.primary">
+        SSH Keys
+      </Typography>
+      <Typography variant="caption" sx={{ px: 2, pb: 1, display: 'block' }} color="text.secondary">
+        Manage SSH keys for pushing code to repositories
+      </Typography>
+      <Divider />
+      {error && (
+        <Alert severity="error" sx={{ m: 2 }}>
+          {error}
+        </Alert>
+      )}
+      <List>
+        {keys.length === 0 ? (
+          <ListItem>
+            <ListItemText
+              primary="No SSH keys registered"
+              secondary="Add a key to push code to repositories"
+            />
+          </ListItem>
+        ) : (
+          keys.map((key) => (
+            <ListItem
+              key={key.id}
+              secondaryAction={
+                <IconButton edge="end" size="small" color="error" onClick={() => handleDelete(key.id)}>
+                  <DeleteIcon fontSize="small" />
+                </IconButton>
+              }
+            >
+              <ListItemIcon>
+                <KeyIcon />
+              </ListItemIcon>
+              <ListItemText
+                primary={key.name}
+                secondary={key.fingerprint}
+              />
+            </ListItem>
+          ))
+        )}
+      </List>
+      <Box sx={{ px: 2, pb: 2 }}>
+        <Button
+          variant="outlined"
+          size="small"
+          startIcon={<VpnKeyIcon />}
+          onClick={() => { setError(null); setDialogOpen(true); }}
+        >
+          Add SSH Key
+        </Button>
+      </Box>
+
+      <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>Add SSH Key</DialogTitle>
+        <DialogContent>
+          {error && (
+            <Alert severity="error" sx={{ mb: 2 }}>
+              {error}
+            </Alert>
+          )}
+          <TextField
+            autoFocus
+            margin="dense"
+            label="Key Name"
+            placeholder="e.g., MacBook Pro"
+            fullWidth
+            variant="outlined"
+            value={newKeyName}
+            onChange={(e) => setNewKeyName(e.target.value)}
+            sx={{ mb: 2 }}
+          />
+          <TextField
+            margin="dense"
+            label="Public Key"
+            placeholder="ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAI..."
+            fullWidth
+            variant="outlined"
+            multiline
+            rows={4}
+            value={newKeyValue}
+            onChange={(e) => setNewKeyValue(e.target.value)}
+          />
+          <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
+            Paste your public key (usually in ~/.ssh/id_ed25519.pub or ~/.ssh/id_rsa.pub)
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDialogOpen(false)}>Cancel</Button>
+          <Button
+            onClick={handleAdd}
+            variant="contained"
+            disabled={!newKeyName.trim() || !newKeyValue.trim() || adding}
+          >
+            {adding ? 'Adding...' : 'Add Key'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+    </Paper>
+  );
+}
+
 function SettingsContent() {
   const { user } = useApp();
   const { mode, toggleTheme, currentThemeId, setThemeId, availableThemes } = useThemeContext();
@@ -246,7 +402,7 @@ function SettingsContent() {
           </ListItem>
           <ListItem>
             <ListItemIcon>
-              <KeyIcon />
+              <VpnKeyIcon />
             </ListItemIcon>
             <ListItemText
               primary="Role"
@@ -262,6 +418,9 @@ function SettingsContent() {
           </ListItem>
         </List>
       </Paper>
+
+      {/* SSH Keys */}
+      <SshKeysSection />
 
       {/* Appearance */}
       <Paper sx={{ mb: 3 }}>
@@ -334,7 +493,7 @@ function SettingsContent() {
             <ListItem disablePadding>
               <ListItemButton component="a" href="/admin">
                 <ListItemIcon>
-                  <KeyIcon />
+                  <VpnKeyIcon />
                 </ListItemIcon>
                 <ListItemText
                   primary="Go to Admin Panel"

@@ -52,7 +52,9 @@ export default function PublicShell({ children, logoText = 'Agent Espacio', full
     <MUIThemeProvider theme={muiTheme}>
       <Box
         sx={{
-          minHeight: '100vh',
+          ...(fullBleed
+            ? { height: '100vh', overflow: 'hidden' }
+            : { minHeight: '100vh' }),
           display: 'flex',
           flexDirection: 'column',
           bgcolor: 'background.default',
@@ -60,9 +62,9 @@ export default function PublicShell({ children, logoText = 'Agent Espacio', full
           ...backgroundSx,
         }}
       >
-        {/* Sticky Header */}
+        {/* Header */}
         <AppBar
-          position="sticky"
+          position={fullBleed ? 'relative' : 'sticky'}
           color="inherit"
           elevation={0}
           sx={{
@@ -146,7 +148,7 @@ export default function PublicShell({ children, logoText = 'Agent Espacio', full
             width: '100%',
             minWidth: 0,
             overflowX: 'hidden',
-            ...(fullBleed ? { display: 'flex', flexDirection: 'column' } : {}),
+            ...(fullBleed ? { display: 'flex', flexDirection: 'column', overflow: 'hidden' } : {}),
           }}
         >
           {bgUrl && !fullBleed ? (
