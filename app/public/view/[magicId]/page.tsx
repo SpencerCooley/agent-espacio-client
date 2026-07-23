@@ -1,10 +1,10 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useSearchParams } from 'next/navigation';
 import NextLink from 'next/link';
 import { Box, Typography, Grid, Paper, Breadcrumbs, Link, Chip, TextField, InputAdornment, CircularProgress, ClickAwayListener, Menu, MenuItem } from '@mui/material';
-import { Folder as FolderIcon, InsertDriveFile as FileIcon, Image as ImageIcon, Article as ArticleIcon, Map as MapIcon, Movie as MovieIcon, Audiotrack as AudiotrackIcon, PhotoLibrary as PhotoLibraryIcon, AutoAwesomeMosaic as ComposerIcon, Search as SearchIcon } from '@mui/icons-material';
+import { Folder as FolderIcon, InsertDriveFile as FileIcon, Image as ImageIcon, Article as ArticleIcon, Map as MapIcon, Movie as MovieIcon, Audiotrack as AudiotrackIcon, PhotoLibrary as PhotoLibraryIcon, AutoAwesomeMosaic as ComposerIcon, Search as SearchIcon, Terminal as TerminalIcon, OpenInNew as OpenInNewIcon } from '@mui/icons-material';
 import InlineThumbnail from '../../../../components/workspace/InlineThumbnail';
 import WorkflowPublicView from '../../../../components/workspace/WorkflowPublicView';
 import GalleryPublicView from '../../../../components/workspace/GalleryPublicView';
@@ -61,6 +61,11 @@ interface PublicViewData {
     description?: string;
     content: any;
     public_magic_id: string;
+    publish?: {
+      render_mode: string;
+      slug: string;
+      allow_public_code_view?: boolean;
+    } | null;
   };
   ancestors?: AncestorItem[];
   items?: PublicItem[];
@@ -75,6 +80,8 @@ interface PublicViewData {
 export default function PublicViewPage() {
   const params = useParams();
   const magicId = params.magicId as string;
+  const searchParams = useSearchParams();
+  const repoViewParam = searchParams.get('repo_view') === 'true';
   const [data, setData] = useState<PublicViewData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -675,6 +682,69 @@ export default function PublicViewPage() {
 
       // Repo artifacts
       if (artifact.type === 'repo') {
+        // Check publish config for render mode
+        const publish = artifact.publish;
+        const slug = publish?.slug || '';
+        const allowRepoView = publish?.allow_public_code_view ?? false;
+
+        // If repo_view=true param and allow_public_code_view is enabled, show repo view
+        if (repoViewParam && allowRepoView) {
+          return (
+            <RepoPublicView
+              artifactId={artifact.id}
+              publicMagicId={artifact.public_magic_id}
+              themeMode={data?.public_theme?.mode}
+            />
+          );
+        }
+
+        if (publish?.render_mode === 'direct' && slug) {
+          // Direct mode: redirect to the published site
+          if (typeof window !== 'undefined') {
+            window.location.replace(`${API_BASE_URL}/published/${slug}/`);
+          }
+          return (
+            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
+              <CircularProgress />
+              <Typography sx={{ ml: 2 }}>Redirecting to site...</Typography>
+            </Box>
+          );
+        }
+
+        if (publish?.render_mode === 'embedded' && slug) {
+          // Embedded mode: iframe with nav bar
+          return (
+            <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+              {/* Navigation bar */}
+              <Box sx={{ p: 1.5, borderBottom: 1, borderColor: 'divider', display: 'flex', alignItems: 'center', gap: 2, bgcolor: 'background.paper' }}>
+                <TerminalIcon color="primary" />
+                <Typography variant="subtitle1" sx={{ fontWeight: 600, flex: 1 }}>
+                  {artifact.name}
+                </Typography>
+                <Chip label="Static Site" size="small" color="primary" variant="outlined" />
+                {allowRepoView && (
+                  <Link
+                    href={`/public/view/${artifact.public_magic_id}?repo_view=true`}
+                    sx={{ display: 'flex', alignItems: 'center', gap: 0.5, fontSize: '0.875rem', color: 'text.secondary' }}
+                  >
+                    View Code
+                  </Link>
+                )}
+              </Box>
+              {/* Iframe */}
+              <Box sx={{ flex: 1, minHeight: 0 }}>
+                <iframe
+                  src={`${API_BASE_URL}/published/${slug}/`}
+                  style={{ width: '100%', height: '100%', border: 'none' }}
+                  title={artifact.name}
+                  sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
+                />
+              </Box>
+            </Box>
+          );
+        }
+
+        // Default or repo_link mode: show repo view (with site link if published)
         return (
           <RepoPublicView
             artifactId={artifact.id}

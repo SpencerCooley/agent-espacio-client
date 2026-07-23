@@ -16,6 +16,41 @@ export interface RepoMetadata {
   commit_count: number;
   file_count: number;
   repo_size_bytes: number;
+  publish: PublishConfig | null;
+}
+
+export interface PublishConfig {
+  enabled: boolean;
+  slug: string;
+  render_mode: 'embedded' | 'direct' | 'repo_link';
+  build_command: string;
+  output_dir: string;
+  auto_deploy: boolean;
+  allow_public_code_view: boolean;
+  status: 'idle' | 'building' | 'deployed' | 'failed';
+  last_deploy_at: string | null;
+  last_deploy_commit: string | null;
+}
+
+export interface PublishSettings {
+  enabled: boolean;
+  slug: string;
+  render_mode: string;
+  build_command: string;
+  output_dir: string;
+  auto_deploy: boolean;
+  allow_public_code_view: boolean;
+  status: string;
+  last_deploy_at: string | null;
+  last_deploy_commit: string | null;
+  site_url: string;
+}
+
+export interface DeployStatus {
+  status: string;
+  last_deploy_at: string | null;
+  last_deploy_commit: string | null;
+  last_deploy_log: string | null;
 }
 
 export interface RepoTreeItem {
@@ -116,4 +151,26 @@ export const repoService = {
 
   deleteSshKey: (keyId: number) =>
     apiClient.delete(`/ssh-keys/${keyId}`),
+
+  // Publish / Deploy
+  getPublishSettings: (artifactId: string) =>
+    apiClient.get<PublishSettings>(`/artifacts/${artifactId}/publish`),
+
+  updatePublishSettings: (artifactId: string, data: Partial<{
+    enabled: boolean;
+    slug: string;
+    render_mode: string;
+    build_command: string;
+    output_dir: string;
+    auto_deploy: boolean;
+  }>) => apiClient.put<PublishSettings>(`/artifacts/${artifactId}/publish`, data),
+
+  unpublish: (artifactId: string) =>
+    apiClient.delete(`/artifacts/${artifactId}/publish`),
+
+  triggerDeploy: (artifactId: string) =>
+    apiClient.post<{ task_id: string; status: string }>(`/artifacts/${artifactId}/deploy`),
+
+  getDeployStatus: (artifactId: string) =>
+    apiClient.get<DeployStatus>(`/artifacts/${artifactId}/deploy/status`),
 };

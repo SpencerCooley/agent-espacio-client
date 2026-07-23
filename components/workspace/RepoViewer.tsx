@@ -20,6 +20,17 @@ import {
   Tooltip,
   Button,
   TextField,
+  Radio,
+  RadioGroup,
+  FormControlLabel,
+  FormControl,
+  FormLabel,
+  Switch,
+  Snackbar,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
 } from '@mui/material';
 import {
   Folder as FolderIcon,
@@ -28,9 +39,12 @@ import {
   ArrowBack as BackIcon,
   Terminal as TerminalIcon,
   History as HistoryIcon,
+  RocketLaunch as DeployIcon,
+  OpenInNew as OpenInNewIcon,
+  Settings as SettingsIcon,
 } from '@mui/icons-material';
 import { Artifact, artifactService } from '../../services/artifacts';
-import { repoService, RepoMetadata, RepoTreeItem, RepoCommit, RepoCommitDetail } from '../../services/repos';
+import { repoService, RepoMetadata, RepoTreeItem, RepoCommit, RepoCommitDetail, PublishSettings } from '../../services/repos';
 import CodeBlock from './CodeBlock';
 import DiffViewer from './DiffViewer';
 
@@ -60,6 +74,23 @@ export default function RepoViewer({ artifact }: RepoViewerProps) {
   const [viewMode, setViewMode] = useState<'files' | 'history' | 'commit'>('files');
   const [selectedCommit, setSelectedCommit] = useState<RepoCommitDetail | null>(null);
   const [commitLoading, setCommitLoading] = useState(false);
+
+  // Publish state
+  const [publishSettings, setPublishSettings] = useState<PublishSettings | null>(null);
+  const [deployStatus, setDeployStatus] = useState<string>('');
+  const [publishSnackbar, setPublishSnackbar] = useState('');
+
+  // Settings modal
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [settingsArtifactMode, setSettingsArtifactMode] = useState<'repo' | 'static'>('repo');
+  const [settingsRenderMode, setSettingsRenderMode] = useState<string>('embedded');
+  const [settingsSlug, setSettingsSlug] = useState('');
+  const [settingsBuildCommand, setSettingsBuildCommand] = useState('');
+  const [settingsOutputDir, setSettingsOutputDir] = useState('');
+  const [settingsAutoDeploy, setSettingsAutoDeploy] = useState(true);
+  const [settingsAllowPublicCodeView, setSettingsAllowPublicCodeView] = useState(false);
+  const [settingsSaving, setSettingsSaving] = useState(false);
+  const slugSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const artifactId = artifact.id;
 
@@ -105,6 +136,90 @@ export default function RepoViewer({ artifact }: RepoViewerProps) {
     }
   };
 
+  const loadPublishSettings = async () => {
+    try {
+      const settings = await repoService.getPublishSettings(artifactId);
+      setPublishSettings(settings);
+      return settings;
+    } catch {
+      setPublishSettings(null);
+      return null;
+    }
+  };
+
+  const handleDeploy = async () => {
+    try {
+      await repoService.triggerDeploy(artifactId);
+      setDeployStatus('building');
+      setPublishSnackbar('Deploy started');
+    } catch (err: any) {
+      setPublishSnackbar(err?.message || 'Deploy failed');
+    }
+  };
+
+  const openSettings = async () => {
+    const settings = await loadPublishSettings();
+    if (settings?.enabled) {
+      setSettingsArtifactMode('static');
+      setSettingsRenderMode(settings.render_mode);
+      setSettingsSlug(settings.slug);
+      setSettingsBuildCommand(settings.build_command || '');
+      setSettingsOutputDir(settings.output_dir || '');
+      setSettingsAutoDeploy(settings.auto_deploy);
+      setSettingsAllowPublicCodeView(settings.allow_public_code_view);
+    } else {
+      setSettingsArtifactMode('repo');
+      setSettingsRenderMode('embedded');
+      setSettingsSlug(name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''));
+      setSettingsBuildCommand('');
+      setSettingsOutputDir('');
+      setSettingsAutoDeploy(true);
+      setSettingsAllowPublicCodeView(false);
+    }
+    setSettingsOpen(true);
+  };
+
+  const handleSaveSettings = async () => {
+    setSettingsSaving(true);
+    try {
+      if (settingsArtifactMode === 'repo') {
+        const saved = await repoService.updatePublishSettings(artifactId, {
+          enabled: false,
+        });
+        setPublishSettings(saved.enabled ? saved : null);
+      } else {
+        const updates: Partial<PublishSettings> = {
+          enabled: true,
+          render_mode: settingsRenderMode,
+          slug: settingsSlug,
+          build_command: settingsBuildCommand || '',
+          output_dir: settingsBuildCommand ? settingsOutputDir || '' : '',
+          auto_deploy: settingsAutoDeploy,
+          allow_public_code_view: settingsAllowPublicCodeView,
+        };
+        const saved = await repoService.updatePublishSettings(artifactId, updates);
+        setPublishSettings(saved);
+      }
+      setPublishSnackbar('Settings saved');
+      setSettingsOpen(false);
+    } catch (err: any) {
+      setPublishSnackbar(err?.message || 'Failed to save');
+    }
+    setSettingsSaving(false);
+  };
+
+  const handleSlugChange = (value: string) => {
+    const sanitized = value.toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/--+/g, '-');
+    setSettingsSlug(sanitized);
+  };
+
+  // Load publish settings on mount
+  useEffect(() => {
+    if (metadata) {
+      loadPublishSettings();
+    }
+  }, [metadata?.artifact_id]);
+
   // Load metadata on mount
   useEffect(() => {
     setLoading(true);
@@ -131,7 +246,7 @@ export default function RepoViewer({ artifact }: RepoViewerProps) {
   useEffect(() => {
     repoService.getCommits(artifactId)
       .then((data) => setCommits(data.commits))
-      .catch(() => {}); // Non-critical
+      .catch(() => {});
   }, [artifactId]);
 
   // Handle browser back/forward
@@ -257,6 +372,9 @@ export default function RepoViewer({ artifact }: RepoViewerProps) {
     );
   }
 
+  const isStaticSite = publishSettings?.enabled;
+  const isBuilding = (deployStatus || publishSettings?.status) === 'building';
+
   return (
     <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
       {/* Header */}
@@ -278,11 +396,22 @@ export default function RepoViewer({ artifact }: RepoViewerProps) {
             }}
           />
           <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+            {isStaticSite && (
+              <Button
+                size="small"
+                variant="contained"
+                startIcon={<DeployIcon />}
+                onClick={handleDeploy}
+                disabled={isBuilding}
+              >
+                {isBuilding ? 'Deploying...' : 'Deploy Site'}
+              </Button>
+            )}
             <Chip
               icon={<TerminalIcon />}
-              label="Repository"
+              label={isStaticSite ? 'Static Site' : 'Repository'}
               size="small"
-              color="primary"
+              color={isStaticSite ? 'success' : 'primary'}
               variant="outlined"
             />
             {metadata?.git_remote_url && (
@@ -299,6 +428,23 @@ export default function RepoViewer({ artifact }: RepoViewerProps) {
                 </IconButton>
               </Tooltip>
             )}
+            {isStaticSite && publishSettings?.site_url && (
+              <Tooltip title="Open published site">
+                <IconButton
+                  size="small"
+                  href={publishSettings.site_url}
+                  target="_blank"
+                  component="a"
+                >
+                  <OpenInNewIcon fontSize="small" />
+                </IconButton>
+              </Tooltip>
+            )}
+            <Tooltip title="Settings">
+              <IconButton size="small" onClick={openSettings}>
+                <SettingsIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
           </Box>
         </Box>
         <TextField
@@ -436,28 +582,28 @@ export default function RepoViewer({ artifact }: RepoViewerProps) {
                 </IconButton>
               </Tooltip>
             </Box>
-              <Box sx={{ px: 2, pb: 2, maxHeight: 200, overflowY: 'auto' }}>
-                {commits.length === 0 ? (
-                  <Typography variant="caption" color="text.secondary">
-                    No commits yet
-                  </Typography>
-                ) : (
-                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                    {commits.slice(0, 5).map((commit) => (
-                      <Box key={commit.hash}>
-                        <Typography variant="caption" sx={{ fontFamily: 'monospace', color: 'primary.main' }}>
-                          {commit.hash}
-                        </Typography>
-                        <Typography variant="caption" display="block" noWrap>
-                          {commit.message}
-                        </Typography>
-                      </Box>
-                    ))}
-                  </Box>
-                )}
-              </Box>
+            <Box sx={{ px: 2, pb: 2, maxHeight: 200, overflowY: 'auto' }}>
+              {commits.length === 0 ? (
+                <Typography variant="caption" color="text.secondary">
+                  No commits yet
+                </Typography>
+              ) : (
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                  {commits.slice(0, 5).map((commit) => (
+                    <Box key={commit.hash}>
+                      <Typography variant="caption" sx={{ fontFamily: 'monospace', color: 'primary.main' }}>
+                        {commit.hash}
+                      </Typography>
+                      <Typography variant="caption" display="block" noWrap>
+                        {commit.message}
+                      </Typography>
+                    </Box>
+                  ))}
+                </Box>
+              )}
             </Box>
           </Box>
+        </Box>
 
         {/* Main panel: File content, commit history, or commit detail */}
         <Box sx={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
@@ -583,6 +729,132 @@ export default function RepoViewer({ artifact }: RepoViewerProps) {
           )}
         </Box>
       </Box>
+
+      {/* Settings Modal */}
+      <Dialog
+        open={settingsOpen}
+        onClose={() => setSettingsOpen(false)}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>Repository Settings</DialogTitle>
+        <DialogContent>
+          <FormControl component="fieldset" sx={{ width: '100%', mt: 1 }}>
+            <FormLabel component="legend" sx={{ mb: 1 }}>Artifact Type</FormLabel>
+            <RadioGroup
+              value={settingsArtifactMode}
+              onChange={(e) => setSettingsArtifactMode(e.target.value as 'repo' | 'static')}
+              row
+            >
+              <FormControlLabel value="repo" control={<Radio />} label="Repository" />
+              <FormControlLabel value="static" control={<Radio />} label="Static Site" />
+            </RadioGroup>
+          </FormControl>
+
+          {settingsArtifactMode === 'static' && (
+            <Box sx={{ mt: 3, display: 'flex', flexDirection: 'column', gap: 2.5 }}>
+              <FormControl size="small">
+                <FormLabel sx={{ fontSize: '0.875rem', mb: 1 }}>Display Mode</FormLabel>
+                <RadioGroup
+                  value={settingsRenderMode}
+                  onChange={(e) => {
+                    const newMode = e.target.value;
+                    setSettingsRenderMode(newMode);
+                    if (newMode === 'repo_link') {
+                      setSettingsAllowPublicCodeView(true);
+                    } else if (settingsRenderMode === 'repo_link') {
+                      // Switching from repo_link to embedded/direct: reset to false
+                      setSettingsAllowPublicCodeView(false);
+                    }
+                  }}
+                >
+                  <FormControlLabel value="embedded" control={<Radio size="small" />} label="Embedded (iframe with branded nav)" />
+                  <FormControlLabel value="direct" control={<Radio size="small" />} label="Direct URL (redirect to site)" />
+                  <FormControlLabel value="repo_link" control={<Radio size="small" />} label="Repository + site link (code public)" />
+                </RadioGroup>
+              </FormControl>
+
+              <FormControlLabel
+                control={
+                  <Switch
+                    size="small"
+                    checked={settingsAllowPublicCodeView}
+                    onChange={(e) => setSettingsAllowPublicCodeView(e.target.checked)}
+                    disabled={settingsRenderMode === 'repo_link'}
+                  />
+                }
+                label={
+                  <Typography variant="body2" color={settingsRenderMode === 'repo_link' ? 'text.secondary' : 'text.primary'}>
+                    {settingsRenderMode === 'repo_link'
+                      ? 'Allow public code view — auto-enabled (repo link mode shows code by default)'
+                      : 'Allow public code view (clone access)'}
+                  </Typography>
+                }
+              />
+
+              <TextField
+                size="small"
+                label="Site slug"
+                value={settingsSlug}
+                onChange={(e) => handleSlugChange(e.target.value)}
+                placeholder="my-cool-site"
+                helperText={settingsSlug ? `/${settingsSlug}` : 'Letters, numbers, and dashes only'}
+                fullWidth
+              />
+
+              <TextField
+                size="small"
+                label="Build command (optional)"
+                value={settingsBuildCommand}
+                onChange={(e) => setSettingsBuildCommand(e.target.value)}
+                placeholder="npm run build"
+                helperText="Leave empty to serve files directly as-is (e.g. plain index.html)"
+                fullWidth
+              />
+
+              {settingsBuildCommand && (
+                <TextField
+                  size="small"
+                  label="Output directory"
+                  value={settingsOutputDir}
+                  onChange={(e) => setSettingsOutputDir(e.target.value)}
+                  placeholder="dist"
+                  fullWidth
+                />
+              )}
+
+              <FormControlLabel
+                control={
+                  <Switch
+                    size="small"
+                    checked={settingsAutoDeploy}
+                    onChange={(e) => setSettingsAutoDeploy(e.target.checked)}
+                  />
+                }
+                label="Auto-deploy on push"
+              />
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setSettingsOpen(false)}>Cancel</Button>
+          <Button
+            variant="contained"
+            onClick={handleSaveSettings}
+            disabled={settingsSaving}
+          >
+            {settingsSaving ? 'Saving...' : 'Save'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Snackbar
+        open={!!publishSnackbar}
+        autoHideDuration={3000}
+        onClose={() => setPublishSnackbar('')}
+        message={publishSnackbar}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      />
     </Box>
   );
 }

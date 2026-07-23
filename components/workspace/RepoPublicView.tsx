@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useState, useCallback, useRef } from 'react';
+import { useSearchParams } from 'next/navigation';
 import {
   Box,
   Typography,
@@ -16,6 +17,7 @@ import {
   Alert,
   IconButton,
   Tooltip,
+  Button,
 } from '@mui/material';
 import {
   Folder as FolderIcon,
@@ -24,6 +26,7 @@ import {
   Terminal as TerminalIcon,
   History as HistoryIcon,
   ContentCopy as CopyIcon,
+  OpenInNew as OpenInNewIcon,
 } from '@mui/icons-material';
 import CodeBlock from './CodeBlock';
 import DiffViewer from './DiffViewer';
@@ -95,6 +98,9 @@ export default function RepoPublicView({
   const [commitLoading, setCommitLoading] = useState(false);
   const [cloneUrl, setCloneUrl] = useState('');
   const [copied, setCopied] = useState(false);
+  const [siteUrl, setSiteUrl] = useState('');
+  const searchParams = useSearchParams();
+  const isRepoView = searchParams?.get('repo_view') === 'true';
 
   const baseUrl = isPreview
     ? `${API_BASE_URL}/artifacts/${artifactId}/repo`
@@ -130,6 +136,11 @@ export default function RepoPublicView({
         setCommitCount(meta.commit_count || 0);
         setFileCount(meta.file_count || 0);
         setCloneUrl(meta.clone_url || '');
+        // Get site URL from publish config
+        const pub = meta.publish;
+        if (pub?.slug) {
+          setSiteUrl(`${API_BASE_URL}/published/${pub.slug}/`);
+        }
         setTreeItems(tree.items || []);
         setCurrentPath(hashPath);
         setCommits(commitData.commits || []);
@@ -289,6 +300,27 @@ export default function RepoPublicView({
           <Typography variant="body2" color="text.secondary">
             {commitCount} commits · {fileCount} files
           </Typography>
+          {siteUrl && !isRepoView && (
+            <Link
+              href={siteUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              sx={{ display: 'flex', alignItems: 'center', gap: 0.5, fontSize: '0.75rem', color: 'primary.main' }}
+            >
+              <OpenInNewIcon sx={{ fontSize: 12 }} />
+              View Live Site
+            </Link>
+          )}
+          {publicMagicId && siteUrl && isRepoView && (
+            <Button
+              size="small"
+              variant="outlined"
+              href={`/public/view/${publicMagicId}`}
+              sx={{ fontSize: '0.75rem', py: 0.25, minHeight: 24, textTransform: 'none' }}
+            >
+              View Site
+            </Button>
+          )}
           {cloneUrl && (
             <Tooltip title={copied ? 'Copied!' : 'Copy clone command'}>
               <IconButton

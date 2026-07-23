@@ -206,6 +206,9 @@ Then update `ThemeContext.tsx` to use it.
 | `/api-keys` | POST | Create API key |
 | `/api-keys/{id}` | DELETE | Revoke key |
 | `/api-keys/{id}/activate` | POST | Activate key |
+| `/artifacts/{id}/repo` | GET | Repo metadata |
+| `/artifacts/{id}/publish` | PUT | Configure publishing |
+| `/artifacts/{id}/deploy` | POST | Trigger deploy |
 
 ## License
 
