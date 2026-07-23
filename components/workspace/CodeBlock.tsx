@@ -18,29 +18,33 @@ export default function CodeBlock({ code, filename }: CodeBlockProps) {
 
   const tokenColors = useMemo(() => {
     const p = theme.palette;
+    // Light mode: prefer .dark variants so neon secondary/warning stay readable on paper
+    const accent = isDark ? p.secondary.main : p.secondary.dark;
+    const warn = isDark ? p.warning.main : p.warning.dark;
+    const info = isDark ? p.info.main : p.info.dark;
     return {
       comment: p.text.secondary,
       punctuation: isDark ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.4)',
-      property: p.info.main,
+      property: info,
       tag: p.error.main,
-      boolean: p.warning.main,
-      number: p.warning.main,
-      constant: p.warning.main,
-      symbol: p.warning.main,
+      boolean: warn,
+      number: warn,
+      constant: warn,
+      symbol: warn,
       string: isDark ? '#98c379' : '#22863a',
       char: isDark ? '#98c379' : '#22863a',
-      builtin: p.info.main,
-      selector: p.secondary.main,
-      keyword: p.primary.main === '#1a202c' ? '#d73a49' : p.secondary.main,
-      function: p.info.main,
-      'class-name': p.warning.main,
+      builtin: info,
+      selector: accent,
+      keyword: p.primary.main === '#1a202c' ? '#d73a49' : accent,
+      function: info,
+      'class-name': warn,
       operator: p.text.primary,
-      regex: p.warning.main,
+      regex: warn,
       important: p.error.main,
       variable: p.error.main,
-      url: p.info.main,
-      atrule: p.secondary.main,
-      'attr-name': p.warning.main,
+      url: info,
+      atrule: accent,
+      'attr-name': warn,
       'attr-value': isDark ? '#98c379' : '#22863a',
     };
   }, [theme, isDark]);
