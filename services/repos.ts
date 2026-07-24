@@ -46,11 +46,21 @@ export interface PublishSettings {
   site_url: string;
 }
 
+export interface DeployHistoryEntry {
+  status: string;
+  commit: string;
+  started_at: string | null;
+  finished_at: string | null;
+  log: string;
+  ref?: string;
+}
+
 export interface DeployStatus {
   status: string;
   last_deploy_at: string | null;
   last_deploy_commit: string | null;
   last_deploy_log: string | null;
+  deploy_history: DeployHistoryEntry[];
 }
 
 export interface RepoTreeItem {
@@ -131,6 +141,17 @@ export const repoService = {
     return apiClient.get<RepoFile>(`/artifacts/${artifactId}/repo/files/${encodedPath}${query ? `?${query}` : ''}`);
   },
 
+  /** Absolute URL for raw file bytes (images). Requires auth headers or useAuthBlob. */
+  getRawFileUrl: (artifactId: string, filePath: string, ref?: string) => {
+    const params = new URLSearchParams();
+    if (ref) params.append('ref', ref);
+    const query = params.toString();
+    const encodedPath = encodeURIComponent(filePath).replace(/%2F/g, '/');
+    const base = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+    return `${base}/artifacts/${artifactId}/repo/raw/${encodedPath}${query ? `?${query}` : ''}`;
+  },
+
+
   getCommits: (artifactId: string, ref?: string, limit?: number) => {
     const params = new URLSearchParams();
     if (ref) params.append('ref', ref);
@@ -174,3 +195,15 @@ export const repoService = {
   getDeployStatus: (artifactId: string) =>
     apiClient.get<DeployStatus>(`/artifacts/${artifactId}/deploy/status`),
 };
+
+const IMAGE_EXTENSIONS = new Set([
+  'jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'bmp', 'ico', 'avif',
+]);
+
+/** True if path looks like a viewable image file. */
+export function isImageFile(path: string): boolean {
+  const base = path.split('/').pop() || path;
+  const dot = base.lastIndexOf('.');
+  if (dot < 0) return false;
+  return IMAGE_EXTENSIONS.has(base.slice(dot + 1).toLowerCase());
+}

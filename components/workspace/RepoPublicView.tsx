@@ -30,8 +30,14 @@ import {
 } from '@mui/icons-material';
 import CodeBlock from './CodeBlock';
 import DiffViewer from './DiffViewer';
+import { isImageFile } from '../../services/repos';
+import { useAuthBlob } from '../../hooks/useAuthBlob';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+
+function encodeRepoPath(filePath: string): string {
+  return encodeURIComponent(filePath).replace(/%2F/g, '/');
+}
 
 interface RepoTreeItem {
   name: string;
@@ -88,6 +94,7 @@ export default function RepoPublicView({
   const navigatingFromPopState = useRef(false);
   const [fileContent, setFileContent] = useState<string | null>(null);
   const [fileName, setFileName] = useState('');
+  const [imagePath, setImagePath] = useState<string | null>(null);
   const [commits, setCommits] = useState<RepoCommit[]>([]);
   const [commitCount, setCommitCount] = useState(0);
   const [fileCount, setFileCount] = useState(0);
@@ -105,6 +112,12 @@ export default function RepoPublicView({
   const baseUrl = isPreview
     ? `${API_BASE_URL}/artifacts/${artifactId}/repo`
     : `${API_BASE_URL}/public/repo/${publicMagicId || artifactId}`;
+
+  const imageRawUrl = imagePath ? `${baseUrl}/raw/${encodeRepoPath(imagePath)}` : null;
+  // Preview uses authenticated raw endpoint; public magic_id path needs no auth headers
+  const imageBlobUrl = useAuthBlob(isPreview ? imageRawUrl : null);
+  const publicImageSrc = !isPreview ? imageRawUrl : null;
+  const displayImageSrc = isPreview ? imageBlobUrl : publicImageSrc;
 
   const authHeaders: Record<string, string> = isPreview
     ? { Authorization: `Bearer ${localStorage.getItem('accessToken') || ''}` }
@@ -155,6 +168,7 @@ export default function RepoPublicView({
   const handleNavigate = (item: RepoTreeItem) => {
     if (item.type === 'tree') {
       setFileContent(null);
+      setImagePath(null);
       setLoading(true);
       if (!navigatingFromPopState.current) {
         window.history.pushState({ path: item.path }, '', `#${item.path}`);
@@ -175,16 +189,24 @@ export default function RepoPublicView({
       if (!navigatingFromPopState.current) {
         window.history.pushState({ path: currentPath, file: item.path }, '', `#${currentPath}`);
       }
-      fetchJson(`${baseUrl}/files/${encodeURIComponent(item.path).replace(/%2F/g, '/')}`)
-        .then((file) => {
-          setFileContent(file.content);
-          setFileName(file.path);
-          setLoading(false);
-        })
-        .catch((err) => {
-          setError(err.message || 'Failed to load file');
-          setLoading(false);
-        });
+      if (isImageFile(item.path)) {
+        setFileContent(null);
+        setFileName(item.path);
+        setImagePath(item.path);
+        setLoading(false);
+      } else {
+        setImagePath(null);
+        fetchJson(`${baseUrl}/files/${encodeRepoPath(item.path)}`)
+          .then((file) => {
+            setFileContent(file.content);
+            setFileName(file.path);
+            setLoading(false);
+          })
+          .catch((err) => {
+            setError(err.message || 'Failed to load file');
+            setLoading(false);
+          });
+      }
     }
   };
 
@@ -194,6 +216,7 @@ export default function RepoPublicView({
       ? currentPath.substring(0, currentPath.lastIndexOf('/'))
       : '';
     setFileContent(null);
+    setImagePath(null);
     setLoading(true);
     if (!navigatingFromPopState.current) {
       window.history.pushState({ path: parentPath }, '', `#${parentPath}`);
@@ -227,26 +250,44 @@ export default function RepoPublicView({
       if (state?.file) {
         setCurrentPath(targetPath);
         setFileContent(null);
+        setImagePath(null);
         setLoading(true);
-        Promise.all([
-          fetchJson(treeUrl),
-          fetchJson(`${baseUrl}/files/${encodeURIComponent(state.file).replace(/%2F/g, '/')}`),
-        ])
-          .then(([tree, file]) => {
-            setTreeItems(tree.items || []);
-            setFileContent(file.content);
-            setFileName(file.path);
-            setLoading(false);
-            navigatingFromPopState.current = false;
-          })
-          .catch((err) => {
-            setError(err.message || 'Failed to load');
-            setLoading(false);
-            navigatingFromPopState.current = false;
-          });
+        if (isImageFile(state.file)) {
+          fetchJson(treeUrl)
+            .then((tree) => {
+              setTreeItems(tree.items || []);
+              setFileName(state.file!);
+              setImagePath(state.file!);
+              setLoading(false);
+              navigatingFromPopState.current = false;
+            })
+            .catch((err) => {
+              setError(err.message || 'Failed to load');
+              setLoading(false);
+              navigatingFromPopState.current = false;
+            });
+        } else {
+          Promise.all([
+            fetchJson(treeUrl),
+            fetchJson(`${baseUrl}/files/${encodeRepoPath(state.file)}`),
+          ])
+            .then(([tree, file]) => {
+              setTreeItems(tree.items || []);
+              setFileContent(file.content);
+              setFileName(file.path);
+              setLoading(false);
+              navigatingFromPopState.current = false;
+            })
+            .catch((err) => {
+              setError(err.message || 'Failed to load');
+              setLoading(false);
+              navigatingFromPopState.current = false;
+            });
+        }
       } else {
         setCurrentPath(targetPath);
         setFileContent(null);
+        setImagePath(null);
         setLoading(true);
         fetchJson(treeUrl)
           .then((tree) => {
@@ -432,6 +473,7 @@ export default function RepoPublicView({
                       setViewMode('history');
                       setSelectedCommit(null);
                       setFileContent(null);
+                      setImagePath(null);
                     }
                   }}
                   sx={{ color: viewMode === 'history' ? 'primary.main' : 'text.secondary' }}
@@ -530,6 +572,37 @@ export default function RepoPublicView({
                   })}
                 </List>
               )}
+            </Box>
+          ) : imagePath ? (
+            <Box
+              sx={{
+                flex: 1,
+                overflow: 'auto',
+                p: 2,
+                display: 'flex',
+                flexDirection: 'column',
+              }}
+            >
+              <Typography variant="caption" color="text.secondary" sx={{ fontFamily: 'monospace', mb: 1 }}>
+                {fileName}
+              </Typography>
+              <Box sx={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                {displayImageSrc ? (
+                  <Box
+                    component="img"
+                    src={displayImageSrc}
+                    alt={fileName}
+                    sx={{
+                      maxWidth: '100%',
+                      maxHeight: '100%',
+                      objectFit: 'contain',
+                      borderRadius: 1,
+                    }}
+                  />
+                ) : (
+                  <CircularProgress size={32} />
+                )}
+              </Box>
             </Box>
           ) : fileContent !== null ? (
             <CodeBlock code={fileContent} filename={fileName} />

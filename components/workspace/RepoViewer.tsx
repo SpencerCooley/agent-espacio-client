@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import {
   Box,
   Typography,
@@ -31,6 +31,7 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
+  Collapse,
 } from '@mui/material';
 import {
   Folder as FolderIcon,
@@ -42,9 +43,22 @@ import {
   RocketLaunch as DeployIcon,
   OpenInNew as OpenInNewIcon,
   Settings as SettingsIcon,
+  ExpandMore as ExpandMoreIcon,
+  ExpandLess as ExpandLessIcon,
 } from '@mui/icons-material';
 import { Artifact, artifactService } from '../../services/artifacts';
-import { repoService, RepoMetadata, RepoTreeItem, RepoCommit, RepoCommitDetail, PublishSettings } from '../../services/repos';
+import {
+  repoService,
+  RepoMetadata,
+  RepoTreeItem,
+  RepoCommit,
+  RepoCommitDetail,
+  PublishSettings,
+  DeployHistoryEntry,
+  isImageFile,
+} from '../../services/repos';
+import { useAuthBlob } from '../../hooks/useAuthBlob';
+import { useWebSocket } from '../../context/WebSocketContext';
 import CodeBlock from './CodeBlock';
 import DiffViewer from './DiffViewer';
 
@@ -67,6 +81,9 @@ export default function RepoViewer({ artifact }: RepoViewerProps) {
   const navigatingFromPopState = useRef(false);
   const [fileContent, setFileContent] = useState<string | null>(null);
   const [fileName, setFileName] = useState('');
+  const [imagePath, setImagePath] = useState<string | null>(null);
+  const imageRawUrl = imagePath ? repoService.getRawFileUrl(artifact.id, imagePath) : null;
+  const imageBlobUrl = useAuthBlob(imageRawUrl);
   const [commits, setCommits] = useState<RepoCommit[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -79,6 +96,10 @@ export default function RepoViewer({ artifact }: RepoViewerProps) {
   const [publishSettings, setPublishSettings] = useState<PublishSettings | null>(null);
   const [deployStatus, setDeployStatus] = useState<string>('');
   const [publishSnackbar, setPublishSnackbar] = useState('');
+  const [showDeployHistory, setShowDeployHistory] = useState(false);
+  const [deployHistory, setDeployHistory] = useState<DeployHistoryEntry[]>([]);
+  const [expandedDeployLog, setExpandedDeployLog] = useState<number | null>(null);
+  const { subscribe, unsubscribe } = useWebSocket();
 
   // Settings modal
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -140,6 +161,7 @@ export default function RepoViewer({ artifact }: RepoViewerProps) {
     try {
       const settings = await repoService.getPublishSettings(artifactId);
       setPublishSettings(settings);
+      if (settings.status) setDeployStatus(settings.status);
       return settings;
     } catch {
       setPublishSettings(null);
@@ -147,15 +169,96 @@ export default function RepoViewer({ artifact }: RepoViewerProps) {
     }
   };
 
+  const loadDeployStatus = useCallback(async () => {
+    try {
+      const status = await repoService.getDeployStatus(artifactId);
+      setDeployStatus(status.status);
+      setDeployHistory(status.deploy_history || []);
+      setPublishSettings((prev) =>
+        prev
+          ? {
+              ...prev,
+              status: status.status,
+              last_deploy_at: status.last_deploy_at,
+              last_deploy_commit: status.last_deploy_commit,
+            }
+          : prev
+      );
+      return status;
+    } catch {
+      return null;
+    }
+  }, [artifactId]);
+
   const handleDeploy = async () => {
     try {
       await repoService.triggerDeploy(artifactId);
       setDeployStatus('building');
+      setPublishSettings((prev) => (prev ? { ...prev, status: 'building' } : prev));
+      setShowDeployHistory(true);
+      setFileContent(null);
+      setImagePath(null);
       setPublishSnackbar('Deploy started');
     } catch (err: any) {
       setPublishSnackbar(err?.message || 'Deploy failed');
     }
   };
+
+  const openDeployHistory = async () => {
+    setFileContent(null);
+    setImagePath(null);
+    setShowDeployHistory(true);
+    await loadDeployStatus();
+  };
+
+  // Real-time deploy status via WebSocket
+  useEffect(() => {
+    const channel = `artifact:${artifactId}`;
+    const handleEvent = (event: any) => {
+      const type = event?.event_type || '';
+      if (!type.startsWith('artifact.deploy')) return;
+      if (event.resource_id && event.resource_id !== artifactId) return;
+
+      const payload = event.payload || {};
+      if (type === 'artifact.deploy_started') {
+        setDeployStatus('building');
+        setPublishSettings((prev) => (prev ? { ...prev, status: 'building' } : prev));
+        setShowDeployHistory(true);
+        setFileContent(null);
+        setImagePath(null);
+      } else if (type === 'artifact.deployed') {
+        setDeployStatus('deployed');
+        setPublishSettings((prev) =>
+          prev
+            ? {
+                ...prev,
+                status: 'deployed',
+                last_deploy_at: payload.finished_at || prev.last_deploy_at,
+                last_deploy_commit: payload.commit || prev.last_deploy_commit,
+              }
+            : prev
+        );
+        setPublishSnackbar('Deploy succeeded');
+        loadDeployStatus();
+      } else if (type === 'artifact.deploy_failed') {
+        setDeployStatus('failed');
+        setPublishSettings((prev) => (prev ? { ...prev, status: 'failed' } : prev));
+        setPublishSnackbar('Deploy failed — check history for logs');
+        setShowDeployHistory(true);
+        loadDeployStatus();
+      }
+    };
+
+    subscribe(channel, handleEvent);
+    return () => unsubscribe(channel, handleEvent);
+  }, [artifactId, subscribe, unsubscribe, loadDeployStatus]);
+
+  // Load deploy history when publish is enabled
+  useEffect(() => {
+    if (publishSettings?.enabled) {
+      loadDeployStatus();
+    }
+  }, [publishSettings?.enabled, loadDeployStatus]);
 
   const openSettings = async () => {
     const settings = await loadPublishSettings();
@@ -260,26 +363,44 @@ export default function RepoViewer({ artifact }: RepoViewerProps) {
       if (state?.file) {
         setCurrentPath(targetPath);
         setFileContent(null);
+        setImagePath(null);
         setLoading(true);
-        Promise.all([
-          repoService.getTree(artifactId, 'HEAD', targetPath || undefined),
-          repoService.getFile(artifactId, state.file),
-        ])
-          .then(([tree, file]) => {
-            setTreeItems(tree.items);
-            setFileContent(file.content);
-            setFileName(file.path);
-            setLoading(false);
-            navigatingFromPopState.current = false;
-          })
-          .catch((err) => {
-            setError(err.message || 'Failed to load');
-            setLoading(false);
-            navigatingFromPopState.current = false;
-          });
+        if (isImageFile(state.file)) {
+          repoService.getTree(artifactId, 'HEAD', targetPath || undefined)
+            .then((tree) => {
+              setTreeItems(tree.items);
+              setFileName(state.file!);
+              setImagePath(state.file!);
+              setLoading(false);
+              navigatingFromPopState.current = false;
+            })
+            .catch((err) => {
+              setError(err.message || 'Failed to load');
+              setLoading(false);
+              navigatingFromPopState.current = false;
+            });
+        } else {
+          Promise.all([
+            repoService.getTree(artifactId, 'HEAD', targetPath || undefined),
+            repoService.getFile(artifactId, state.file),
+          ])
+            .then(([tree, file]) => {
+              setTreeItems(tree.items);
+              setFileContent(file.content);
+              setFileName(file.path);
+              setLoading(false);
+              navigatingFromPopState.current = false;
+            })
+            .catch((err) => {
+              setError(err.message || 'Failed to load');
+              setLoading(false);
+              navigatingFromPopState.current = false;
+            });
+        }
       } else {
         setCurrentPath(targetPath);
         setFileContent(null);
+        setImagePath(null);
         setLoading(true);
         repoService.getTree(artifactId, 'HEAD', targetPath || undefined)
           .then((tree) => {
@@ -301,6 +422,7 @@ export default function RepoViewer({ artifact }: RepoViewerProps) {
   const handleNavigate = (item: RepoTreeItem) => {
     if (item.type === 'tree') {
       setFileContent(null);
+      setImagePath(null);
       setLoading(true);
       if (!navigatingFromPopState.current) {
         window.history.pushState({ path: item.path }, '', `#${item.path}`);
@@ -321,16 +443,24 @@ export default function RepoViewer({ artifact }: RepoViewerProps) {
       if (!navigatingFromPopState.current) {
         window.history.pushState({ path: currentPath, file: item.path }, '', `#${currentPath}`);
       }
-      repoService.getFile(artifactId, item.path)
-        .then((file) => {
-          setFileContent(file.content);
-          setFileName(file.path);
-          setLoading(false);
-        })
-        .catch((err) => {
-          setError(err.message || 'Failed to load file');
-          setLoading(false);
-        });
+      if (isImageFile(item.path)) {
+        setFileContent(null);
+        setFileName(item.path);
+        setImagePath(item.path);
+        setLoading(false);
+      } else {
+        setImagePath(null);
+        repoService.getFile(artifactId, item.path)
+          .then((file) => {
+            setFileContent(file.content);
+            setFileName(file.path);
+            setLoading(false);
+          })
+          .catch((err) => {
+            setError(err.message || 'Failed to load file');
+            setLoading(false);
+          });
+      }
     }
   };
 
@@ -340,6 +470,7 @@ export default function RepoViewer({ artifact }: RepoViewerProps) {
       ? currentPath.substring(0, currentPath.lastIndexOf('/'))
       : '';
     setFileContent(null);
+    setImagePath(null);
     setLoading(true);
     if (!navigatingFromPopState.current) {
       window.history.pushState({ path: parentPath }, '', `#${parentPath}`);
@@ -397,15 +528,25 @@ export default function RepoViewer({ artifact }: RepoViewerProps) {
           />
           <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
             {isStaticSite && (
-              <Button
-                size="small"
-                variant="contained"
-                startIcon={<DeployIcon />}
-                onClick={handleDeploy}
-                disabled={isBuilding}
-              >
-                {isBuilding ? 'Deploying...' : 'Deploy Site'}
-              </Button>
+              <>
+                <Button
+                  size="small"
+                  variant="contained"
+                  startIcon={isBuilding ? <CircularProgress size={14} color="inherit" /> : <DeployIcon />}
+                  onClick={handleDeploy}
+                  disabled={isBuilding}
+                >
+                  {isBuilding ? 'Deploying...' : 'Deploy Site'}
+                </Button>
+                <Button
+                  size="small"
+                  variant={showDeployHistory ? 'outlined' : 'text'}
+                  startIcon={<HistoryIcon />}
+                  onClick={openDeployHistory}
+                >
+                  History
+                </Button>
+              </>
             )}
             <Chip
               icon={<TerminalIcon />}
@@ -574,6 +715,7 @@ export default function RepoViewer({ artifact }: RepoViewerProps) {
                       setViewMode('history');
                       setSelectedCommit(null);
                       setFileContent(null);
+                      setImagePath(null);
                     }
                   }}
                   sx={{ color: viewMode === 'history' ? 'primary.main' : 'text.secondary' }}
@@ -667,6 +809,136 @@ export default function RepoViewer({ artifact }: RepoViewerProps) {
                 </List>
               )}
             </Box>
+          ) : showDeployHistory ? (
+            <Box sx={{ flex: 1, overflow: 'auto', display: 'flex', flexDirection: 'column' }}>
+              <Box sx={{ px: 2, py: 1, borderBottom: 1, borderColor: 'divider', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
+                  Deploy History
+                </Typography>
+                <Button
+                  size="small"
+                  onClick={() => {
+                    setShowDeployHistory(false);
+                    setExpandedDeployLog(null);
+                  }}
+                >
+                  Back to files
+                </Button>
+              </Box>
+              <Box sx={{ flex: 1, overflow: 'auto', p: 2 }}>
+                {isBuilding && (
+                  <Alert severity="info" sx={{ mb: 2 }} icon={<CircularProgress size={16} />}>
+                    Deploy in progress…
+                  </Alert>
+                )}
+                {deployHistory.length === 0 ? (
+                  <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 4 }}>
+                    No deploys yet. Click Deploy Site to publish.
+                  </Typography>
+                ) : (
+                  <List disablePadding>
+                    {deployHistory.map((entry, idx) => {
+                      const finished = entry.finished_at ? new Date(entry.finished_at) : null;
+                      const open = expandedDeployLog === idx;
+                      const ok = entry.status === 'deployed';
+                      return (
+                        <Paper key={`${entry.finished_at}-${idx}`} variant="outlined" sx={{ mb: 1.5, overflow: 'hidden' }}>
+                          <ListItemButton
+                            onClick={() => setExpandedDeployLog(open ? null : idx)}
+                            sx={{ py: 1.25 }}
+                          >
+                            <ListItemText
+                              primary={
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+                                  <Chip
+                                    size="small"
+                                    label={entry.status}
+                                    color={ok ? 'success' : 'error'}
+                                    sx={{ height: 22, fontSize: '0.7rem' }}
+                                  />
+                                  {entry.commit && (
+                                    <Typography variant="caption" sx={{ fontFamily: 'monospace', color: 'primary.main' }}>
+                                      {entry.commit}
+                                    </Typography>
+                                  )}
+                                  {finished && (
+                                    <Typography variant="caption" color="text.secondary">
+                                      {finished.toLocaleString()}
+                                    </Typography>
+                                  )}
+                                </Box>
+                              }
+                              secondary={entry.log ? entry.log.split('\n').slice(-1)[0] : undefined}
+                              secondaryTypographyProps={{ noWrap: true, sx: { fontFamily: 'monospace', fontSize: '0.7rem' } }}
+                            />
+                            {open ? <ExpandLessIcon fontSize="small" /> : <ExpandMoreIcon fontSize="small" />}
+                          </ListItemButton>
+                          <Collapse in={open}>
+                            <Box
+                              component="pre"
+                              sx={{
+                                m: 0,
+                                px: 2,
+                                py: 1.5,
+                                maxHeight: 280,
+                                overflow: 'auto',
+                                bgcolor: 'action.hover',
+                                borderTop: 1,
+                                borderColor: 'divider',
+                                fontFamily: 'monospace',
+                                fontSize: '0.75rem',
+                                whiteSpace: 'pre-wrap',
+                                wordBreak: 'break-word',
+                              }}
+                            >
+                              {entry.log || '(no log)'}
+                            </Box>
+                          </Collapse>
+                        </Paper>
+                      );
+                    })}
+                  </List>
+                )}
+              </Box>
+            </Box>
+          ) : imagePath ? (
+            <>
+              <Box sx={{ px: 2, py: 1, borderBottom: 1, borderColor: 'divider', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <Typography variant="caption" color="text.secondary" sx={{ fontFamily: 'monospace' }}>
+                  {fileName}
+                </Typography>
+                <Button size="small" onClick={() => { setImagePath(null); setFileName(''); }}>
+                  Close
+                </Button>
+              </Box>
+              <Box
+                sx={{
+                  flex: 1,
+                  overflow: 'auto',
+                  p: 2,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  bgcolor: 'background.default',
+                }}
+              >
+                {imageBlobUrl ? (
+                  <Box
+                    component="img"
+                    src={imageBlobUrl}
+                    alt={fileName}
+                    sx={{
+                      maxWidth: '100%',
+                      maxHeight: '100%',
+                      objectFit: 'contain',
+                      borderRadius: 1,
+                    }}
+                  />
+                ) : (
+                  <CircularProgress size={32} />
+                )}
+              </Box>
+            </>
           ) : fileContent !== null ? (
             <>
               <Box sx={{ px: 2, py: 1, borderBottom: 1, borderColor: 'divider', display: 'flex', justifyContent: 'flex-end' }}>

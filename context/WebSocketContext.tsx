@@ -67,18 +67,33 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
           
           // Determine channels to dispatch to
           const channelsToDispatch: string[] = [];
-          const destChannel = data.folder_id ? `folder:${data.folder_id}` : 'global';
-          channelsToDispatch.push(destChannel);
+          if (data.folder_id) {
+            channelsToDispatch.push(`folder:${data.folder_id}`);
+          }
           
           // For move events, also dispatch to source folder
           if (isMoveEvent && data.payload?.source_folder_id) {
             const sourceChannel = `folder:${data.payload.source_folder_id}`;
-            if (sourceChannel !== destChannel) {
+            if (!channelsToDispatch.includes(sourceChannel)) {
               channelsToDispatch.push(sourceChannel);
             }
           }
+
+          // Artifact-scoped events (deploy status, etc.)
+          if (data.resource_id && (
+            eventType.startsWith('artifact.deploy') ||
+            eventType.startsWith('artifact.')
+          )) {
+            channelsToDispatch.push(`artifact:${data.resource_id}`);
+          }
+
+          if (channelsToDispatch.length === 0) {
+            channelsToDispatch.push('global');
+          }
           
+          const dispatched = new Set<string>();
           for (const channel of channelsToDispatch) {
+            dispatched.add(channel);
             const callbacks = subscribersRef.current.get(channel);
             if (callbacks) {
               for (const cb of callbacks) {
@@ -91,14 +106,16 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
             }
           }
           
-          // Also dispatch to global subscribers
-          const globalCallbacks = subscribersRef.current.get('global');
-          if (globalCallbacks) {
-            for (const cb of globalCallbacks) {
-              try {
-                cb(data);
-              } catch {
-                // ignore
+          // Also dispatch to global subscribers (once)
+          if (!dispatched.has('global')) {
+            const globalCallbacks = subscribersRef.current.get('global');
+            if (globalCallbacks) {
+              for (const cb of globalCallbacks) {
+                try {
+                  cb(data);
+                } catch {
+                  // ignore
+                }
               }
             }
           }
