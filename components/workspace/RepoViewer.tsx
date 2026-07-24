@@ -811,19 +811,10 @@ export default function RepoViewer({ artifact }: RepoViewerProps) {
             </Box>
           ) : showDeployHistory ? (
             <Box sx={{ flex: 1, overflow: 'auto', display: 'flex', flexDirection: 'column' }}>
-              <Box sx={{ px: 2, py: 1, borderBottom: 1, borderColor: 'divider', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <Box sx={{ px: 2, py: 1, borderBottom: 1, borderColor: 'divider' }}>
                 <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
                   Deploy History
                 </Typography>
-                <Button
-                  size="small"
-                  onClick={() => {
-                    setShowDeployHistory(false);
-                    setExpandedDeployLog(null);
-                  }}
-                >
-                  Back to files
-                </Button>
               </Box>
               <Box sx={{ flex: 1, overflow: 'auto', p: 2 }}>
                 {isBuilding && (
