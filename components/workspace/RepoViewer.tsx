@@ -364,6 +364,7 @@ export default function RepoViewer({ artifact }: RepoViewerProps) {
         setCurrentPath(targetPath);
         setFileContent(null);
         setImagePath(null);
+        setShowDeployHistory(false);
         setLoading(true);
         if (isImageFile(state.file)) {
           repoService.getTree(artifactId, 'HEAD', targetPath || undefined)
@@ -401,6 +402,7 @@ export default function RepoViewer({ artifact }: RepoViewerProps) {
         setCurrentPath(targetPath);
         setFileContent(null);
         setImagePath(null);
+        setShowDeployHistory(false);
         setLoading(true);
         repoService.getTree(artifactId, 'HEAD', targetPath || undefined)
           .then((tree) => {
@@ -423,6 +425,7 @@ export default function RepoViewer({ artifact }: RepoViewerProps) {
     if (item.type === 'tree') {
       setFileContent(null);
       setImagePath(null);
+      setShowDeployHistory(false);
       setLoading(true);
       if (!navigatingFromPopState.current) {
         window.history.pushState({ path: item.path }, '', `#${item.path}`);
@@ -439,6 +442,7 @@ export default function RepoViewer({ artifact }: RepoViewerProps) {
         });
     } else {
       if (viewMode !== 'files') setViewMode('files');
+      setShowDeployHistory(false);
       setLoading(true);
       if (!navigatingFromPopState.current) {
         window.history.pushState({ path: currentPath, file: item.path }, '', `#${currentPath}`);
@@ -471,6 +475,7 @@ export default function RepoViewer({ artifact }: RepoViewerProps) {
       : '';
     setFileContent(null);
     setImagePath(null);
+    setShowDeployHistory(false);
     setLoading(true);
     if (!navigatingFromPopState.current) {
       window.history.pushState({ path: parentPath }, '', `#${parentPath}`);
@@ -716,6 +721,7 @@ export default function RepoViewer({ artifact }: RepoViewerProps) {
                       setSelectedCommit(null);
                       setFileContent(null);
                       setImagePath(null);
+                      setShowDeployHistory(false);
                     }
                   }}
                   sx={{ color: viewMode === 'history' ? 'primary.main' : 'text.secondary' }}
@@ -772,6 +778,7 @@ export default function RepoViewer({ artifact }: RepoViewerProps) {
                               const detail = await repoService.getCommitDetail(artifactId, commit.hash);
                               setSelectedCommit(detail);
                               setViewMode('commit');
+                              setShowDeployHistory(false);
                             } catch (err: any) {
                               console.error('Failed to load commit:', err?.message || err);
                             }
