@@ -3,8 +3,8 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useSearchParams } from 'next/navigation';
 import NextLink from 'next/link';
-import { Box, Typography, Grid, Paper, Breadcrumbs, Link, Chip, TextField, InputAdornment, CircularProgress, ClickAwayListener, Menu, MenuItem } from '@mui/material';
-import { Folder as FolderIcon, InsertDriveFile as FileIcon, Image as ImageIcon, Article as ArticleIcon, Map as MapIcon, Movie as MovieIcon, Audiotrack as AudiotrackIcon, PhotoLibrary as PhotoLibraryIcon, AutoAwesomeMosaic as ComposerIcon, Search as SearchIcon, Terminal as TerminalIcon, OpenInNew as OpenInNewIcon, PictureAsPdf as PdfIcon } from '@mui/icons-material';
+import { Box, Typography, Grid, Paper, Breadcrumbs, Link, Chip, TextField, InputAdornment, CircularProgress, ClickAwayListener, Menu, MenuItem, Button } from '@mui/material';
+import { Folder as FolderIcon, InsertDriveFile as FileIcon, Image as ImageIcon, Article as ArticleIcon, Map as MapIcon, Movie as MovieIcon, Audiotrack as AudiotrackIcon, PhotoLibrary as PhotoLibraryIcon, AutoAwesomeMosaic as ComposerIcon, Search as SearchIcon, Terminal as TerminalIcon, OpenInNew as OpenInNewIcon, PictureAsPdf as PdfIcon, Download as DownloadIcon } from '@mui/icons-material';
 import InlineThumbnail from '../../../../components/workspace/InlineThumbnail';
 import WorkflowPublicView from '../../../../components/workspace/WorkflowPublicView';
 import GalleryPublicView from '../../../../components/workspace/GalleryPublicView';
@@ -619,15 +619,66 @@ export default function PublicViewPage() {
 
     // Render asset view
     if (data.kind === 'asset' && data.asset) {
+      const asset = data.asset;
+      const isPdf = asset.mime_type === 'application/pdf';
+      const downloadUrl = `${API_BASE_URL}/public/assets/${asset.public_magic_id}/download`;
+
+      // PDFs render full-bleed like maps/workflows
+      if (isPdf) {
+        return (
+          <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+            {/* Header bar */}
+            <Box sx={{ p: 1.5, borderBottom: 1, borderColor: 'divider', display: 'flex', alignItems: 'center', gap: 2, bgcolor: 'background.paper', flexShrink: 0 }}>
+              <PdfIcon color="primary" />
+              <Typography variant="subtitle1" sx={{ fontWeight: 600, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {asset.name}
+              </Typography>
+              <Chip label="PDF" size="small" color="primary" variant="outlined" />
+              <Button
+                variant="outlined"
+                size="small"
+                startIcon={<DownloadIcon />}
+                onClick={async () => {
+                  try {
+                    const res = await fetch(downloadUrl);
+                    if (!res.ok) throw new Error('Download failed');
+                    const blob = await res.blob();
+                    const blobUrl = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = blobUrl;
+                    a.download = asset.name;
+                    a.click();
+                    URL.revokeObjectURL(blobUrl);
+                  } catch (err) {
+                    console.error('Download failed:', err);
+                  }
+                }}
+              >
+                Download
+              </Button>
+            </Box>
+            {/* PDF iframe */}
+            <Box sx={{ flex: 1, minHeight: 0 }}>
+              <Box
+                component="iframe"
+                src={downloadUrl}
+                title={asset.name}
+                sx={{ width: '100%', height: '100%', border: 'none' }}
+              />
+            </Box>
+          </Box>
+        );
+      }
+
       return (
         <PublicAssetView
-          id={data.asset.id}
-          name={data.asset.name}
-          mime_type={data.asset.mime_type}
-          size_bytes={data.asset.size_bytes}
-          human_readable_size={data.asset.human_readable_size}
-          is_image={data.asset.is_image}
-          public_magic_id={data.asset.public_magic_id}
+          id={asset.id}
+          name={asset.name}
+          mime_type={asset.mime_type}
+          size_bytes={asset.size_bytes}
+          human_readable_size={asset.human_readable_size}
+          is_image={asset.is_image}
+          public_magic_id={asset.public_magic_id}
         />
       );
     }
@@ -789,9 +840,10 @@ export default function PublicViewPage() {
   };
 
   const isFullBleed =
-    data?.kind === 'artifact' &&
-    data.artifact != null &&
-    (data.artifact.type === 'workflow' || data.artifact.type === 'map' || data.artifact.type === 'repo');
+    (data?.kind === 'artifact' &&
+      data.artifact != null &&
+      (data.artifact.type === 'workflow' || data.artifact.type === 'map' || data.artifact.type === 'repo')) ||
+    (data?.kind === 'asset' && data.asset?.mime_type === 'application/pdf');
 
   return (
     <PublicShell fullBleed={isFullBleed}>
