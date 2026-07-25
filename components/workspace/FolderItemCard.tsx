@@ -29,6 +29,7 @@ import {
   Movie as MovieIcon,
   Audiotrack as AudioIcon,
   PhotoLibrary as PhotoLibraryIcon,
+  PictureAsPdf as PdfIcon,
 } from '@mui/icons-material';
 import { useRouter } from 'next/navigation';
 import { FolderItem } from '../../services/folders';
@@ -326,6 +327,9 @@ export default function FolderItemCard({
       if (item.mime_type?.startsWith('audio/')) {
         return <AudioIcon sx={{ fontSize: 48, color: 'text.secondary' }} />;
       }
+      if (item.mime_type === 'application/pdf') {
+        return <PdfIcon sx={{ fontSize: 48, color: 'text.secondary' }} />;
+      }
       return <FileIcon sx={{ fontSize: 48, color: 'text.secondary' }} />;
     }
 
@@ -340,6 +344,7 @@ export default function FolderItemCard({
     }
     if (item.mime_type?.startsWith('video/')) return 'Video';
     if (item.mime_type?.startsWith('audio/')) return 'Audio';
+    if (item.mime_type === 'application/pdf') return 'PDF';
     return item.mime_type ? item.mime_type.split('/')[1]?.toUpperCase() : 'File';
   };
 

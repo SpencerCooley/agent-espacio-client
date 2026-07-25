@@ -189,6 +189,10 @@ function AssetViewerContent() {
     asset?.mime_type?.startsWith('audio/') ? asset.id : null
   );
 
+  const pdfSrc = useSignedAssetUrl(
+    asset?.mime_type === 'application/pdf' ? asset.id : null
+  );
+
   const handleDownload = async (assetId: string, filename: string, size?: number) => {
     try {
       const signedPath = await getAssetSignedUrl(assetId, size);
@@ -217,6 +221,7 @@ function AssetViewerContent() {
   // Video / audio detection (needed by left panel and main view)
   const isVideoAsset = asset?.mime_type?.startsWith('video/');
   const isAudioAsset = asset?.mime_type?.startsWith('audio/');
+  const isPdfAsset = asset?.mime_type === 'application/pdf';
 
   // Left panel: file metadata + share
   const leftPanel = asset ? (
@@ -293,7 +298,7 @@ function AssetViewerContent() {
         </>
       )}
 
-      {(isVideoAsset || isAudioAsset) && (
+      {(isVideoAsset || isAudioAsset || isPdfAsset) && (
         <>
           <Divider sx={{ my: 2 }} />
           <Typography variant="subtitle2" sx={{ mb: 1.5, fontWeight: 600 }}>
@@ -505,6 +510,30 @@ function AssetViewerContent() {
             ) : (
               <Typography color="text.secondary">Loading audio...</Typography>
             )}
+          </Paper>
+        ) : isPdfAsset ? (
+          <Paper
+            sx={{
+              flex: 1,
+              minHeight: 0,
+              display: 'flex',
+              flexDirection: 'column',
+              bgcolor: 'background.default',
+              overflow: 'hidden',
+            }}
+          >
+            <Box
+              component="iframe"
+              src={pdfSrc || `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/assets/${asset.id}/download`}
+              title={asset.name}
+              sx={{
+                flex: 1,
+                width: '100%',
+                height: '100%',
+                border: 'none',
+                borderRadius: 1,
+              }}
+            />
           </Paper>
         ) : asset.is_markdown ? (
           loadingContent ? (

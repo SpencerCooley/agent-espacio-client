@@ -37,6 +37,7 @@ export function PublicAssetView({
   const isMarkdown = mime_type === 'text/markdown' || mime_type === 'text/x-markdown';
   const isVideo = mime_type?.startsWith('video/');
   const isAudio = mime_type?.startsWith('audio/');
+  const isPdf = mime_type === 'application/pdf';
   const downloadUrl = customDownloadUrl || `${API_BASE_URL}/public/assets/${public_magic_id || id}/download`;
   const posterUrl = isVideo ? `${downloadUrl}?size=512` : undefined;
 
@@ -102,6 +103,15 @@ export function PublicAssetView({
           alt={name}
           sx={{ maxWidth: '100%', maxHeight: '80vh', borderRadius: 2, display: 'block', mx: 'auto' }}
         />
+      ) : isPdf ? (
+        <Paper sx={{ height: '70vh', overflow: 'hidden', borderRadius: 2 }}>
+          <Box
+            component="iframe"
+            src={downloadUrl}
+            title={name}
+            sx={{ width: '100%', height: '100%', border: 'none' }}
+          />
+        </Paper>
       ) : isVideo ? (
         <SmartVideoPlayer src={downloadUrl} name={name} poster={posterUrl} />
       ) : isAudio ? (

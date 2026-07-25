@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useSearchParams } from 'next/navigation';
 import NextLink from 'next/link';
 import { Box, Typography, Grid, Paper, Breadcrumbs, Link, Chip, TextField, InputAdornment, CircularProgress, ClickAwayListener, Menu, MenuItem } from '@mui/material';
-import { Folder as FolderIcon, InsertDriveFile as FileIcon, Image as ImageIcon, Article as ArticleIcon, Map as MapIcon, Movie as MovieIcon, Audiotrack as AudiotrackIcon, PhotoLibrary as PhotoLibraryIcon, AutoAwesomeMosaic as ComposerIcon, Search as SearchIcon, Terminal as TerminalIcon, OpenInNew as OpenInNewIcon } from '@mui/icons-material';
+import { Folder as FolderIcon, InsertDriveFile as FileIcon, Image as ImageIcon, Article as ArticleIcon, Map as MapIcon, Movie as MovieIcon, Audiotrack as AudiotrackIcon, PhotoLibrary as PhotoLibraryIcon, AutoAwesomeMosaic as ComposerIcon, Search as SearchIcon, Terminal as TerminalIcon, OpenInNew as OpenInNewIcon, PictureAsPdf as PdfIcon } from '@mui/icons-material';
 import InlineThumbnail from '../../../../components/workspace/InlineThumbnail';
 import WorkflowPublicView from '../../../../components/workspace/WorkflowPublicView';
 import GalleryPublicView from '../../../../components/workspace/GalleryPublicView';
@@ -162,6 +162,7 @@ export default function PublicViewPage() {
     if (item.is_image || item.mime_type?.startsWith('image/')) return 'image';
     if (item.mime_type?.startsWith('video/')) return 'video';
     if (item.mime_type?.startsWith('audio/')) return 'audio';
+    if (item.mime_type === 'application/pdf') return 'pdf';
     return 'other';
   };
 
@@ -216,6 +217,7 @@ export default function PublicViewPage() {
     if (item.kind === 'asset') {
       if (item.is_image) return <ImageIcon fontSize="large" />;
       if (item.mime_type?.startsWith('audio/')) return <AudiotrackIcon fontSize="large" />;
+      if (item.mime_type === 'application/pdf') return <PdfIcon fontSize="large" />;
       return <FileIcon fontSize="large" />;
     }
     if (item.kind === 'artifact') {
