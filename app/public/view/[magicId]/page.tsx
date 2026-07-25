@@ -630,19 +630,17 @@ export default function PublicViewPage() {
             {/* Header bar */}
             <Box
               sx={{
-                p: { xs: 1, sm: 1.5 },
+                p: 1.5,
                 borderBottom: 1,
                 borderColor: 'divider',
                 display: 'flex',
                 alignItems: 'center',
-                gap: { xs: 0.75, sm: 2 },
+                gap: 2,
                 bgcolor: 'background.paper',
                 flexShrink: 0,
-                flexWrap: { xs: 'wrap', sm: 'nowrap' },
-                rowGap: { xs: 0.5, sm: 0 },
               }}
             >
-              <PdfIcon color="primary" sx={{ fontSize: { xs: 20, sm: 24 } }} />
+              <PdfIcon color="primary" />
               <Typography
                 variant="subtitle1"
                 sx={{
@@ -652,28 +650,15 @@ export default function PublicViewPage() {
                   overflow: 'hidden',
                   textOverflow: 'ellipsis',
                   whiteSpace: 'nowrap',
-                  fontSize: { xs: '0.875rem', sm: '1rem' },
                 }}
               >
                 {asset.name}
               </Typography>
-              <Chip
-                label="PDF"
-                size="small"
-                color="primary"
-                variant="outlined"
-                sx={{ display: { xs: 'none', sm: 'flex' }, height: 22, fontSize: '0.7rem' }}
-              />
+              <Chip label="PDF" size="small" color="primary" variant="outlined" />
               <Button
                 variant="outlined"
                 size="small"
                 startIcon={<DownloadIcon />}
-                sx={{
-                  textTransform: 'none',
-                  minWidth: { xs: 36, sm: 'auto' },
-                  px: { xs: 1, sm: 1.5 },
-                  '& .MuiButton-startIcon': { mr: { xs: 0, sm: -0.5 } },
-                }}
                 onClick={async () => {
                   try {
                     const res = await fetch(downloadUrl);
@@ -690,18 +675,24 @@ export default function PublicViewPage() {
                   }
                 }}
               >
-                <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>
-                  Download
-                </Box>
+                Download
               </Button>
             </Box>
-            {/* PDF iframe */}
-            <Box sx={{ flex: 1, minHeight: 0, overflow: 'auto' }}>
+            {/* PDF embed */}
+            <Box sx={{ flex: 1, minHeight: 0, position: 'relative', overflow: 'hidden' }}>
               <Box
-                component="iframe"
+                component="embed"
                 src={downloadUrl}
-                title={asset.name}
-                sx={{ width: '100%', height: '100%', minHeight: { xs: '70vh', sm: '100%' }, border: 'none', display: 'block' }}
+                type="application/pdf"
+                sx={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  width: '100%',
+                  height: '100%',
+                  border: 'none',
+                  display: 'block',
+                }}
               />
             </Box>
           </Box>

@@ -523,9 +523,9 @@ function AssetViewerContent() {
             }}
           >
             <Box
-              component="iframe"
+              component="embed"
               src={pdfSrc || `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/assets/${asset.id}/download`}
-              title={asset.name}
+              type="application/pdf"
               sx={{
                 flex: 1,
                 width: '100%',
