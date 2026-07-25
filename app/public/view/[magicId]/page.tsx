@@ -626,7 +626,7 @@ export default function PublicViewPage() {
       // PDFs render full-bleed like maps/workflows
       if (isPdf) {
         return (
-          <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+          <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minHeight: 0 }}>
             {/* Header bar */}
             <Box
               sx={{
@@ -796,7 +796,7 @@ export default function PublicViewPage() {
         if (publish?.render_mode === 'embedded' && slug) {
           // Embedded mode: iframe with nav bar
           return (
-            <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+          <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minHeight: 0 }}>
               {/* Navigation bar */}
               <Box sx={{ p: 1.5, borderBottom: 1, borderColor: 'divider', display: 'flex', alignItems: 'center', gap: 2, bgcolor: 'background.paper' }}>
                 <TerminalIcon color="primary" />
