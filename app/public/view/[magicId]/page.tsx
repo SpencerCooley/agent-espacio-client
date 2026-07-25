@@ -628,16 +628,52 @@ export default function PublicViewPage() {
         return (
           <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
             {/* Header bar */}
-            <Box sx={{ p: 1.5, borderBottom: 1, borderColor: 'divider', display: 'flex', alignItems: 'center', gap: 2, bgcolor: 'background.paper', flexShrink: 0 }}>
-              <PdfIcon color="primary" />
-              <Typography variant="subtitle1" sx={{ fontWeight: 600, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            <Box
+              sx={{
+                p: { xs: 1, sm: 1.5 },
+                borderBottom: 1,
+                borderColor: 'divider',
+                display: 'flex',
+                alignItems: 'center',
+                gap: { xs: 0.75, sm: 2 },
+                bgcolor: 'background.paper',
+                flexShrink: 0,
+                flexWrap: { xs: 'wrap', sm: 'nowrap' },
+                rowGap: { xs: 0.5, sm: 0 },
+              }}
+            >
+              <PdfIcon color="primary" sx={{ fontSize: { xs: 20, sm: 24 } }} />
+              <Typography
+                variant="subtitle1"
+                sx={{
+                  fontWeight: 600,
+                  flex: 1,
+                  minWidth: 0,
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                  fontSize: { xs: '0.875rem', sm: '1rem' },
+                }}
+              >
                 {asset.name}
               </Typography>
-              <Chip label="PDF" size="small" color="primary" variant="outlined" />
+              <Chip
+                label="PDF"
+                size="small"
+                color="primary"
+                variant="outlined"
+                sx={{ display: { xs: 'none', sm: 'flex' }, height: 22, fontSize: '0.7rem' }}
+              />
               <Button
                 variant="outlined"
                 size="small"
                 startIcon={<DownloadIcon />}
+                sx={{
+                  textTransform: 'none',
+                  minWidth: { xs: 36, sm: 'auto' },
+                  px: { xs: 1, sm: 1.5 },
+                  '& .MuiButton-startIcon': { mr: { xs: 0, sm: -0.5 } },
+                }}
                 onClick={async () => {
                   try {
                     const res = await fetch(downloadUrl);
@@ -654,16 +690,18 @@ export default function PublicViewPage() {
                   }
                 }}
               >
-                Download
+                <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>
+                  Download
+                </Box>
               </Button>
             </Box>
             {/* PDF iframe */}
-            <Box sx={{ flex: 1, minHeight: 0 }}>
+            <Box sx={{ flex: 1, minHeight: 0, overflow: 'auto' }}>
               <Box
                 component="iframe"
                 src={downloadUrl}
                 title={asset.name}
-                sx={{ width: '100%', height: '100%', border: 'none' }}
+                sx={{ width: '100%', height: '100%', minHeight: { xs: '70vh', sm: '100%' }, border: 'none', display: 'block' }}
               />
             </Box>
           </Box>
