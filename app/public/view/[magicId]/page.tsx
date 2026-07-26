@@ -679,7 +679,7 @@ export default function PublicViewPage() {
               </Button>
             </Box>
             {/* PDF embed — scrollable container for mobile */}
-            <Box sx={{ flex: 1, minHeight: 0, overflow: 'auto', pb: { xs: 12, sm: 0 } }}>
+            <Box sx={{ flex: 1, minHeight: 0, overflow: 'auto' }}>
               <Box
                 component="embed"
                 src={downloadUrl}
@@ -691,6 +691,8 @@ export default function PublicViewPage() {
                   display: 'block',
                 }}
               />
+              {/* Dead space to compensate for iOS bottom-bar clipping */}
+              <Box sx={{ height: { xs: 200, sm: 0 } }} />
             </Box>
           </Box>
         );

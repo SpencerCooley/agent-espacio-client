@@ -534,6 +534,8 @@ function AssetViewerContent() {
                 display: 'block',
               }}
             />
+            {/* Dead space to compensate for iOS bottom-bar clipping */}
+            <Box sx={{ height: { xs: 200, sm: 0 } }} />
           </Paper>
         ) : asset.is_markdown ? (
           loadingContent ? (
