@@ -532,6 +532,7 @@ function AssetViewerContent() {
                 height: '100%',
                 border: 'none',
                 borderRadius: 1,
+                display: 'block',
               }}
             />
           </Paper>

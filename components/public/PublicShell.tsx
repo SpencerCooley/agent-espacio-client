@@ -53,8 +53,8 @@ export default function PublicShell({ children, logoText = 'Agent Espacio', full
       <Box
         sx={{
           ...(fullBleed
-            ? { height: '100vh', overflow: 'hidden' }
-            : { minHeight: '100vh' }),
+            ? { height: '100dvh', overflow: 'hidden' }
+            : { minHeight: '100dvh' }),
           display: 'flex',
           flexDirection: 'column',
           bgcolor: 'background.default',
