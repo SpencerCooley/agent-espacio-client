@@ -678,18 +678,15 @@ export default function PublicViewPage() {
                 Download
               </Button>
             </Box>
-            {/* PDF embed */}
-            <Box sx={{ flex: 1, minHeight: 0, position: 'relative', overflow: 'hidden' }}>
+            {/* PDF embed — scrollable container for mobile */}
+            <Box sx={{ flex: 1, minHeight: 0, overflow: 'auto', pb: { xs: 12, sm: 0 } }}>
               <Box
                 component="embed"
                 src={downloadUrl}
                 type="application/pdf"
                 sx={{
-                  position: 'absolute',
-                  top: 0,
-                  left: 0,
                   width: '100%',
-                  height: '100%',
+                  minHeight: { xs: '100dvh', sm: '100%' },
                   border: 'none',
                   display: 'block',
                 }}

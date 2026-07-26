@@ -519,7 +519,7 @@ function AssetViewerContent() {
               display: 'flex',
               flexDirection: 'column',
               bgcolor: 'background.default',
-              overflow: 'hidden',
+              overflow: 'auto',
             }}
           >
             <Box
@@ -527,9 +527,8 @@ function AssetViewerContent() {
               src={pdfSrc || `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/assets/${asset.id}/download`}
               type="application/pdf"
               sx={{
-                flex: 1,
                 width: '100%',
-                height: '100%',
+                minHeight: { xs: '100dvh', sm: '100%' },
                 border: 'none',
                 borderRadius: 1,
                 display: 'block',
