@@ -10,13 +10,13 @@ Next.js frontend for Agent Espacio.
 ## Quick Start (Local Development)
 
 ```bash
-git clone https://github.com/SpencerCooley/agent-espacio-api.git
-cd agentespacio-api/client
+git clone https://github.com/SpencerCooley/agent-espacio-client
+cd agent-espacio-client
 
 npm install
 
 cp .env.example .env.local
-# Edit .env.local and set NEXT_PUBLIC_API_URL to your backend
+# Edit .env.local and set NEXT_PUBLIC_API_URL to your backend localhost:8000 most likely. 
 
 npm run dev
 ```
