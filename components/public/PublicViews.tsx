@@ -9,6 +9,7 @@ import { AudioPlayerThemed } from '../ui/AudioPlayer';
 import { marked } from 'marked';
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
+import { highlightCode } from '../../lib/prism-highlight';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
@@ -287,9 +288,20 @@ function renderNode(node: any, isPreview?: boolean): string {
       const checked = attrs.checked ? '☑' : '☐';
       const cleanInner = inner.replace(/^<p>/, '').replace(/<\/p>$/, '');
       return `<li style="margin-bottom: 4px; list-style: none; display: flex; align-items: baseline; gap: 0.5em;"><span style="display: inline-block; width: 1.5em; user-select: none; flex-shrink: 0;">${checked}</span><span style="flex: 1;">${cleanInner}</span></li>`;
-    case 'codeBlock':
+    case 'codeBlock': {
       const lang = attrs.language || '';
-      return `<pre><code class="language-${lang}">${inner}</code></pre>`;
+      // Extract raw text from content for syntax highlighting
+      let codeText = '';
+      const extractText = (nodes: any[]) => {
+        for (const n of nodes) {
+          if (n.type === 'text') codeText += n.text || '';
+          if (n.content && Array.isArray(n.content)) extractText(n.content);
+        }
+      };
+      extractText(content);
+      const highlighted = highlightCode(codeText, `file.${lang || 'txt'}`);
+      return `<pre style="background: #1e1e1e; color: #d4d4d4; padding: 16px; border-radius: 8px; overflow-x: auto;"><code class="language-${lang}">${highlighted}</code></pre>`;
+    }
     case 'blockquote':
       return `<blockquote>${inner}</blockquote>`;
     case 'horizontalRule':

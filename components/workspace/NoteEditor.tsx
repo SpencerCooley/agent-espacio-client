@@ -706,6 +706,33 @@ export default function NoteEditor({ artifact }: NoteEditorProps) {
             <CodeIcon fontSize="small" />
           </IconButton>
         </Tooltip>
+        {editor.isActive('codeBlock') && (
+          <Select
+            size="small"
+            value={editor.getAttributes('codeBlock').language || ''}
+            onChange={(e) => editor.chain().focus().updateAttributes('codeBlock', { language: e.target.value }).run()}
+            sx={{ minWidth: 90, height: 32, fontSize: '0.75rem', ml: 0.5 }}
+            displayEmpty
+          >
+            <MenuItem value="" sx={{ fontSize: '0.75rem' }}>Plain</MenuItem>
+            <MenuItem value="python" sx={{ fontSize: '0.75rem' }}>Python</MenuItem>
+            <MenuItem value="javascript" sx={{ fontSize: '0.75rem' }}>JavaScript</MenuItem>
+            <MenuItem value="typescript" sx={{ fontSize: '0.75rem' }}>TypeScript</MenuItem>
+            <MenuItem value="bash" sx={{ fontSize: '0.75rem' }}>Bash</MenuItem>
+            <MenuItem value="json" sx={{ fontSize: '0.75rem' }}>JSON</MenuItem>
+            <MenuItem value="yaml" sx={{ fontSize: '0.75rem' }}>YAML</MenuItem>
+            <MenuItem value="markdown" sx={{ fontSize: '0.75rem' }}>Markdown</MenuItem>
+            <MenuItem value="css" sx={{ fontSize: '0.75rem' }}>CSS</MenuItem>
+            <MenuItem value="markup" sx={{ fontSize: '0.75rem' }}>HTML</MenuItem>
+            <MenuItem value="sql" sx={{ fontSize: '0.75rem' }}>SQL</MenuItem>
+            <MenuItem value="graphql" sx={{ fontSize: '0.75rem' }}>GraphQL</MenuItem>
+            <MenuItem value="rust" sx={{ fontSize: '0.75rem' }}>Rust</MenuItem>
+            <MenuItem value="go" sx={{ fontSize: '0.75rem' }}>Go</MenuItem>
+            <MenuItem value="java" sx={{ fontSize: '0.75rem' }}>Java</MenuItem>
+            <MenuItem value="ruby" sx={{ fontSize: '0.75rem' }}>Ruby</MenuItem>
+            <MenuItem value="docker" sx={{ fontSize: '0.75rem' }}>Docker</MenuItem>
+          </Select>
+        )}
         <Tooltip title="Inline Code">
           <IconButton
             size="small"
