@@ -56,6 +56,8 @@ import FormatColorTextIcon from '@mui/icons-material/FormatColorText';
 import HighlightIcon from '@mui/icons-material/Highlight';
 import FormatClearIcon from '@mui/icons-material/FormatClear';
 import LinkIcon from '@mui/icons-material/Link';
+import HorizontalRuleIcon from '@mui/icons-material/HorizontalRule';
+import TagIcon from '@mui/icons-material/Tag';
 import { artifactService, Artifact } from '../../services/artifacts';
 import { assetService, getAssetDownloadUrl } from '../../services/assets';
 import AssetImageNodeView from './AssetImageNodeView';
@@ -702,6 +704,24 @@ export default function NoteEditor({ artifact }: NoteEditorProps) {
             color={editor.isActive('codeBlock') ? 'primary' : 'default'}
           >
             <CodeIcon fontSize="small" />
+          </IconButton>
+        </Tooltip>
+        <Tooltip title="Inline Code">
+          <IconButton
+            size="small"
+            onClick={() => editor.chain().focus().toggleCode().run()}
+            color={editor.isActive('code') ? 'primary' : 'default'}
+          >
+            <TagIcon fontSize="small" />
+          </IconButton>
+        </Tooltip>
+        <Tooltip title="Horizontal Rule">
+          <IconButton
+            size="small"
+            onClick={() => editor.chain().focus().setHorizontalRule().run()}
+            color={editor.isActive('horizontalRule') ? 'primary' : 'default'}
+          >
+            <HorizontalRuleIcon fontSize="small" />
           </IconButton>
         </Tooltip>
 
