@@ -271,6 +271,14 @@ export default function PublicFeed({ tag, title }: PublicFeedProps) {
       .finally(() => setLoading(false));
   }, [fetchFeed, tag]);
 
+  const handleScrollToLatest = () => {
+    const el = document.getElementById('latest-section');
+    if (el) {
+      const y = el.getBoundingClientRect().top + window.scrollY - 80;
+      window.scrollTo({ top: y, behavior: 'smooth' });
+    }
+  };
+
   const handleLoadMore = async () => {
     if (isLoadingMore || !hasMore) return;
     setIsLoadingMore(true);
@@ -337,13 +345,12 @@ export default function PublicFeed({ tag, title }: PublicFeedProps) {
           {featuredItems.map((item) => {
             const size = getFeaturedCardSize(item.featured_level || 1);
             const colSpan = SIZE_CONFIG[size].colSpan;
-            const mobileSpan = item.featured_level === 1 ? 12 : 6;
 
             return (
               <Box
                 key={item.id}
                 sx={{
-                  gridColumn: { xs: `span ${mobileSpan}`, md: `span ${colSpan}` },
+                  gridColumn: { xs: 'span 12', md: `span ${colSpan}` },
                 }}
               >
                 <FeedCard item={item} size={size} />
@@ -356,7 +363,7 @@ export default function PublicFeed({ tag, title }: PublicFeedProps) {
       {/* Main feed: Latest section */}
       {!tag && latestItems.length > 0 && (
         <>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, my: 3 }}>
+          <Box id="latest-section" sx={{ display: 'flex', alignItems: 'center', gap: 2, my: 3 }}>
             <Box sx={{ flex: 1, height: 1, bgcolor: 'divider' }} />
             <Typography variant="h5" sx={{ fontWeight: 600, color: 'text.secondary' }}>
               Latest
@@ -392,13 +399,12 @@ export default function PublicFeed({ tag, title }: PublicFeedProps) {
           {latestItems.map((item, index) => {
             const size = getCardSize(index);
             const colSpan = SIZE_CONFIG[size].colSpan;
-            const mobileSpan = index === 0 ? 12 : 6;
 
             return (
               <Box
                 key={item.id}
                 sx={{
-                  gridColumn: { xs: `span ${mobileSpan}`, md: `span ${colSpan}` },
+                  gridColumn: { xs: 'span 12', md: `span ${colSpan}` },
                 }}
               >
                 <FeedCard item={item} size={size} />
@@ -437,5 +443,14 @@ export default function PublicFeed({ tag, title }: PublicFeedProps) {
     feedContent
   );
 
-  return <PublicShell>{innerContent}</PublicShell>;
+  const showLatestButton = !tag && featuredItems.length > 0 && latestItems.length > 0;
+
+  return (
+    <PublicShell
+      showLatestButton={showLatestButton}
+      onScrollToLatest={handleScrollToLatest}
+    >
+      {innerContent}
+    </PublicShell>
+  );
 }

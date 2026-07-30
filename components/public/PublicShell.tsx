@@ -1,7 +1,7 @@
 'use client';
 
 import { ReactNode } from 'react';
-import { Box, AppBar, Toolbar, IconButton, Tooltip } from '@mui/material';
+import { Box, AppBar, Toolbar, IconButton, Tooltip, Button } from '@mui/material';
 import { ThemeProvider as MUIThemeProvider } from '@mui/material/styles';
 import { Workspaces } from '@mui/icons-material';
 import Link from 'next/link';
@@ -15,9 +15,11 @@ interface PublicShellProps {
   children: ReactNode;
   logoText?: string;
   fullBleed?: boolean;
+  showLatestButton?: boolean;
+  onScrollToLatest?: () => void;
 }
 
-export default function PublicShell({ children, logoText = 'Agent Espacio', fullBleed = false }: PublicShellProps) {
+export default function PublicShell({ children, logoText = 'Agent Espacio', fullBleed = false, showLatestButton, onScrollToLatest }: PublicShellProps) {
   const {
     branding,
     themeMode,
@@ -116,6 +118,17 @@ export default function PublicShell({ children, logoText = 'Agent Espacio', full
                 </Box>
               )}
             </Link>
+
+            {showLatestButton && onScrollToLatest && (
+              <Button
+                size="small"
+                variant="outlined"
+                onClick={onScrollToLatest}
+                sx={{ display: { xs: 'flex', md: 'none' } }}
+              >
+                Latest
+              </Button>
+            )}
 
             {/* Control Center link — workspace is the control center */}
             {isAuthenticated && (
