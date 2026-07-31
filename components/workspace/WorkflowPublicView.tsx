@@ -148,8 +148,10 @@ function WorkflowPublicViewInner({
           borderBottom: 1,
           borderColor: 'divider',
           display: 'flex',
-          alignItems: 'center',
+          flexDirection: { xs: 'column', md: 'row' },
+          alignItems: { xs: 'flex-start', md: 'center' },
           justifyContent: 'space-between',
+          gap: { xs: 1, md: 0 },
           flexShrink: 0,
         }}
       >
