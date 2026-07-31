@@ -14,8 +14,9 @@ import {
   MenuItem,
   Fade,
   Chip,
+  Tooltip,
 } from '@mui/material';
-import { CreateNewFolder, UploadFile, NoteAdd, Share as ShareIcon } from '@mui/icons-material';
+import { CreateNewFolder, UploadFile, Handyman as HandymanIcon, Share as ShareIcon } from '@mui/icons-material';
 import ProtectedRoute from '../../../../components/auth/ProtectedRoute';
 import WorkspaceLayout from '../../../../components/layout/WorkspaceLayout';
 import FolderItemCard from '../../../../components/workspace/FolderItemCard';
@@ -577,7 +578,16 @@ function FolderExplorerContent() {
         itemKind={itemToDelete?.kind || 'folder'}
       />
 
-      <Box sx={{ mb: 3, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+      <Box
+        sx={{
+          mb: 3,
+          display: 'flex',
+          alignItems: { xs: 'stretch', sm: 'center' },
+          justifyContent: 'space-between',
+          flexDirection: { xs: 'column', sm: 'row' },
+          gap: { xs: 1.5, sm: 0 },
+        }}
+      >
         <Box>
           <Typography variant="h5" component="h1" sx={{ fontWeight: 600 }}>
             {folder.name}
@@ -589,35 +599,59 @@ function FolderExplorerContent() {
             {uploading && ' • Uploading...'}
           </Typography>
         </Box>
-        <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+        <Box
+          sx={{
+            display: 'flex',
+            gap: { xs: 0.5, sm: 1 },
+            alignItems: 'center',
+            flexWrap: 'wrap',
+            justifyContent: { xs: 'flex-start', sm: 'flex-end' },
+          }}
+        >
           {/* Share toggle button - only for non-root folders not under a public parent */}
           {folder.parent_id && !parentIsPublic && (
-            <Button
-              variant={showSharePanel ? "contained" : "outlined"}
-              size="small"
-              startIcon={<ShareIcon />}
-              onClick={() => setShowSharePanel(!showSharePanel)}
-              color={isPublic ? "success" : "primary"}
-            >
-              {showSharePanel ? 'Hide' : 'Share'}
-            </Button>
+            <Tooltip title={showSharePanel ? 'Hide sharing' : 'Share folder'}>
+              <Button
+                variant={showSharePanel ? "contained" : "outlined"}
+                size="small"
+                startIcon={<ShareIcon />}
+                onClick={() => setShowSharePanel(!showSharePanel)}
+                color={isPublic ? "success" : "primary"}
+                aria-label={showSharePanel ? 'Hide sharing' : 'Share folder'}
+                sx={{ minWidth: 0, px: { xs: 1.25, sm: 1.5 } }}
+              >
+                <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>
+                  {showSharePanel ? 'Hide' : 'Share'}
+                </Box>
+              </Button>
+            </Tooltip>
           )}
+          <Tooltip title="New Folder">
+            <Button
+              variant="outlined"
+              size="small"
+              startIcon={<CreateNewFolder />}
+              onClick={() => setCreateDialogOpen(true)}
+              aria-label="New Folder"
+              sx={{ minWidth: 0, px: { xs: 1.25, sm: 1.5 } }}
+            >
+              <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>
+                New Folder
+              </Box>
+            </Button>
+          </Tooltip>
           <Button
             variant="outlined"
             size="small"
-            startIcon={<CreateNewFolder />}
-            onClick={() => setCreateDialogOpen(true)}
-          >
-            New Folder
-          </Button>
-          <Button
-            variant="outlined"
-            size="small"
-            startIcon={<NoteAdd />}
+            startIcon={<HandymanIcon />}
             onClick={(e) => setArtifactTypeAnchor(e.currentTarget)}
             disabled={creatingArtifact}
+            aria-label="New Artifact"
+            sx={{ minWidth: 0, px: { xs: 1.25, sm: 1.5 } }}
           >
-            New Artifact
+            <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>
+              New Artifact
+            </Box>
           </Button>
           <Menu
             anchorEl={artifactTypeAnchor}
@@ -630,14 +664,20 @@ function FolderExplorerContent() {
               </MenuItem>
             ))}
           </Menu>
-          <Button
-            variant="contained"
-            size="small"
-            startIcon={<UploadFile />}
-            onClick={handleUploadClick}
-          >
-            Upload
-          </Button>
+          <Tooltip title="Upload files">
+            <Button
+              variant="contained"
+              size="small"
+              startIcon={<UploadFile />}
+              onClick={handleUploadClick}
+              aria-label="Upload files"
+              sx={{ minWidth: 0, px: { xs: 1.25, sm: 1.5 } }}
+            >
+              <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>
+                Upload
+              </Box>
+            </Button>
+          </Tooltip>
         </Box>
       </Box>
 

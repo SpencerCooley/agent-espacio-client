@@ -16,7 +16,9 @@ import {
   ClickAwayListener,
   InputAdornment,
   CircularProgress,
+  useMediaQuery,
 } from '@mui/material';
+import { useTheme } from '@mui/material/styles';
 import {
   AccountCircle,
   Settings as SettingsIcon,
@@ -40,6 +42,7 @@ import {
   Image as ImageIcon,
   Description as MarkdownIcon,
   DataObject as JsonIcon,
+  ArrowBack as ArrowBackIcon,
 } from '@mui/icons-material';
 import Logo from '../Logo';
 import { useApp } from '../../context/AppContext';
@@ -69,7 +72,10 @@ export default function WorkspaceHeader({
   const { shareTarget, setModalOpen } = useShareContext();
   const pathname = usePathname();
   const router = useRouter();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
   // Track which breadcrumb item is being dragged over
   const [activeBreadcrumbDrop, setActiveBreadcrumbDrop] = useState<string | null>(null);
 
@@ -185,6 +191,7 @@ export default function WorkspaceHeader({
     setSearchOpen(false);
     setSearchQuery('');
     setSearchResults([]);
+    setMobileSearchOpen(false);
     if (item.kind === 'folder') {
       router.push(`/workspace/folders/${item.id}`);
     } else if (item.kind === 'artifact') {
@@ -267,6 +274,69 @@ export default function WorkspaceHeader({
     }
   };
 
+  const searchResultsDropdown = (
+    <Paper
+      elevation={3}
+      sx={{
+        position: 'absolute',
+        top: '100%',
+        left: 0,
+        right: 0,
+        mt: 0.5,
+        maxHeight: 360,
+        overflowY: 'auto',
+        zIndex: 1300,
+        borderRadius: 2,
+      }}
+    >
+      {searchResults.length === 0 ? (
+        <Box sx={{ p: 2, textAlign: 'center' }}>
+          <Typography variant="body2" color="text.secondary">
+            {searchQuery.trim() ? 'No results found' : 'Type to search'}
+          </Typography>
+        </Box>
+      ) : (
+        searchResults.map((item) => (
+          <Box
+            key={`${item.kind}-${item.id}`}
+            onClick={() => handleResultClick(item)}
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 1.5,
+              px: 2,
+              py: 1.25,
+              cursor: 'pointer',
+              transition: 'background-color 0.15s ease',
+              '&:hover': { bgcolor: 'action.hover' },
+              borderBottom: '1px solid',
+              borderColor: 'divider',
+              '&:last-child': { borderBottom: 'none' },
+            }}
+          >
+            {getSearchResultIcon(item)}
+            <Box sx={{ minWidth: 0, flex: 1 }}>
+              <Typography
+                variant="body2"
+                sx={{
+                  fontWeight: 500,
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {item.name}
+              </Typography>
+              <Typography variant="caption" color="text.secondary">
+                {getKindLabel(item)}
+              </Typography>
+            </Box>
+          </Box>
+        ))
+      )}
+    </Paper>
+  );
+
   return (
     <AppBar
       position="fixed"
@@ -282,7 +352,7 @@ export default function WorkspaceHeader({
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flex: 1, minWidth: 0 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexShrink: 0 }}>
             <Link href="/workspace" style={{ textDecoration: 'none', display: 'inline-block' }}>
-              <Logo />
+              <Logo width={isMobile ? 88 : 120} height={isMobile ? 29 : 40} />
             </Link>
             <IconButton
               component="a"
@@ -309,6 +379,7 @@ export default function WorkspaceHeader({
               sx={{
                 ml: { xs: 1, md: 2 },
                 minWidth: 0,
+                display: { xs: 'none', sm: 'flex' },
                 '& .MuiBreadcrumbs-ol': {
                   flexWrap: 'nowrap',
                   overflow: 'hidden',
@@ -412,8 +483,8 @@ export default function WorkspaceHeader({
           )}
         </Box>
 
-        {/* Center section: Search */}
-        {currentFolderId && (
+        {/* Center section: Search (desktop inline field) */}
+        {currentFolderId && !isMobile && (
           <ClickAwayListener onClickAway={handleClickAway}>
             <Box sx={{ position: 'relative', mx: 2, flex: 1, maxWidth: 420, minWidth: 200 }}>
               <TextField
@@ -443,74 +514,25 @@ export default function WorkspaceHeader({
                   },
                 }}
               />
-              {searchOpen && (
-                <Paper
-                  elevation={3}
-                  sx={{
-                    position: 'absolute',
-                    top: '100%',
-                    left: 0,
-                    right: 0,
-                    mt: 0.5,
-                    maxHeight: 360,
-                    overflowY: 'auto',
-                    zIndex: 1300,
-                    borderRadius: 2,
-                  }}
-                >
-                  {searchResults.length === 0 ? (
-                    <Box sx={{ p: 2, textAlign: 'center' }}>
-                      <Typography variant="body2" color="text.secondary">
-                        {searchQuery.trim() ? 'No results found' : 'Type to search'}
-                      </Typography>
-                    </Box>
-                  ) : (
-                    searchResults.map((item) => (
-                      <Box
-                        key={`${item.kind}-${item.id}`}
-                        onClick={() => handleResultClick(item)}
-                        sx={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: 1.5,
-                          px: 2,
-                          py: 1.25,
-                          cursor: 'pointer',
-                          transition: 'background-color 0.15s ease',
-                          '&:hover': { bgcolor: 'action.hover' },
-                          borderBottom: '1px solid',
-                          borderColor: 'divider',
-                          '&:last-child': { borderBottom: 'none' },
-                        }}
-                      >
-                        {getSearchResultIcon(item)}
-                        <Box sx={{ minWidth: 0, flex: 1 }}>
-                          <Typography
-                            variant="body2"
-                            sx={{
-                              fontWeight: 500,
-                              overflow: 'hidden',
-                              textOverflow: 'ellipsis',
-                              whiteSpace: 'nowrap',
-                            }}
-                          >
-                            {item.name}
-                          </Typography>
-                          <Typography variant="caption" color="text.secondary">
-                            {getKindLabel(item)}
-                          </Typography>
-                        </Box>
-                      </Box>
-                    ))
-                  )}
-                </Paper>
-              )}
+              {searchOpen && searchResultsDropdown}
             </Box>
           </ClickAwayListener>
         )}
 
         {/* Right section: Actions + User */}
         <Box sx={{ display: 'flex', alignItems: 'center', flexShrink: 0 }}>
+          {/* Mobile search toggle (inline field is hidden on xs) */}
+          {currentFolderId && isMobile && (
+            <IconButton
+              onClick={() => setMobileSearchOpen(true)}
+              sx={{ color: 'text.primary' }}
+              title="Search this folder"
+              aria-label="Search this folder"
+            >
+              <SearchIcon />
+            </IconButton>
+          )}
+
           {/* Admin Toggle */}
           {showAdminToggle && user?.role === 'admin' && (
             <IconButton
@@ -538,7 +560,7 @@ export default function WorkspaceHeader({
           {isArtifactRoute && !isPreviewRoute && artifactIdForPreview && (
             <IconButton
               onClick={handlePreviewClick}
-              sx={{ color: 'text.primary' }}
+              sx={{ color: 'text.primary', display: { xs: 'none', sm: 'inline-flex' } }}
               title="Preview public view"
             >
               <VisibilityIcon />
@@ -581,6 +603,66 @@ export default function WorkspaceHeader({
           </Menu>
         </Box>
       </Toolbar>
+
+      {/* Mobile search strip - full-width panel below the AppBar */}
+      {isMobile && mobileSearchOpen && (
+        <Box
+          sx={{
+            position: 'fixed',
+            top: 56,
+            left: 0,
+            right: 0,
+            zIndex: (t) => t.zIndex.appBar + 1,
+            bgcolor: 'background.paper',
+            borderBottom: 1,
+            borderColor: 'divider',
+            boxShadow: 3,
+            pb: 1,
+          }}
+        >
+          <ClickAwayListener onClickAway={() => setMobileSearchOpen(false)}>
+            <Box sx={{ position: 'relative', px: 1, pt: 1 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <IconButton
+                  size="small"
+                  onClick={() => setMobileSearchOpen(false)}
+                  aria-label="Close search"
+                >
+                  <ArrowBackIcon />
+                </IconButton>
+                <TextField
+                  size="small"
+                  placeholder="Search this folder..."
+                  value={searchQuery}
+                  onChange={handleSearchChange}
+                  onFocus={handleSearchFocus}
+                  autoFocus
+                  fullWidth
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        {searchLoading ? (
+                          <CircularProgress size={16} color="inherit" />
+                        ) : (
+                          <SearchIcon sx={{ fontSize: 18, color: 'text.secondary' }} />
+                        )}
+                      </InputAdornment>
+                    ),
+                  }}
+                  sx={{
+                    '& .MuiInputBase-root': {
+                      borderRadius: 2,
+                      bgcolor: searchFocused ? 'background.paper' : 'action.hover',
+                      transition: 'background-color 0.2s ease',
+                    },
+                  }}
+                />
+              </Box>
+              {searchOpen && searchResultsDropdown}
+            </Box>
+          </ClickAwayListener>
+        </Box>
+      )}
     </AppBar>
   );
 }

@@ -34,7 +34,7 @@ export default function WorkspaceShell({ leftPanel, rightPanel, children }: Work
         flex: 1,
         display: 'flex',
         overflow: 'hidden',
-        mt: 8, // Space for fixed AppBar (64px)
+        mt: { xs: 7, sm: 8 }, // Space for fixed AppBar (56px mobile / 64px desktop)
       }}
     >
       {/* Desktop Left Panel */}
