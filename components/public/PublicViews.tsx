@@ -102,10 +102,10 @@ export function PublicAssetView({
           component="img"
           src={downloadUrl}
           alt={name}
-          sx={{ maxWidth: '100%', maxHeight: '80vh', borderRadius: 2, display: 'block', mx: 'auto' }}
+          sx={{ maxWidth: '100%', maxHeight: '80dvh', borderRadius: 2, display: 'block', mx: 'auto' }}
         />
       ) : isPdf ? (
-        <Paper sx={{ height: '70vh', overflow: 'hidden', borderRadius: 2 }}>
+        <Paper sx={{ height: '70dvh', overflow: 'hidden', borderRadius: 2 }}>
           <Box
             component="iframe"
             src={downloadUrl}

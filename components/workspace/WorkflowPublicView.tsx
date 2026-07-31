@@ -140,7 +140,7 @@ function WorkflowPublicViewInner({
   }, [setSelectedNode]);
 
   return (
-    <Box sx={{ height: 'calc(100vh - 64px)', display: 'flex', flexDirection: 'column' }}>
+    <Box sx={{ height: { xs: 'calc(100dvh - 56px)', md: 'calc(100dvh - 64px)' }, display: 'flex', flexDirection: 'column' }}>
       {/* Header */}
       <Box
         sx={{

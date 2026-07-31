@@ -24,7 +24,7 @@ interface SmartVideoPlayerProps {
 export function SmartVideoPlayer({
   src,
   name,
-  maxHeight = '80vh',
+  maxHeight = '80dvh',
   poster,
 }: SmartVideoPlayerProps) {
   const [hasError, setHasError] = React.useState(false);

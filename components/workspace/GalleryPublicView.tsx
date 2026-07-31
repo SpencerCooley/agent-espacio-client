@@ -230,7 +230,7 @@ function CarouselLayout({
       sx={{
         display: 'flex',
         flexDirection: isMobile ? 'column' : 'row',
-        height: '100vh',
+        height: '100dvh',
         overflow: 'hidden',
       }}
       onTouchStart={handleTouchStart}
@@ -604,7 +604,7 @@ function MasonryLayout({
                     alt={item.caption || `Image ${index + 1}`}
                     sx={{
                       maxWidth: '100%',
-                      maxHeight: '80vh',
+                      maxHeight: '80dvh',
                       objectFit: 'contain',
                       borderRadius: 1,
                     }}

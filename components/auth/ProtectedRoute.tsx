@@ -34,7 +34,7 @@ export default function ProtectedRoute({ children, requireAdmin = false }: Prote
           display: 'flex',
           justifyContent: 'center',
           alignItems: 'center',
-          height: '100vh',
+          height: '100dvh',
           flexDirection: 'column',
           gap: 2,
         }}

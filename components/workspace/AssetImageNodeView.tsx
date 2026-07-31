@@ -41,7 +41,7 @@ export default function AssetImageNodeView(props: NodeViewProps) {
           draggable={false}
           style={{
             maxWidth: '100%',
-            maxHeight: '70vh',
+            maxHeight: '70dvh',
             borderRadius: 4,
             boxShadow: '0 1px 3px rgba(0,0,0,0.12)',
             verticalAlign: 'middle',

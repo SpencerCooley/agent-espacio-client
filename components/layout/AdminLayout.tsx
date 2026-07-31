@@ -21,7 +21,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   };
 
   return (
-    <Box sx={{ display: 'flex', backgroundColor: 'background.default', minHeight: '100vh' }}>
+    <Box sx={{ display: 'flex', backgroundColor: 'background.default', minHeight: '100dvh' }}>
       <TopBar onMenuClick={handleMenuClick} />
       <LeftSidebar open={sidebarOpen} onClose={handleSidebarClose} />
       <Box
@@ -32,7 +32,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
           width: { md: `calc(100% - 240px)` },
           mt: 8, // Space for AppBar
           backgroundColor: 'background.default',
-          minHeight: '100vh',
+          minHeight: '100dvh',
         }}
       >
         <Toolbar /> {/* Spacer for AppBar */}

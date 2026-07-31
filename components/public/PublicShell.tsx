@@ -170,7 +170,7 @@ export default function PublicShell({ children, logoText = 'Agent Espacio', full
                 maxWidth: 1400,
                 mx: 'auto',
                 bgcolor: 'background.paper',
-                minHeight: '100vh',
+                minHeight: '100dvh',
                 px: { xs: 2, md: 4 },
                 py: 2,
               }}
@@ -182,7 +182,7 @@ export default function PublicShell({ children, logoText = 'Agent Espacio', full
               sx={{
                 width: '100%',
                 bgcolor: 'background.paper',
-                minHeight: '100vh',
+                minHeight: '100dvh',
                 display: 'flex',
                 flexDirection: 'column',
               }}

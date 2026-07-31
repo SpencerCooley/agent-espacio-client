@@ -457,7 +457,7 @@ function AssetViewerContent() {
                 alt={asset.name}
                 sx={{
                   maxWidth: '100%',
-                  maxHeight: 'calc(100vh - 200px)',
+                  maxHeight: 'calc(100dvh - 200px)',
                   objectFit: 'contain',
                   borderRadius: 1,
                 }}
@@ -482,7 +482,7 @@ function AssetViewerContent() {
               <SmartVideoPlayer 
                 src={videoSrc} 
                 name={asset.name}
-                maxHeight="calc(100vh - 200px)"
+                maxHeight="calc(100dvh - 200px)"
                 poster={videoPosterSrc || undefined}
               />
             ) : (
