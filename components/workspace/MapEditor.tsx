@@ -495,8 +495,8 @@ export default function MapEditor({ artifact }: MapEditorProps) {
       const color = getFeatureColor(feature);
       const isActive = currentSelectedId === feature.id || currentHoveredId === feature.id;
       const el = document.createElement('div');
-      el.style.width = '24px';
-      el.style.height = '24px';
+      el.style.width = '32px';
+      el.style.height = '32px';
       el.style.backgroundColor = color;
       el.style.borderRadius = '50%';
       el.style.border = isActive ? '4px solid #f44336' : '3px solid #fff';
@@ -681,8 +681,8 @@ export default function MapEditor({ artifact }: MapEditorProps) {
 
   const createVertexElement = (isActive: boolean) => {
     const el = document.createElement('div');
-    el.style.width = isActive ? '18px' : '14px';
-    el.style.height = isActive ? '18px' : '14px';
+    el.style.width = isActive ? '26px' : '22px';
+    el.style.height = isActive ? '26px' : '22px';
     el.style.backgroundColor = '#fff';
     el.style.borderRadius = '50%';
     el.style.border = isActive ? '3px solid #f44336' : '2px solid #1976d2';
@@ -1756,7 +1756,13 @@ export default function MapEditor({ artifact }: MapEditorProps) {
         <Box sx={{ flex: 1, position: 'relative', minWidth: 0 }}>
           <Box
             ref={mapContainerRef}
-            sx={{ position: 'absolute', inset: 0, borderRadius: 1, overflow: 'hidden' }}
+            sx={{
+              position: 'absolute',
+              inset: 0,
+              borderRadius: 1,
+              overflow: 'hidden',
+              '& .maplibregl-ctrl-group button': { width: 44, height: 44, fontSize: 18 },
+            }}
           />
           <Box
             sx={{

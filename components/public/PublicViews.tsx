@@ -476,9 +476,18 @@ export function MapPublicView({ content, name, description, isPreview, themeMode
   const savedStyle = content?.style || 'carto-voyager';
 
   function getTooltipCoords(clientX: number, clientY: number) {
-    if (!tooltipContainerRef.current) return { x: clientX, y: clientY };
+    const TOOLTIP_W = 280;
+    const TOOLTIP_H = 60;
+    const clampX = (x: number, w: number) => Math.min(Math.max(x, 8), Math.max(w - TOOLTIP_W - 8, 8));
+    const clampY = (y: number, h: number) => Math.min(Math.max(y, 8), Math.max(h - TOOLTIP_H - 8, 8));
+    if (!tooltipContainerRef.current) {
+      return { x: clampX(clientX, window.innerWidth), y: clampY(clientY, window.innerHeight) };
+    }
     const rect = tooltipContainerRef.current.getBoundingClientRect();
-    return { x: clientX - rect.left, y: clientY - rect.top };
+    return {
+      x: clampX(clientX - rect.left, rect.width),
+      y: clampY(clientY - rect.top, rect.height),
+    };
   }
 
   const renderGeoJSON = useCallback((map: maplibregl.Map) => {

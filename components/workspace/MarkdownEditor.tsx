@@ -184,6 +184,7 @@ export default function MarkdownEditor({ content: initialContent, onSave }: Mark
             sx={{
               flex: 1,
               overflowY: 'auto',
+              overflowX: 'auto',
               p: 2,
               '& .ProseMirror': {
                 outline: 'none',

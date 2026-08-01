@@ -218,7 +218,7 @@ function FeedCard({ item, size }: { item: FeedItem; size: CardSize }) {
               size={cfg.tagSize}
               variant="outlined"
               clickable
-              sx={{ fontSize: '0.7rem', height: 22, textTransform: 'lowercase' }}
+              sx={{ fontSize: '0.7rem', minHeight: 36, px: 1, textTransform: 'lowercase' }}
             />
           ))}
         </Box>

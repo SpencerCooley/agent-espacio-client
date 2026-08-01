@@ -28,6 +28,8 @@ import {
   DragIndicator,
   AddPhotoAlternate,
   Close,
+  ArrowUpward,
+  ArrowDownward,
 } from '@mui/icons-material';
 import { artifactService, Artifact } from '../../services/artifacts';
 import { assetService, Asset } from '../../services/assets';
@@ -234,6 +236,25 @@ export default function GalleryEditor({ artifact }: GalleryEditorProps) {
         setSelectedIndex(old - 1);
       } else if (dragIndex > old && dropIndex <= old) {
         setSelectedIndex(old + 1);
+      }
+    }
+  };
+
+  const handleMove = (index: number, dir: -1 | 1) => {
+    const target = index + dir;
+    if (target < 0 || target >= content.items.length) return;
+    const newItems = [...content.items];
+    const [moved] = newItems.splice(index, 1);
+    newItems.splice(target, 0, moved);
+    setContent((prev) => ({ ...prev, items: newItems, linked_asset_ids: newItems.map((i) => i.asset_id) }));
+    if (selectedIndex === index) {
+      setSelectedIndex(target);
+    } else if (selectedIndex !== null) {
+      const old = selectedIndex;
+      if (index < old && target >= old) {
+        setSelectedIndex(old + 1);
+      } else if (index > old && target <= old) {
+        setSelectedIndex(old - 1);
       }
     }
   };
@@ -643,18 +664,48 @@ export default function GalleryEditor({ artifact }: GalleryEditorProps) {
                     <Typography variant="caption" color="text.secondary">
                       #{index + 1}
                     </Typography>
-                    <Tooltip title="Remove from gallery">
-                      <IconButton
-                        size="small"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleRemoveItem(index);
-                        }}
-                        sx={{ p: 0.5 }}
-                      >
-                        <Delete fontSize="small" color="error" />
-                      </IconButton>
-                    </Tooltip>
+                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                      <Box sx={{ display: { xs: 'flex', md: 'none' }, alignItems: 'center' }}>
+                        <Tooltip title="Move up">
+                          <IconButton
+                            size="small"
+                            disabled={index === 0}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleMove(index, -1);
+                            }}
+                            sx={{ p: 0.5 }}
+                          >
+                            <ArrowUpward fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+                        <Tooltip title="Move down">
+                          <IconButton
+                            size="small"
+                            disabled={index === content.items.length - 1}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleMove(index, 1);
+                            }}
+                            sx={{ p: 0.5 }}
+                          >
+                            <ArrowDownward fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+                      </Box>
+                      <Tooltip title="Remove from gallery">
+                        <IconButton
+                          size="small"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleRemoveItem(index);
+                          }}
+                          sx={{ p: 0.5 }}
+                        >
+                          <Delete fontSize="small" color="error" />
+                        </IconButton>
+                      </Tooltip>
+                    </Box>
                   </Box>
                   <Box
                     sx={{
@@ -665,7 +716,7 @@ export default function GalleryEditor({ artifact }: GalleryEditorProps) {
                       borderRadius: '50%',
                       width: 24,
                       height: 24,
-                      display: 'flex',
+                      display: { xs: 'none', md: 'flex' },
                       alignItems: 'center',
                       justifyContent: 'center',
                     }}

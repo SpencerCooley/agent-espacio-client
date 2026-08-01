@@ -345,6 +345,8 @@ export default function MapGeometryPanel({
                 ].map((c) => (
                   <Box
                     key={c}
+                    role="button"
+                    aria-label={`Set color ${c}`}
                     onClick={() => {
                       const updated = {
                         ...selectedFeature,
@@ -356,8 +358,8 @@ export default function MapGeometryPanel({
                       onUpdateFeature(updated);
                     }}
                     sx={{
-                      width: 24,
-                      height: 24,
+                      width: 36,
+                      height: 36,
                       borderRadius: '50%',
                       bgcolor: c,
                       cursor: 'pointer',
@@ -480,10 +482,11 @@ export default function MapGeometryPanel({
                     secondaryAction={
                       <IconButton
                         edge="end"
-                        size="small"
+                        aria-label="Remove association"
+                        size="medium"
                         onClick={() => onRemoveAssociation(selectedFeature.id, assoc.id)}
                       >
-                        <LinkOffIcon fontSize="small" color="error" />
+                        <LinkOffIcon color="error" />
                       </IconButton>
                     }
                   >

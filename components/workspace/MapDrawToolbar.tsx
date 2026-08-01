@@ -53,10 +53,13 @@ export default function MapDrawToolbar({
       {TOOLS.map((tool) => (
         <Tooltip key={tool.mode} title={tool.label} placement="right">
           <IconButton
-            size="small"
+            aria-label={tool.label}
+            size="medium"
             onClick={() => onChangeMode(tool.mode)}
             color={activeMode === tool.mode ? 'primary' : 'default'}
             sx={{
+              width: 44,
+              height: 44,
               borderRadius: 0.5,
               m: 0.25,
               ...(activeMode === tool.mode && {
@@ -74,10 +77,11 @@ export default function MapDrawToolbar({
           <Divider sx={{ width: '60%', my: 0.5 }} />
           <Tooltip title="Finish drawing" placement="right">
             <IconButton
-              size="small"
+              aria-label="Finish drawing"
+              size="medium"
               onClick={onFinish}
               color="success"
-              sx={{ borderRadius: 0.5, m: 0.25 }}
+              sx={{ width: 44, height: 44, borderRadius: 0.5, m: 0.25 }}
             >
               <CheckIcon fontSize="small" />
             </IconButton>

@@ -63,6 +63,7 @@ export default function ComposerMetaPanel({ artifact, onArtifactUpdate }: Compos
   const [uploading, setUploading] = useState(false);
   const [isDragOver, setIsDragOver] = useState(false);
   const dragCounterRef = useRef(0);
+  const coverInputRef = useRef<HTMLInputElement>(null);
 
   // Check feed status on mount
   useEffect(() => {
@@ -281,18 +282,8 @@ export default function ComposerMetaPanel({ artifact, onArtifactUpdate }: Compos
     e.stopPropagation();
   }, []);
 
-  const handleDrop = useCallback(async (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    dragCounterRef.current = 0;
-    setIsDragOver(false);
-
-    const files = e.dataTransfer.files;
-    if (!files || files.length === 0) return;
-
-    // Only accept the first image file
-    const file = (Array.from(files) as File[]).find((f) => f.type.startsWith('image/'));
-    if (!file) return;
+  const uploadCoverFile = useCallback(async (file: File) => {
+    if (!file.type.startsWith('image/')) return;
 
     setUploading(true);
     try {
@@ -309,6 +300,22 @@ export default function ComposerMetaPanel({ artifact, onArtifactUpdate }: Compos
       setUploading(false);
     }
   }, [artifact.folder_id, saveCoverAssetId]);
+
+  const handleDrop = useCallback(async (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounterRef.current = 0;
+    setIsDragOver(false);
+
+    const files = e.dataTransfer.files;
+    if (!files || files.length === 0) return;
+
+    // Only accept the first image file
+    const file = (Array.from(files) as File[]).find((f) => f.type.startsWith('image/'));
+    if (!file) return;
+
+    await uploadCoverFile(file);
+  }, [uploadCoverFile]);
 
   const isPublic = artifact.is_public;
   const publicUrl = artifact.public_magic_id
@@ -456,6 +463,26 @@ export default function ComposerMetaPanel({ artifact, onArtifactUpdate }: Compos
                 <Typography variant="caption" color="text.secondary">
                   or select from workspace
                 </Typography>
+                <input
+                  ref={coverInputRef}
+                  type="file"
+                  accept="image/*"
+                  hidden
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) uploadCoverFile(file);
+                    e.target.value = '';
+                  }}
+                />
+                <Box sx={{ mt: 1 }}>
+                  <Button
+                    size="small"
+                    startIcon={<UploadIcon />}
+                    onClick={() => coverInputRef.current?.click()}
+                  >
+                    Choose file
+                  </Button>
+                </Box>
               </Box>
 
               <Autocomplete
