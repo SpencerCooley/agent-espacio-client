@@ -15,6 +15,7 @@ import {
   Breadcrumbs,
   Link,
   Divider,
+  Drawer,
   Chip,
   IconButton,
   Tooltip,
@@ -45,6 +46,8 @@ import {
   Settings as SettingsIcon,
   ExpandMore as ExpandMoreIcon,
   ExpandLess as ExpandLessIcon,
+  MenuOpen as MenuOpenIcon,
+  Close as CloseIcon,
 } from '@mui/icons-material';
 import { Artifact, artifactService } from '../../services/artifacts';
 import {
@@ -88,6 +91,7 @@ export default function RepoViewer({ artifact }: RepoViewerProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [viewMode, setViewMode] = useState<'files' | 'history' | 'commit'>('files');
   const [selectedCommit, setSelectedCommit] = useState<RepoCommitDetail | null>(null);
   const [commitLoading, setCommitLoading] = useState(false);
@@ -511,6 +515,125 @@ export default function RepoViewer({ artifact }: RepoViewerProps) {
   const isStaticSite = publishSettings?.enabled;
   const isBuilding = (deployStatus || publishSettings?.status) === 'building';
 
+  const sidebarContent = (
+    <>
+      {/* Breadcrumb / navigation */}
+      <Box sx={{ p: 1, borderBottom: 1, borderColor: 'divider' }}>
+        <Breadcrumbs separator="›" aria-label="breadcrumb" sx={{ fontSize: '0.875rem' }}>
+          <Link
+            component="button"
+            underline="hover"
+            color="inherit"
+            onClick={handleNavigateUp}
+            sx={{ fontSize: '0.875rem', cursor: currentPath ? 'pointer' : 'default' }}
+          >
+            root
+          </Link>
+          {currentPath && (
+            <Typography color="text.primary" fontSize="0.875rem">
+              {currentPath.split('/').pop()}
+            </Typography>
+          )}
+        </Breadcrumbs>
+        {currentPath && (
+          <Button
+            startIcon={<BackIcon />}
+            size="small"
+            onClick={handleNavigateUp}
+            sx={{ mt: 0.5 }}
+          >
+            Back
+          </Button>
+        )}
+      </Box>
+
+      {/* File tree */}
+      <Box sx={{ flex: 1, overflowY: 'auto' }}>
+        {treeItems.length === 0 ? (
+          <Box sx={{ p: 3, textAlign: 'center' }}>
+            <Typography color="text.secondary" variant="body2">
+              {metadata?.commit_count === 0
+                ? 'Repository is empty. Push code to see files here.'
+                : 'No files in this directory.'}
+            </Typography>
+          </Box>
+        ) : (
+          <List dense disablePadding>
+            {treeItems.map((item) => (
+              <ListItem key={item.path} disablePadding>
+                <ListItemButton onClick={() => handleNavigate(item)} sx={{ py: 0.5 }}>
+                  <ListItemIcon sx={{ minWidth: 36 }}>
+                    {item.type === 'tree' ? (
+                      <FolderIcon fontSize="small" color="primary" />
+                    ) : (
+                      <FileIcon fontSize="small" color="action" />
+                    )}
+                  </ListItemIcon>
+                  <ListItemText
+                    primary={item.name}
+                    secondary={item.size ? `${(item.size / 1024).toFixed(1)} KB` : null}
+                    primaryTypographyProps={{ variant: 'body2', noWrap: true }}
+                    secondaryTypographyProps={{ variant: 'caption' }}
+                  />
+                </ListItemButton>
+              </ListItem>
+            ))}
+          </List>
+        )}
+      </Box>
+
+      <Divider />
+
+      {/* Commits toolbar + preview */}
+      <Box sx={{ borderTop: 1, borderColor: 'divider' }}>
+        <Box sx={{ px: 1, py: 0.5, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <Typography variant="subtitle2" sx={{ fontWeight: 600, px: 1 }}>
+            Recent Commits
+          </Typography>
+          <Tooltip title={viewMode === 'history' ? 'Show files' : 'Full history'}>
+            <IconButton
+              size="small"
+              onClick={() => {
+                if (viewMode === 'history') {
+                  setViewMode('files');
+                } else {
+                  setViewMode('history');
+                  setSelectedCommit(null);
+                  setFileContent(null);
+                  setImagePath(null);
+                  setShowDeployHistory(false);
+                }
+              }}
+              sx={{ color: viewMode === 'history' ? 'primary.main' : 'text.secondary' }}
+            >
+              <HistoryIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
+        </Box>
+        <Box sx={{ px: 2, pb: 2, maxHeight: 200, overflowY: 'auto' }}>
+          {commits.length === 0 ? (
+            <Typography variant="caption" color="text.secondary">
+              No commits yet
+            </Typography>
+          ) : (
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+              {commits.slice(0, 5).map((commit) => (
+                <Box key={commit.hash}>
+                  <Typography variant="caption" sx={{ fontFamily: 'monospace', color: 'primary.main' }}>
+                    {commit.hash}
+                  </Typography>
+                  <Typography variant="caption" display="block" noWrap>
+                    {commit.message}
+                  </Typography>
+                </Box>
+              ))}
+            </Box>
+          )}
+        </Box>
+      </Box>
+    </>
+  );
+
   return (
     <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
       {/* Header */}
@@ -532,6 +655,15 @@ export default function RepoViewer({ artifact }: RepoViewerProps) {
             }}
           />
           <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+            <Tooltip title="Files">
+              <IconButton
+                size="small"
+                onClick={() => setSidebarOpen(true)}
+                sx={{ display: { xs: 'inline-flex', md: 'none' } }}
+              >
+                <MenuOpenIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
             {isStaticSite && (
               <>
                 <Button
@@ -632,126 +764,37 @@ export default function RepoViewer({ artifact }: RepoViewerProps) {
             width: 320,
             borderRight: 1,
             borderColor: 'divider',
-            display: 'flex',
+            display: { xs: 'none', md: 'flex' },
             flexDirection: 'column',
             overflow: 'hidden',
           }}
         >
-          {/* Breadcrumb / navigation */}
-          <Box sx={{ p: 1, borderBottom: 1, borderColor: 'divider' }}>
-            <Breadcrumbs separator="›" aria-label="breadcrumb" sx={{ fontSize: '0.875rem' }}>
-              <Link
-                component="button"
-                underline="hover"
-                color="inherit"
-                onClick={handleNavigateUp}
-                sx={{ fontSize: '0.875rem', cursor: currentPath ? 'pointer' : 'default' }}
-              >
-                root
-              </Link>
-              {currentPath && (
-                <Typography color="text.primary" fontSize="0.875rem">
-                  {currentPath.split('/').pop()}
-                </Typography>
-              )}
-            </Breadcrumbs>
-            {currentPath && (
-              <Button
-                startIcon={<BackIcon />}
-                size="small"
-                onClick={handleNavigateUp}
-                sx={{ mt: 0.5 }}
-              >
-                Back
-              </Button>
-            )}
-          </Box>
-
-          {/* File tree */}
-          <Box sx={{ flex: 1, overflowY: 'auto' }}>
-            {treeItems.length === 0 ? (
-              <Box sx={{ p: 3, textAlign: 'center' }}>
-                <Typography color="text.secondary" variant="body2">
-                  {metadata?.commit_count === 0
-                    ? 'Repository is empty. Push code to see files here.'
-                    : 'No files in this directory.'}
-                </Typography>
-              </Box>
-            ) : (
-              <List dense disablePadding>
-                {treeItems.map((item) => (
-                  <ListItem key={item.path} disablePadding>
-                    <ListItemButton onClick={() => handleNavigate(item)} sx={{ py: 0.5 }}>
-                      <ListItemIcon sx={{ minWidth: 36 }}>
-                        {item.type === 'tree' ? (
-                          <FolderIcon fontSize="small" color="primary" />
-                        ) : (
-                          <FileIcon fontSize="small" color="action" />
-                        )}
-                      </ListItemIcon>
-                      <ListItemText
-                        primary={item.name}
-                        secondary={item.size ? `${(item.size / 1024).toFixed(1)} KB` : null}
-                        primaryTypographyProps={{ variant: 'body2', noWrap: true }}
-                        secondaryTypographyProps={{ variant: 'caption' }}
-                      />
-                    </ListItemButton>
-                  </ListItem>
-                ))}
-              </List>
-            )}
-          </Box>
-
-          <Divider />
-
-          {/* Commits toolbar + preview */}
-          <Box sx={{ borderTop: 1, borderColor: 'divider' }}>
-            <Box sx={{ px: 1, py: 0.5, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <Typography variant="subtitle2" sx={{ fontWeight: 600, px: 1 }}>
-                Recent Commits
-              </Typography>
-              <Tooltip title={viewMode === 'history' ? 'Show files' : 'Full history'}>
-                <IconButton
-                  size="small"
-                  onClick={() => {
-                    if (viewMode === 'history') {
-                      setViewMode('files');
-                    } else {
-                      setViewMode('history');
-                      setSelectedCommit(null);
-                      setFileContent(null);
-                      setImagePath(null);
-                      setShowDeployHistory(false);
-                    }
-                  }}
-                  sx={{ color: viewMode === 'history' ? 'primary.main' : 'text.secondary' }}
-                >
-                  <HistoryIcon fontSize="small" />
-                </IconButton>
-              </Tooltip>
-            </Box>
-            <Box sx={{ px: 2, pb: 2, maxHeight: 200, overflowY: 'auto' }}>
-              {commits.length === 0 ? (
-                <Typography variant="caption" color="text.secondary">
-                  No commits yet
-                </Typography>
-              ) : (
-                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                  {commits.slice(0, 5).map((commit) => (
-                    <Box key={commit.hash}>
-                      <Typography variant="caption" sx={{ fontFamily: 'monospace', color: 'primary.main' }}>
-                        {commit.hash}
-                      </Typography>
-                      <Typography variant="caption" display="block" noWrap>
-                        {commit.message}
-                      </Typography>
-                    </Box>
-                  ))}
-                </Box>
-              )}
-            </Box>
-          </Box>
+          {sidebarContent}
         </Box>
+
+        {/* Mobile file-tree drawer */}
+        <Drawer
+          anchor="left"
+          open={sidebarOpen}
+          onClose={() => setSidebarOpen(false)}
+          sx={{
+            display: { xs: 'block', md: 'none' },
+            '& .MuiDrawer-paper': {
+              width: 320,
+              maxWidth: '85vw',
+              display: 'flex',
+              flexDirection: 'column',
+              bgcolor: 'background.paper',
+            },
+          }}
+        >
+          <Box sx={{ display: 'flex', justifyContent: 'flex-end', p: 1, flexShrink: 0 }}>
+            <IconButton size="small" onClick={() => setSidebarOpen(false)}>
+              <CloseIcon />
+            </IconButton>
+          </Box>
+          {sidebarContent}
+        </Drawer>
 
         {/* Main panel: File content, commit history, or commit detail */}
         <Box sx={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>

@@ -7,8 +7,14 @@ import {
   Typography,
   CircularProgress,
   IconButton,
+  Tooltip,
+  Drawer,
+  useTheme,
+  useMediaQuery,
 } from '@mui/material';
 import SettingsIcon from '@mui/icons-material/Settings';
+import MenuOpenIcon from '@mui/icons-material/MenuOpen';
+import CloseIcon from '@mui/icons-material/Close';
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { MapboxOverlay } from '@deck.gl/mapbox';
@@ -140,11 +146,19 @@ export default function MapEditor({ artifact }: MapEditorProps) {
   const selectedFeatureIdRef = useRef<string | null>(null);
   const [hoveredFeatureId, setHoveredFeatureId] = useState<string | null>(null);
   const hoveredFeatureIdRef = useRef<string | null>(null);
+  const [geometryPanelOpen, setGeometryPanelOpen] = useState(false);
 
-  const handleSelectFeature = useCallback((id: string | null) => {
-    setSelectedFeatureId(id);
-    setHoveredFeatureId(null);
-  }, []);
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+
+  const handleSelectFeature = useCallback(
+    (id: string | null) => {
+      setSelectedFeatureId(id);
+      setHoveredFeatureId(null);
+      if (id && isMobile) setGeometryPanelOpen(true);
+    },
+    [isMobile]
+  );
   const [geoJSON, setGeoJSON] = useState<any>(
     (artifact.content as any)?.geojson || { type: 'FeatureCollection', features: [] }
   );
@@ -1648,6 +1662,30 @@ export default function MapEditor({ artifact }: MapEditorProps) {
     }
   }, [hoveredFeatureId, selectedFeatureId, geoJSON]);
 
+  const geometryPanel =
+    geoJSON.features.length > 0 ? (
+      <MapGeometryPanel
+        features={geoJSON.features}
+        selectedFeatureId={selectedFeatureId}
+        onSelectFeature={handleSelectFeature}
+        onHoverFeature={setHoveredFeatureId}
+        onUpdateFeature={handleUpdateFeature}
+        onDeleteFeature={(id) => {
+          const currentGeoJSON = geoJSONRef.current;
+          const newGeoJSON = {
+            ...currentGeoJSON,
+            features: currentGeoJSON.features.filter((f: any) => f.id !== id),
+          };
+          if (selectedFeatureId === id) handleSelectFeature(null);
+          if (hoveredFeatureId === id && selectedFeatureId !== id) setHoveredFeatureId(null);
+          setGeoJSON(newGeoJSON);
+          triggerGeoJSONSave(newGeoJSON);
+        }}
+        onAddAssociation={() => setShowAssociationExplorer(true)}
+        onRemoveAssociation={handleRemoveAssociation}
+      />
+    ) : null;
+
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 2, mb: 2, px: 2, pt: 2 }}>
@@ -1685,6 +1723,17 @@ export default function MapEditor({ artifact }: MapEditorProps) {
           />
         </Box>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexShrink: 0, pt: 1 }}>
+          {geometryPanel && (
+            <Tooltip title="Geometries">
+              <IconButton
+                size="small"
+                onClick={() => setGeometryPanelOpen(true)}
+                sx={{ display: { xs: 'inline-flex', md: 'none' } }}
+              >
+                <MenuOpenIcon />
+              </IconButton>
+            </Tooltip>
+          )}
           <IconButton
             size="small"
             onClick={() => setShowSettingsDialog(true)}
@@ -1713,9 +1762,11 @@ export default function MapEditor({ artifact }: MapEditorProps) {
             sx={{
               position: 'absolute',
               left: 12,
-              top: '50%',
-              transform: 'translateY(-50%)',
+              top: { xs: 12, md: '50%' },
+              transform: { xs: 'none', md: 'translateY(-50%)' },
               zIndex: 1000,
+              maxHeight: { xs: 'calc(100dvh - 190px)', md: 'none' },
+              overflowY: { xs: 'auto', md: 'visible' },
             }}
           >
             <MapDrawToolbar
@@ -1730,9 +1781,12 @@ export default function MapEditor({ artifact }: MapEditorProps) {
               sx={{
                 position: 'absolute',
                 left: 64,
-                top: '50%',
-                transform: 'translateY(-50%)',
+                top: { xs: 12, md: '50%' },
+                transform: { xs: 'none', md: 'translateY(-50%)' },
                 zIndex: 1000,
+                maxWidth: { xs: 'calc(100vw - 88px)', md: 'none' },
+                maxHeight: { xs: 'calc(100dvh - 190px)', md: 'none' },
+                overflowY: { xs: 'auto', md: 'visible' },
               }}
             >
               <MultiPolygonPanel
@@ -1762,9 +1816,12 @@ export default function MapEditor({ artifact }: MapEditorProps) {
               sx={{
                 position: 'absolute',
                 left: 64,
-                top: '50%',
-                transform: 'translateY(-50%)',
+                top: { xs: 12, md: '50%' },
+                transform: { xs: 'none', md: 'translateY(-50%)' },
                 zIndex: 1000,
+                maxWidth: { xs: 'calc(100vw - 88px)', md: 'none' },
+                maxHeight: { xs: 'calc(100dvh - 190px)', md: 'none' },
+                overflowY: { xs: 'auto', md: 'visible' },
               }}
             >
               <MultiLinePanel
@@ -1803,6 +1860,8 @@ export default function MapEditor({ artifact }: MapEditorProps) {
                 borderRadius: 1,
                 fontSize: '0.875rem',
                 fontWeight: 500,
+                maxWidth: { xs: '60%', md: 'none' },
+                textAlign: 'center',
               }}
             >
               {drawMode === 'draw_point' && 'Click on map to add point'}
@@ -1826,30 +1885,39 @@ export default function MapEditor({ artifact }: MapEditorProps) {
           )}
         </Box>
 
-        {/* Geometry Sidebar */}
-        {geoJSON.features.length > 0 && (
-          <MapGeometryPanel
-            features={geoJSON.features}
-            selectedFeatureId={selectedFeatureId}
-            onSelectFeature={handleSelectFeature}
-            onHoverFeature={setHoveredFeatureId}
-            onUpdateFeature={handleUpdateFeature}
-            onDeleteFeature={(id) => {
-              const currentGeoJSON = geoJSONRef.current;
-              const newGeoJSON = {
-                ...currentGeoJSON,
-                features: currentGeoJSON.features.filter((f: any) => f.id !== id),
-              };
-              if (selectedFeatureId === id) handleSelectFeature(null);
-              if (hoveredFeatureId === id && selectedFeatureId !== id) setHoveredFeatureId(null);
-              setGeoJSON(newGeoJSON);
-              triggerGeoJSONSave(newGeoJSON);
-            }}
-            onAddAssociation={() => setShowAssociationExplorer(true)}
-            onRemoveAssociation={handleRemoveAssociation}
-          />
+        {/* Geometry Sidebar (desktop) */}
+        {geometryPanel && (
+          <Box sx={{ display: { xs: 'none', md: 'flex' }, flexShrink: 0 }}>
+            {geometryPanel}
+          </Box>
         )}
       </Box>
+
+      {/* Mobile geometry drawer */}
+      <Drawer
+        anchor="right"
+        open={geometryPanelOpen}
+        onClose={() => setGeometryPanelOpen(false)}
+        sx={{
+          display: { xs: 'block', md: 'none' },
+          '& .MuiDrawer-paper': {
+            width: 320,
+            maxWidth: '85vw',
+            bgcolor: 'background.paper',
+            display: 'flex',
+            flexDirection: 'column',
+          },
+        }}
+      >
+        <Box sx={{ display: 'flex', justifyContent: 'flex-end', p: 1, flexShrink: 0 }}>
+          <IconButton size="small" onClick={() => setGeometryPanelOpen(false)}>
+            <CloseIcon />
+          </IconButton>
+        </Box>
+        <Box sx={{ flex: 1, minHeight: 0, display: 'flex' }}>
+          {geometryPanel}
+        </Box>
+      </Drawer>
 
       {/* Settings Dialog */}
       <MapSettingsDialog

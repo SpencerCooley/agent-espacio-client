@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState, useRef, useCallback } from 'react';
-import { Box, Typography, Paper, Chip, Button, IconButton, Select, MenuItem, FormControl } from '@mui/material';
+import { Box, Typography, Paper, Chip, Button, IconButton, Select, MenuItem, FormControl, Drawer, useTheme, useMediaQuery } from '@mui/material';
 import { Download as DownloadIcon, Close as CloseIcon, Article as ArticleIcon, Map as MapIcon, Movie as MovieIcon, Description as MarkdownIcon, DataObject as JsonIcon } from '@mui/icons-material';
 import InlineThumbnail from '../workspace/InlineThumbnail';
 import { SmartVideoPlayer } from '../ui/SmartVideoPlayer';
@@ -460,6 +460,12 @@ export function MapPublicView({ content, name, description, isPreview, themeMode
   const currentStyleRef = useRef(content?.style || 'carto-voyager');
   const [viewerStyle, setViewerStyle] = useState(content?.style || 'carto-voyager');
 
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+
+  const closeAssociationPanel = () =>
+    setAssociationPanel({ open: false, featureName: '', featureDescription: '', associations: [] });
+
   const viewport = content?.viewport || {
     latitude: 20,
     longitude: 0,
@@ -797,6 +803,108 @@ export function MapPublicView({ content, name, description, isPreview, themeMode
     map.setStyle(getStyleUrl(viewerStyle));
   }, [viewerStyle, savedStyle, renderGeoJSON]);
 
+  const associationContent = (
+    <>
+      {/* Panel header */}
+      <Box
+        sx={{
+          px: 2,
+          py: 1.5,
+          borderBottom: '1px solid',
+          borderColor: 'divider',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+        }}
+      >
+        <Box>
+          <Typography variant="subtitle2" fontWeight={600}>
+            {associationPanel.featureName}
+          </Typography>
+          {associationPanel.featureDescription && (
+            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.25 }}>
+              {associationPanel.featureDescription}
+            </Typography>
+          )}
+          <Typography variant="caption" color="text.secondary">
+            {associationPanel.associations.length} linked items
+          </Typography>
+        </Box>
+        <IconButton size="small" onClick={closeAssociationPanel}>
+          <CloseIcon fontSize="small" />
+        </IconButton>
+      </Box>
+
+      {/* Association list */}
+      <Box sx={{ flex: 1, overflowY: 'auto', p: 2, display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+        {associationPanel.associations.map((assoc: Association) => (
+          <Box
+            key={assoc.id}
+            sx={{
+              display: 'flex',
+              alignItems: 'stretch',
+              gap: 1.5,
+              borderRadius: 1,
+              overflow: 'hidden',
+              border: '1px solid',
+              borderColor: 'divider',
+              cursor: 'pointer',
+              bgcolor: 'background.paper',
+              transition: 'box-shadow 0.2s',
+              '&:hover': { boxShadow: 2, borderColor: 'primary.main' },
+            }}
+            onClick={() => {
+              const url = isPreview
+                ? (assoc.type === 'asset' ? `/workspace/assets/${assoc.id}` : `/workspace/artifacts/${assoc.id}/preview`)
+                : `/public/view/${assoc.public_magic_id || assoc.id}`;
+              window.open(url, '_blank');
+            }}
+          >
+            {/* Thumbnail / Icon */}
+            <Box sx={{ width: 120, height: 90, flexShrink: 0, bgcolor: 'action.hover', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <InlineThumbnail
+                type={assoc.type}
+                id={assoc.id}
+                kind={assoc.kind}
+                is_image={assoc.is_image}
+                public_magic_id={assoc.public_magic_id}
+                variant={isPreview ? 'workspace' : 'public'}
+                size={120}
+              />
+              {(assoc.type === 'artifact' || (!assoc.is_image && !assoc.kind?.includes('image') && !assoc.kind?.includes('video'))) && (
+                <Box sx={{ color: 'text.secondary', fontSize: 40 }}>
+                  {assoc.type === 'artifact' ? (
+                    assoc.kind === 'note' ? <ArticleIcon fontSize="large" /> :
+                    assoc.kind === 'map' ? <MapIcon fontSize="large" /> :
+                    <ArticleIcon fontSize="large" />
+                  ) : (
+                    assoc.kind?.includes('video') ? <MovieIcon fontSize="large" /> :
+                    assoc.kind?.includes('markdown') ? <MarkdownIcon fontSize="large" /> :
+                    assoc.kind?.includes('json') ? <JsonIcon fontSize="large" /> :
+                    <ArticleIcon fontSize="large" />
+                  )}
+                </Box>
+              )}
+            </Box>
+
+            {/* Info */}
+            <Box sx={{ flex: 1, py: 1, pr: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', minWidth: 0 }}>
+              <Typography variant="subtitle2" fontWeight={600}>
+                {assoc.name}
+              </Typography>
+              <Box sx={{ display: 'flex', gap: 0.5, mt: 0.5, flexWrap: 'wrap' }}>
+                <Chip label={assoc.type} size="small" color={assoc.type === 'artifact' ? 'primary' : 'secondary'} sx={{ fontSize: '0.7rem', height: 22 }} />
+                {assoc.kind && (
+                  <Chip label={assoc.kind} size="small" variant="outlined" sx={{ fontSize: '0.7rem', height: 22 }} />
+                )}
+              </Box>
+            </Box>
+          </Box>
+        ))}
+      </Box>
+    </>
+  );
+
   return (
     <Box ref={tooltipContainerRef} sx={{ width: '100%', flex: 1, position: 'relative', display: 'flex', flexDirection: 'column' }}>
       <Box ref={mapContainerRef} sx={{ flex: 1, width: '100%', position: 'relative', zIndex: 1 }} />
@@ -910,8 +1018,8 @@ export function MapPublicView({ content, name, description, isPreview, themeMode
         </Paper>
       </Box>
 
-      {/* Association panel */}
-      {associationPanel.open && (
+      {/* Association panel (desktop overlay) */}
+      {associationPanel.open && !isMobile && (
         <Box
           sx={{
             position: 'absolute',
@@ -929,108 +1037,26 @@ export function MapPublicView({ content, name, description, isPreview, themeMode
             overflow: 'hidden',
           }}
         >
-          {/* Panel header */}
-          <Box
-            sx={{
-              px: 2,
-              py: 1.5,
-              borderBottom: '1px solid',
-              borderColor: 'divider',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-            }}
-          >
-            <Box>
-              <Typography variant="subtitle2" fontWeight={600}>
-                {associationPanel.featureName}
-              </Typography>
-              {associationPanel.featureDescription && (
-                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.25 }}>
-                  {associationPanel.featureDescription}
-                </Typography>
-              )}
-              <Typography variant="caption" color="text.secondary">
-                {associationPanel.associations.length} linked items
-              </Typography>
-            </Box>
-            <IconButton
-              size="small"
-              onClick={() => setAssociationPanel({ open: false, featureName: '', featureDescription: '', associations: [] })}
-            >
-              <CloseIcon fontSize="small" />
-            </IconButton>
-          </Box>
-
-          {/* Association list */}
-          <Box sx={{ flex: 1, overflowY: 'auto', p: 2, display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-            {associationPanel.associations.map((assoc: Association) => (
-              <Box
-                key={assoc.id}
-                sx={{
-                  display: 'flex',
-                  alignItems: 'stretch',
-                  gap: 1.5,
-                  borderRadius: 1,
-                  overflow: 'hidden',
-                  border: '1px solid',
-                  borderColor: 'divider',
-                  cursor: 'pointer',
-                  bgcolor: 'background.paper',
-                  transition: 'box-shadow 0.2s',
-                  '&:hover': { boxShadow: 2, borderColor: 'primary.main' },
-                }}
-                onClick={() => {
-                  const url = isPreview
-                    ? (assoc.type === 'asset' ? `/workspace/assets/${assoc.id}` : `/workspace/artifacts/${assoc.id}/preview`)
-                    : `/public/view/${assoc.public_magic_id || assoc.id}`;
-                  window.open(url, '_blank');
-                }}
-              >
-                {/* Thumbnail / Icon */}
-                <Box sx={{ width: 120, height: 90, flexShrink: 0, bgcolor: 'action.hover', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <InlineThumbnail
-                    type={assoc.type}
-                    id={assoc.id}
-                    kind={assoc.kind}
-                    is_image={assoc.is_image}
-                    public_magic_id={assoc.public_magic_id}
-                    variant={isPreview ? 'workspace' : 'public'}
-                    size={120}
-                  />
-                  {(assoc.type === 'artifact' || (!assoc.is_image && !assoc.kind?.includes('image') && !assoc.kind?.includes('video'))) && (
-                    <Box sx={{ color: 'text.secondary', fontSize: 40 }}>
-                      {assoc.type === 'artifact' ? (
-                        assoc.kind === 'note' ? <ArticleIcon fontSize="large" /> :
-                        assoc.kind === 'map' ? <MapIcon fontSize="large" /> :
-                        <ArticleIcon fontSize="large" />
-                      ) : (
-                        assoc.kind?.includes('video') ? <MovieIcon fontSize="large" /> :
-                        assoc.kind?.includes('markdown') ? <MarkdownIcon fontSize="large" /> :
-                        assoc.kind?.includes('json') ? <JsonIcon fontSize="large" /> :
-                        <ArticleIcon fontSize="large" />
-                      )}
-                    </Box>
-                  )}
-                </Box>
-
-                {/* Info */}
-                <Box sx={{ flex: 1, py: 1, pr: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', minWidth: 0 }}>
-                  <Typography variant="subtitle2" fontWeight={600}>
-                    {assoc.name}
-                  </Typography>
-                  <Box sx={{ display: 'flex', gap: 0.5, mt: 0.5, flexWrap: 'wrap' }}>
-                    <Chip label={assoc.type} size="small" color={assoc.type === 'artifact' ? 'primary' : 'secondary'} sx={{ fontSize: '0.7rem', height: 22 }} />
-                    {assoc.kind && (
-                      <Chip label={assoc.kind} size="small" variant="outlined" sx={{ fontSize: '0.7rem', height: 22 }} />
-                    )}
-                  </Box>
-                </Box>
-              </Box>
-            ))}
-          </Box>
+          {associationContent}
         </Box>
       )}
+
+      {/* Mobile association drawer */}
+      <Drawer
+        anchor="right"
+        open={associationPanel.open && isMobile}
+        onClose={closeAssociationPanel}
+        sx={{
+          display: { xs: 'block', md: 'none' },
+          '& .MuiDrawer-paper': {
+            width: 320,
+            maxWidth: '85vw',
+            bgcolor: 'background.paper',
+          },
+        }}
+      >
+        {associationContent}
+      </Drawer>
     </Box>
   );
 }

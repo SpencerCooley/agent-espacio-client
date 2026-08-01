@@ -13,7 +13,7 @@ import {
   useEdgesState,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
-import { Box, Typography, Paper, Button, ToggleButton, ToggleButtonGroup, Chip, Divider } from '@mui/material';
+import { Box, Typography, Paper, Button, ToggleButton, ToggleButtonGroup, Chip, Divider, Drawer } from '@mui/material';
 import { Visibility, Code, ContentCopy, CheckCircle, Close } from '@mui/icons-material';
 import Prism from 'prismjs';
 import 'prismjs/components/prism-json';
@@ -139,6 +139,157 @@ function WorkflowPublicViewInner({
     setSelectedNode(null);
   }, [setSelectedNode]);
 
+  const nodeDetailContent = selectedNode ? (
+    <Box sx={{ p: 2.5, pb: 4 }}>
+      {/* Close button */}
+      <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 1 }}>
+        <Button
+          size="small"
+          onClick={() => setSelectedNode(null)}
+          startIcon={<Close />}
+          sx={{ minWidth: 0, px: 1 }}
+        >
+          Close
+        </Button>
+      </Box>
+
+      {/* Type Chip */}
+      <Box sx={{ mb: 2 }}>
+        <Chip
+          label={TYPE_LABELS[selectedNode.type] || selectedNode.type}
+          size="small"
+          sx={{
+            bgcolor: TYPE_CHIP_COLORS[selectedNode.type] || '#757575',
+            color: '#fff',
+            fontWeight: 600,
+            fontSize: '0.7rem',
+            textTransform: 'uppercase',
+            letterSpacing: '0.05em',
+          }}
+        />
+      </Box>
+
+      {/* Title */}
+      <Typography
+        variant="h6"
+        sx={{ fontWeight: 700, lineHeight: 1.3, wordBreak: 'break-word', mb: 2 }}
+      >
+        {selectedNode.data?.title || 'Untitled'}
+      </Typography>
+
+      {/* Description */}
+      {selectedNode.data?.description && (
+        <ContentCard label="Description">
+          <Typography
+            variant="body2"
+            sx={{
+              lineHeight: 1.7,
+              color: 'text.primary',
+              whiteSpace: 'pre-wrap',
+              wordBreak: 'break-word',
+            }}
+          >
+            {selectedNode.data.description}
+          </Typography>
+        </ContentCard>
+      )}
+
+      {/* Prompt */}
+      {selectedNode.type === 'ai_action' && selectedNode.data?.prompt && (
+        <ContentCard label="AI Prompt">
+          <Typography
+            variant="body2"
+            sx={{
+              lineHeight: 1.7,
+              color: 'text.primary',
+              fontStyle: 'italic',
+              whiteSpace: 'pre-wrap',
+              wordBreak: 'break-word',
+            }}
+          >
+            {selectedNode.data.prompt}
+          </Typography>
+        </ContentCard>
+      )}
+
+      {/* Code */}
+      {selectedNode.data?.code && (
+        <ContentCard label="Implementation">
+          <Box
+            sx={{
+              bgcolor: '#1e1e1e',
+              borderRadius: 1,
+              p: 1.5,
+              overflow: 'auto',
+            }}
+          >
+            <Box
+              component="pre"
+              sx={{
+                fontFamily: 'monospace',
+                fontSize: '0.8rem',
+                lineHeight: 1.6,
+                color: '#d4d4d4',
+                whiteSpace: 'pre-wrap',
+                wordBreak: 'break-word',
+                m: 0,
+              }}
+            >
+              {selectedNode.data.code}
+            </Box>
+          </Box>
+        </ContentCard>
+      )}
+
+      {/* Parameters */}
+      {selectedNode.data?.parameters && Object.keys(selectedNode.data.parameters).length > 0 && (
+        <ContentCard label="Parameters">
+          <Box
+            sx={{
+              bgcolor: '#1e1e1e',
+              borderRadius: 1,
+              p: 1.5,
+              overflow: 'auto',
+            }}
+          >
+            <Box
+              component="pre"
+              sx={{
+                fontFamily: 'monospace',
+                fontSize: '0.8rem',
+                lineHeight: 1.6,
+                color: '#d4d4d4',
+                whiteSpace: 'pre-wrap',
+                wordBreak: 'break-word',
+                m: 0,
+              }}
+            >
+              {JSON.stringify(selectedNode.data.parameters, null, 2)}
+            </Box>
+          </Box>
+        </ContentCard>
+      )}
+
+      <Divider sx={{ my: 2.5 }} />
+
+      {/* Metadata */}
+      <Paper
+        variant="outlined"
+        sx={{
+          p: 1.5,
+          bgcolor: 'action.hover',
+        }}
+      >
+        <Typography variant="caption" color="text.secondary" display="block">
+          Node ID: {selectedNode.id}
+        </Typography>
+        <Typography variant="caption" color="text.secondary" display="block">
+          Position: x={selectedNode.position?.x?.toFixed(0) || 0}, y={selectedNode.position?.y?.toFixed(0) || 0}
+        </Typography>
+      </Paper>
+    </Box>
+  ) : null;
+
   return (
     <Box sx={{ height: { xs: 'calc(100dvh - 56px)', md: 'calc(100dvh - 64px)' }, display: 'flex', flexDirection: 'column' }}>
       {/* Header */}
@@ -233,160 +384,14 @@ function WorkflowPublicViewInner({
                   borderLeft: 1,
                   borderColor: 'divider',
                   bgcolor: 'background.paper',
+                  display: { xs: 'none', md: 'flex' },
                   overflowY: 'auto',
                   overflowX: 'hidden',
                   wordBreak: 'break-word',
                   overflowWrap: 'break-word',
                 }}
               >
-                <Box sx={{ p: 2.5, pb: 4 }}>
-                  {/* Close button */}
-                  <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 1 }}>
-                    <Button
-                      size="small"
-                      onClick={() => setSelectedNode(null)}
-                      startIcon={<Close />}
-                      sx={{ minWidth: 0, px: 1 }}
-                    >
-                      Close
-                    </Button>
-                  </Box>
-
-                  {/* Type Chip */}
-                  <Box sx={{ mb: 2 }}>
-                    <Chip
-                      label={TYPE_LABELS[selectedNode.type] || selectedNode.type}
-                      size="small"
-                      sx={{
-                        bgcolor: TYPE_CHIP_COLORS[selectedNode.type] || '#757575',
-                        color: '#fff',
-                        fontWeight: 600,
-                        fontSize: '0.7rem',
-                        textTransform: 'uppercase',
-                        letterSpacing: '0.05em',
-                      }}
-                    />
-                  </Box>
-
-                  {/* Title */}
-                  <Typography
-                    variant="h6"
-                    sx={{ fontWeight: 700, lineHeight: 1.3, wordBreak: 'break-word', mb: 2 }}
-                  >
-                    {selectedNode.data?.title || 'Untitled'}
-                  </Typography>
-
-                  {/* Description */}
-                  {selectedNode.data?.description && (
-                    <ContentCard label="Description">
-                      <Typography
-                        variant="body2"
-                        sx={{
-                          lineHeight: 1.7,
-                          color: 'text.primary',
-                          whiteSpace: 'pre-wrap',
-                          wordBreak: 'break-word',
-                        }}
-                      >
-                        {selectedNode.data.description}
-                      </Typography>
-                    </ContentCard>
-                  )}
-
-                  {/* Prompt */}
-                  {selectedNode.type === 'ai_action' && selectedNode.data?.prompt && (
-                    <ContentCard label="AI Prompt">
-                      <Typography
-                        variant="body2"
-                        sx={{
-                          lineHeight: 1.7,
-                          color: 'text.primary',
-                          fontStyle: 'italic',
-                          whiteSpace: 'pre-wrap',
-                          wordBreak: 'break-word',
-                        }}
-                      >
-                        {selectedNode.data.prompt}
-                      </Typography>
-                    </ContentCard>
-                  )}
-
-                  {/* Code */}
-                  {selectedNode.data?.code && (
-                    <ContentCard label="Implementation">
-                      <Box
-                        sx={{
-                          bgcolor: '#1e1e1e',
-                          borderRadius: 1,
-                          p: 1.5,
-                          overflow: 'auto',
-                        }}
-                      >
-                        <Box
-                          component="pre"
-                          sx={{
-                            fontFamily: 'monospace',
-                            fontSize: '0.8rem',
-                            lineHeight: 1.6,
-                            color: '#d4d4d4',
-                            whiteSpace: 'pre-wrap',
-                            wordBreak: 'break-word',
-                            m: 0,
-                          }}
-                        >
-                          {selectedNode.data.code}
-                        </Box>
-                      </Box>
-                    </ContentCard>
-                  )}
-
-                  {/* Parameters */}
-                  {selectedNode.data?.parameters && Object.keys(selectedNode.data.parameters).length > 0 && (
-                    <ContentCard label="Parameters">
-                      <Box
-                        sx={{
-                          bgcolor: '#1e1e1e',
-                          borderRadius: 1,
-                          p: 1.5,
-                          overflow: 'auto',
-                        }}
-                      >
-                        <Box
-                          component="pre"
-                          sx={{
-                            fontFamily: 'monospace',
-                            fontSize: '0.8rem',
-                            lineHeight: 1.6,
-                            color: '#d4d4d4',
-                            whiteSpace: 'pre-wrap',
-                            wordBreak: 'break-word',
-                            m: 0,
-                          }}
-                        >
-                          {JSON.stringify(selectedNode.data.parameters, null, 2)}
-                        </Box>
-                      </Box>
-                    </ContentCard>
-                  )}
-
-                  <Divider sx={{ my: 2.5 }} />
-
-                  {/* Metadata */}
-                  <Paper
-                    variant="outlined"
-                    sx={{
-                      p: 1.5,
-                      bgcolor: 'action.hover',
-                    }}
-                  >
-                    <Typography variant="caption" color="text.secondary" display="block">
-                      Node ID: {selectedNode.id}
-                    </Typography>
-                    <Typography variant="caption" color="text.secondary" display="block">
-                      Position: x={selectedNode.position?.x?.toFixed(0) || 0}, y={selectedNode.position?.y?.toFixed(0) || 0}
-                    </Typography>
-                  </Paper>
-                </Box>
+                {nodeDetailContent}
               </Box>
             )}
           </>
@@ -439,6 +444,25 @@ function WorkflowPublicViewInner({
           </Box>
         )}
       </Box>
+
+      {/* Mobile node-detail drawer */}
+      <Drawer
+        anchor="right"
+        open={Boolean(selectedNode)}
+        onClose={() => setSelectedNode(null)}
+        sx={{
+          display: { xs: 'block', md: 'none' },
+          '& .MuiDrawer-paper': {
+            width: 340,
+            maxWidth: '85vw',
+            overflowY: 'auto',
+            overflowX: 'hidden',
+            bgcolor: 'background.paper',
+          },
+        }}
+      >
+        {nodeDetailContent}
+      </Drawer>
     </Box>
   );
 }

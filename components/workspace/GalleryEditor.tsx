@@ -18,6 +18,7 @@ import {
   CircularProgress,
   Tooltip,
   Snackbar,
+  Drawer,
 } from '@mui/material';
 import {
   ViewModule,
@@ -391,6 +392,58 @@ export default function GalleryEditor({ artifact }: GalleryEditorProps) {
 
   const selectedItem = selectedIndex !== null ? content.items[selectedIndex] : null;
 
+  const detailContent =
+    selectedItem && selectedIndex !== null ? (
+      <>
+        <Box
+          sx={{
+            px: 2,
+            py: 1.5,
+            borderBottom: '1px solid',
+            borderColor: 'divider',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+          }}
+        >
+          <Typography variant="subtitle2" fontWeight={600}>
+            Image {selectedIndex + 1} of {content.items.length}
+          </Typography>
+          <IconButton size="small" onClick={() => setSelectedIndex(null)}>
+            <Close fontSize="small" />
+          </IconButton>
+        </Box>
+        <Box sx={{ flex: 1, overflowY: 'auto', p: 2, display: 'flex', flexDirection: 'column', gap: 2 }}>
+          <GalleryThumb
+            assetId={selectedItem.asset_id}
+            size={512}
+            alt={selectedItem.caption || `Image ${selectedIndex + 1}`}
+            sx={{ width: '100%', borderRadius: 1, objectFit: 'cover' }}
+          />
+          <TextField
+            label="Caption"
+            value={selectedItem.caption}
+            onChange={(e) => handleCaptionChange(selectedIndex, e.target.value)}
+            fullWidth
+            multiline
+            rows={3}
+            placeholder="Add a caption for this image..."
+            sx={{ '& .MuiInputBase-root': { fontSize: '0.9rem' } }}
+          />
+          <Button
+            variant="outlined"
+            color="error"
+            size="small"
+            startIcon={<Delete />}
+            onClick={() => handleRemoveItem(selectedIndex)}
+            sx={{ textTransform: 'none', mt: 'auto' }}
+          >
+            Remove from gallery
+          </Button>
+        </Box>
+      </>
+    ) : null;
+
   return (
     <Box sx={{ display: 'flex', height: '100%', overflow: 'hidden' }}>
       {/* Main content area */}
@@ -626,67 +679,41 @@ export default function GalleryEditor({ artifact }: GalleryEditorProps) {
         </Box>
       </Box>
 
-      {/* Right panel */}
-      {selectedItem && selectedIndex !== null && (
+      {/* Right panel (desktop) */}
+      {detailContent && (
         <Box
           sx={{
             width: 320,
             borderLeft: '1px solid',
             borderColor: 'divider',
             bgcolor: 'background.paper',
-            display: 'flex',
+            display: { xs: 'none', md: 'flex' },
             flexDirection: 'column',
             overflow: 'hidden',
           }}
         >
-          <Box
-            sx={{
-              px: 2,
-              py: 1.5,
-              borderBottom: '1px solid',
-              borderColor: 'divider',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-            }}
-          >
-            <Typography variant="subtitle2" fontWeight={600}>
-              Image {selectedIndex + 1} of {content.items.length}
-            </Typography>
-            <IconButton size="small" onClick={() => setSelectedIndex(null)}>
-              <Close fontSize="small" />
-            </IconButton>
-          </Box>
-          <Box sx={{ flex: 1, overflowY: 'auto', p: 2, display: 'flex', flexDirection: 'column', gap: 2 }}>
-            <GalleryThumb
-              assetId={selectedItem.asset_id}
-              size={512}
-              alt={selectedItem.caption || `Image ${selectedIndex + 1}`}
-              sx={{ width: '100%', borderRadius: 1, objectFit: 'cover' }}
-            />
-            <TextField
-              label="Caption"
-              value={selectedItem.caption}
-              onChange={(e) => handleCaptionChange(selectedIndex, e.target.value)}
-              fullWidth
-              multiline
-              rows={3}
-              placeholder="Add a caption for this image..."
-              sx={{ '& .MuiInputBase-root': { fontSize: '0.9rem' } }}
-            />
-            <Button
-              variant="outlined"
-              color="error"
-              size="small"
-              startIcon={<Delete />}
-              onClick={() => handleRemoveItem(selectedIndex)}
-              sx={{ textTransform: 'none', mt: 'auto' }}
-            >
-              Remove from gallery
-            </Button>
-          </Box>
+          {detailContent}
         </Box>
       )}
+
+      {/* Mobile detail drawer */}
+      <Drawer
+        anchor="right"
+        open={selectedIndex !== null}
+        onClose={() => setSelectedIndex(null)}
+        sx={{
+          display: { xs: 'block', md: 'none' },
+          '& .MuiDrawer-paper': {
+            width: 320,
+            maxWidth: '85vw',
+            display: 'flex',
+            flexDirection: 'column',
+            bgcolor: 'background.paper',
+          },
+        }}
+      >
+        {detailContent}
+      </Drawer>
 
       {/* Add existing dialog */}
       <Dialog open={addDialogOpen} onClose={() => setAddDialogOpen(false)} maxWidth="sm" fullWidth>

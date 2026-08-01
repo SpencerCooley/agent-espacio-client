@@ -17,8 +17,8 @@ import {
   useReactFlow,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
-import { Box, Button, Typography, Paper, TextField } from '@mui/material';
-import { Add, Delete, Undo, Redo } from '@mui/icons-material';
+import { Box, Button, Typography, Paper, TextField, IconButton, Tooltip, Drawer, useTheme, useMediaQuery } from '@mui/material';
+import { Add, Delete, Undo, Redo, MenuOpen as MenuOpenIcon, Close as CloseIcon } from '@mui/icons-material';
 import WorkflowNode from './WorkflowNode';
 import WorkflowNodePanel from './WorkflowNodePanel';
 import { artifactService } from '../../services/artifacts';
@@ -79,7 +79,10 @@ function WorkflowEditorInner({ artifact }: WorkflowEditorProps) {
   };
   const { screenToFlowPosition } = useReactFlow();
   const { mode: themeMode } = useThemeContext();
+  const muiTheme = useTheme();
+  const isMobile = useMediaQuery(muiTheme.breakpoints.down('md'));
   const [saving, setSaving] = useState(false);
+  const [nodePanelOpen, setNodePanelOpen] = useState(false);
   const autoSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const nameSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastSavedContent = useRef<string>('');
@@ -457,19 +460,21 @@ function WorkflowEditorInner({ artifact }: WorkflowEditorProps) {
               borderColor: themeMode === 'dark' ? '#444' : '#e0e0e0',
             }}
           />
-          <MiniMap
-            style={{
-              height: 100,
-              width: 150,
-              bottom: 10,
-              right: 10,
-              backgroundColor: themeMode === 'dark' ? '#1e1e1e' : '#fff',
-              border: `1px solid ${themeMode === 'dark' ? '#444' : '#e0e0e0'}`,
-            }}
-            nodeColor={themeMode === 'dark' ? '#607d8b' : '#1976d2'}
-            nodeStrokeColor={themeMode === 'dark' ? '#fff' : '#333'}
-            maskColor={themeMode === 'dark' ? 'rgba(0, 0, 0, 0.5)' : 'rgba(0, 0, 0, 0.2)'}
-          />
+          {!isMobile && (
+            <MiniMap
+              style={{
+                height: 100,
+                width: 150,
+                bottom: 10,
+                right: 10,
+                backgroundColor: themeMode === 'dark' ? '#1e1e1e' : '#fff',
+                border: `1px solid ${themeMode === 'dark' ? '#444' : '#e0e0e0'}`,
+              }}
+              nodeColor={themeMode === 'dark' ? '#607d8b' : '#1976d2'}
+              nodeStrokeColor={themeMode === 'dark' ? '#fff' : '#333'}
+              maskColor={themeMode === 'dark' ? 'rgba(0, 0, 0, 0.5)' : 'rgba(0, 0, 0, 0.2)'}
+            />
+          )}
           <Panel position="top-left">
             <Typography variant="caption" color="text.secondary">
               {saving ? 'Saving...' : 'Saved'}
@@ -588,13 +593,22 @@ function WorkflowEditorInner({ artifact }: WorkflowEditorProps) {
                   Delete
                 </Button>
               )}
+              <Tooltip title="Node details">
+                <IconButton
+                  size="small"
+                  onClick={() => setNodePanelOpen(true)}
+                  sx={{ display: { xs: 'inline-flex', md: 'none' } }}
+                >
+                  <MenuOpenIcon fontSize="small" />
+                </IconButton>
+              </Tooltip>
             </Paper>
             </Box>
           </Panel>
         </ReactFlow>
       </Box>
 
-      {/* Right Panel */}
+      {/* Right Panel (desktop) */}
       <Box
         sx={{
           width: 320,
@@ -604,6 +618,7 @@ function WorkflowEditorInner({ artifact }: WorkflowEditorProps) {
           borderLeft: 1,
           borderColor: 'divider',
           bgcolor: 'background.paper',
+          display: { xs: 'none', md: 'block' },
           wordBreak: 'break-word',
           overflowWrap: 'break-word',
         }}
@@ -622,6 +637,44 @@ function WorkflowEditorInner({ artifact }: WorkflowEditorProps) {
           onUpdate={onUpdateNode}
         />
       </Box>
+
+      {/* Mobile node-panel drawer */}
+      <Drawer
+        anchor="right"
+        open={nodePanelOpen}
+        onClose={() => setNodePanelOpen(false)}
+        sx={{
+          display: { xs: 'block', md: 'none' },
+          '& .MuiDrawer-paper': {
+            width: 320,
+            maxWidth: '85vw',
+            overflowY: 'auto',
+            overflowX: 'hidden',
+            bgcolor: 'background.paper',
+            wordBreak: 'break-word',
+            overflowWrap: 'break-word',
+          },
+        }}
+      >
+        <Box sx={{ display: 'flex', justifyContent: 'flex-end', p: 1 }}>
+          <IconButton size="small" onClick={() => setNodePanelOpen(false)}>
+            <CloseIcon />
+          </IconButton>
+        </Box>
+        <WorkflowNodePanel
+          node={
+            selectedNode
+              ? {
+                  id: selectedNode.id,
+                  type: selectedNode.type || 'action',
+                  data: selectedNode.data,
+                  position: selectedNode.position,
+                }
+              : null
+          }
+          onUpdate={onUpdateNode}
+        />
+      </Drawer>
     </Box>
   );
 }
