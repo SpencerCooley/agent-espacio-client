@@ -115,6 +115,7 @@ function SectionView({
     name: item.name,
     description: item.description || null,
     publicMagicId: item.public_magic_id || item.id,
+    artifactId: item.id,
     isPreview,
     isPublicView,
     themeMode,

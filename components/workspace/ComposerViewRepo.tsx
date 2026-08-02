@@ -11,6 +11,7 @@ interface ComposerViewRepoProps {
   name: string;
   description?: string | null;
   publicMagicId?: string;
+  artifactId?: string;
   isPreview?: boolean;
   isPublicView?: boolean;
   themeMode?: 'light' | 'dark';
@@ -34,17 +35,19 @@ export default function ComposerViewRepo({
   name,
   description,
   publicMagicId,
+  artifactId,
   isPreview,
   isPublicView,
 }: ComposerViewRepoProps) {
   const [meta, setMeta] = useState<RepoMeta | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const baseUrl = useMemo(() => {
     if (isPublicView || !isPreview) {
       return `${API_BASE_URL}/public/repo/${publicMagicId}`;
     }
-    return `${API_BASE_URL}/artifacts/${content?.artifact_id || publicMagicId}/repo`;
-  }, [publicMagicId, isPreview, isPublicView, content?.artifact_id]);
+    return `${API_BASE_URL}/artifacts/${artifactId || content?.artifact_id || publicMagicId}/repo`;
+  }, [publicMagicId, artifactId, isPreview, isPublicView, content?.artifact_id]);
 
   const viewUrl = publicMagicId
     ? `/public/view/${publicMagicId}`
@@ -53,20 +56,22 @@ export default function ComposerViewRepo({
       : undefined;
 
   useEffect(() => {
+    setError(null);
     const headers: Record<string, string> = isPreview
       ? { Authorization: `Bearer ${localStorage.getItem('accessToken') || ''}` }
       : {};
     fetch(baseUrl, { headers })
       .then((r) => {
-        console.log('[ComposerViewRepo] fetch', baseUrl, 'status:', r.status, 'ok:', r.ok);
-        return r.ok ? r.json() : null;
+        if (!r.ok) throw new Error(`Request failed: ${r.status}`);
+        return r.json();
       })
       .then((data) => {
-        console.log('[ComposerViewRepo] data:', data?.publish);
-        if (data) setMeta(data);
+        setMeta(data);
+        setError(null);
       })
       .catch((err) => {
         console.error('[ComposerViewRepo] error:', err);
+        setError(err.message || 'Failed to load repository');
       });
   }, [baseUrl, isPreview]);
 
@@ -94,7 +99,9 @@ export default function ComposerViewRepo({
               {description}
             </Typography>
           )}
-          {meta ? (
+          {error ? (
+            <Typography variant="caption" color="error">{error}</Typography>
+          ) : meta ? (
             <Box sx={{ display: 'flex', gap: 1.5, mt: 0.25, flexWrap: 'wrap' }}>
               <Typography variant="caption" color="text.secondary">
                 {meta.commit_count} commit{meta.commit_count !== 1 ? 's' : ''}
@@ -236,7 +243,9 @@ export default function ComposerViewRepo({
             {description}
           </Typography>
         )}
-        {meta ? (
+        {error ? (
+          <Typography variant="caption" color="error">{error}</Typography>
+        ) : meta ? (
           <Box sx={{ display: 'flex', gap: 1.5, mt: 0.25, flexWrap: 'wrap' }}>
             <Typography variant="caption" color="text.secondary">
               {meta.commit_count} commit{meta.commit_count !== 1 ? 's' : ''}
