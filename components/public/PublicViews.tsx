@@ -136,7 +136,13 @@ export function PublicAssetView({
                   '& blockquote': { borderLeft: '3px solid #ccc', pl: 2, ml: 0, color: 'text.secondary' },
                   '& code': { bgcolor: 'rgba(0,0,0,0.05)', px: 0.5, borderRadius: 1, fontFamily: 'monospace' },
                   '& pre': { bgcolor: 'rgba(0,0,0,0.05)', p: 2, borderRadius: 2, overflow: 'auto' },
-                  '& img': { maxWidth: '100%', borderRadius: 1 },
+        '& img': (theme) => ({
+          width: '100%',
+          borderRadius: 1,
+          [theme.breakpoints.up('md')]: {
+            width: '80%',
+          },
+        }),
                   '& table': { borderCollapse: 'collapse', width: '100%', mb: 2 },
                   '& th, & td': { border: '1px solid #ddd', p: 1, textAlign: 'left' },
                   '& th': { bgcolor: 'rgba(0,0,0,0.05)', fontWeight: 600 },
@@ -195,7 +201,14 @@ export function NotePublicView({ content, isPreview }: NoteViewProps) {
         '& blockquote': { borderLeft: '3px solid #ccc', pl: 2, ml: 0, color: 'text.secondary' },
         '& code': { bgcolor: 'rgba(0,0,0,0.05)', px: 0.5, borderRadius: 1, fontFamily: 'monospace' },
         '& pre': { bgcolor: 'rgba(0,0,0,0.05)', p: 2, borderRadius: 2, overflow: 'auto' },
-        '& img': { maxWidth: '100%', borderRadius: 1 },
+        '& img': {
+          width: '100%',
+          maxWidth: '100%',
+          borderRadius: 1,
+          '@media (min-width:900px)': {
+            width: '80%',
+          },
+        },
         '& table': { borderCollapse: 'collapse', width: '100%', mb: 2 },
         '& th, & td': { border: '1px solid #ddd', p: 1, textAlign: 'left' },
         '& th': { bgcolor: 'rgba(0,0,0,0.05)', fontWeight: 600 },
@@ -315,11 +328,11 @@ function renderNode(node: any, isPreview?: boolean): string {
         src = `${API_BASE_URL}${src}`;
       }
       const align = attrs.textAlign;
-      let imgStyle = 'max-width: 100%; display: block; margin: 8px 0;';
+      let imgStyle = 'display: block; margin: 8px 0;';
       if (align === 'center') {
-        imgStyle = 'max-width: 100%; display: block; margin: 8px auto;';
+        imgStyle = 'display: block; margin: 8px auto;';
       } else if (align === 'right') {
-        imgStyle = 'max-width: 100%; display: block; margin: 8px 0 8px auto;';
+        imgStyle = 'display: block; margin: 8px 0 8px auto;';
       }
       return `<img src="${src}" alt="${alt}" style="${imgStyle}" />`;
     case 'table':

@@ -149,6 +149,32 @@ function SectionView({
 
   if (!Component) return null;
 
+  // Notes render without a card — text should flow continuously
+  // Descriptions are intentionally omitted in public view (kept for workspace/AI meta)
+  if (item.type === 'note') {
+    const noteViewProps = {
+      content: item.content,
+      publicMagicId: item.public_magic_id || item.id,
+      isPreview,
+      isPublicView,
+      themeMode,
+    };
+    return (
+      <Box sx={{ my: 2 }}>
+        <Component {...noteViewProps} />
+        {section.caption && (
+          <Typography
+            variant="caption"
+            color="text.secondary"
+            sx={{ mt: 1, display: 'block' }}
+          >
+            {section.caption}
+          </Typography>
+        )}
+      </Box>
+    );
+  }
+
   return (
     <Paper
       elevation={1}
