@@ -27,11 +27,47 @@ import { assetService } from '../../../../services/assets';
 import { artifactService, ArtifactType } from '../../../../services/artifacts';
 import { useWebSocket } from '../../../../context/WebSocketContext';
 import SharePanel from '../../../../components/workspace/SharePanel';
+import UploadProgressPanel, { UploadItem } from '../../../../components/workspace/UploadProgressPanel';
 
 interface BreadcrumbItem {
   label: string;
   href?: string;
   folderId?: string;
+}
+
+/**
+ * Subtle gradient sheen that sweeps across the content area while uploads
+ * are in flight. Purely decorative — pointer events pass through.
+ */
+function UploadSweepOverlay({ active }: { active: boolean }) {
+  if (!active) return null;
+  return (
+    <Box
+      sx={{
+        position: 'absolute',
+        inset: 0,
+        overflow: 'hidden',
+        pointerEvents: 'none',
+        zIndex: 1,
+        borderRadius: 2,
+        '@keyframes uploadSweep': {
+          '0%': { transform: 'translateX(-100%)' },
+          '100%': { transform: 'translateX(250%)' },
+        },
+        '&::before': {
+          content: '""',
+          position: 'absolute',
+          top: 0,
+          bottom: 0,
+          left: 0,
+          width: '40%',
+          background: (theme) =>
+            `linear-gradient(105deg, transparent, ${theme.palette.primary.main}12, ${theme.palette.primary.main}24, ${theme.palette.primary.main}12, transparent)`,
+          animation: 'uploadSweep 2.4s ease-in-out infinite',
+        },
+      }}
+    />
+  );
 }
 
 function FolderExplorerContent() {
@@ -62,7 +98,11 @@ function FolderExplorerContent() {
 
   // Drag-and-drop state
   const [isDragOver, setIsDragOver] = useState(false);
-  const [uploading, setUploading] = useState(false);
+
+  // Upload queue state — one entry per in-flight file
+  const [uploads, setUploads] = useState<UploadItem[]>([]);
+  const uploadCounterRef = useRef(0);
+  const activeUploadCount = uploads.filter((u) => u.status === 'uploading').length;
 
   // Real-time: track newly added items for highlight animation
   const [newItemIds, setNewItemIds] = useState<Set<string>>(new Set());
@@ -261,29 +301,59 @@ function FolderExplorerContent() {
     }
   };
 
-  // Upload handler for dropping onto folder cards
-  const handleUploadToFolder = async (targetFolderId: string, files: FileList) => {
-    setUploading(true);
-    let uploadedCount = 0;
-    let failedCount = 0;
+  // Shared upload pipeline — registers each file in the progress queue
+  // and uploads all files in parallel with per-file progress updates.
+  const startUploads = async (files: FileList, targetFolderId: string) => {
+    const fileArray = Array.from(files);
+    const newItems: UploadItem[] = fileArray.map((file) => {
+      uploadCounterRef.current += 1;
+      return {
+        id: `upload-${Date.now()}-${uploadCounterRef.current}`,
+        name: file.name,
+        size: file.size,
+        progress: 0,
+        status: 'uploading',
+      };
+    });
+    setUploads((prev) => [...prev, ...newItems]);
 
-    for (const file of Array.from(files)) {
-      try {
-        await assetService.uploadAsset(file, targetFolderId);
-        uploadedCount++;
-      } catch {
-        failedCount++;
-      }
-    }
+    const results = await Promise.all(
+      fileArray.map(async (file, i) => {
+        const item = newItems[i];
+        try {
+          await assetService.uploadAsset(file, targetFolderId, (percent) => {
+            updateUpload(item.id, { progress: percent });
+          });
+          updateUpload(item.id, { progress: 100, status: 'success' });
+          return true;
+        } catch (err: unknown) {
+          const message = err instanceof Error ? err.message : 'Upload failed';
+          updateUpload(item.id, { status: 'error', error: message });
+          return false;
+        }
+      })
+    );
 
-    setUploading(false);
+    const uploadedCount = results.filter(Boolean).length;
     if (uploadedCount > 0) {
-      showSuccess(`${uploadedCount} file${uploadedCount > 1 ? 's' : ''} uploaded`);
+      showSuccess(`${uploadedCount} file${uploadedCount > 1 ? 's' : ''} uploaded successfully`);
       loadContents();
     }
-    if (failedCount > 0) {
-      setError(`${failedCount} file${failedCount > 1 ? 's' : ''} failed to upload`);
-    }
+    // Failed uploads are surfaced per-file as red rows in UploadProgressPanel —
+    // never via the page-level `error` state, which replaces the whole screen.
+  };
+
+  const updateUpload = (id: string, patch: Partial<UploadItem>) => {
+    setUploads((prev) => prev.map((u) => (u.id === id ? { ...u, ...patch } : u)));
+  };
+
+  const removeUpload = (id: string) => {
+    setUploads((prev) => prev.filter((u) => u.id !== id));
+  };
+
+  // Upload handler for dropping onto folder cards
+  const handleUploadToFolder = async (targetFolderId: string, files: FileList) => {
+    await startUploads(files, targetFolderId);
   };
 
   // Artifact creation handler
@@ -321,27 +391,7 @@ function FolderExplorerContent() {
   };
 
   const uploadFiles = async (files: FileList) => {
-    setUploading(true);
-    let uploadedCount = 0;
-    let failedCount = 0;
-
-    for (const file of Array.from(files)) {
-      try {
-        await assetService.uploadAsset(file, folderId);
-        uploadedCount++;
-      } catch {
-        failedCount++;
-      }
-    }
-
-    setUploading(false);
-    if (uploadedCount > 0) {
-      showSuccess(`${uploadedCount} file${uploadedCount > 1 ? 's' : ''} uploaded successfully`);
-      loadContents();
-    }
-    if (failedCount > 0) {
-      setError(`${failedCount} file${failedCount > 1 ? 's' : ''} failed to upload`);
-    }
+    await startUploads(files, folderId);
   };
 
   // Drag-and-drop handlers for parent drop zone
@@ -596,7 +646,8 @@ function FolderExplorerContent() {
             {activeFilter === 'all'
               ? `${total_items} ${total_items === 1 ? 'item' : 'items'}`
               : `Showing ${filteredItems.length} of ${total_items} items · ${getFilterLabel()}`}
-            {uploading && ' • Uploading...'}
+            {activeUploadCount > 0 &&
+              ` • Uploading ${activeUploadCount} file${activeUploadCount > 1 ? 's' : ''}…`}
           </Typography>
         </Box>
         <Box
@@ -801,8 +852,10 @@ function FolderExplorerContent() {
             justifyContent: 'center',
             py: 8,
             color: 'text.secondary',
+            position: 'relative',
           }}
         >
+          <UploadSweepOverlay active={activeUploadCount > 0} />
           <Typography variant="h6" sx={{ mb: 1 }}>
             {activeFilter === 'all' ? 'This folder is empty' : 'No items match this filter'}
           </Typography>
@@ -831,6 +884,7 @@ function FolderExplorerContent() {
             position: 'relative',
           }}
         >
+          <UploadSweepOverlay active={activeUploadCount > 0} />
           {isDragOver && (
             <Box
               sx={{
@@ -871,6 +925,8 @@ function FolderExplorerContent() {
           </Grid>
         </Box>
       )}
+
+      <UploadProgressPanel uploads={uploads} onRemove={removeUpload} />
     </WorkspaceLayout>
   );
 }

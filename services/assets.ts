@@ -82,7 +82,7 @@ export const assetService = {
   shareAsset: (assetId: string) =>
     apiClient.post<Asset>(`/assets/${assetId}/share`),
 
-  uploadAsset: async (file: File, folderId?: string) => {
+  uploadAsset: (file: File, folderId?: string, onProgress?: (percent: number) => void) => {
     const token = getToken();
     const formData = new FormData();
     formData.append('file', file);
@@ -90,25 +90,41 @@ export const assetService = {
       formData.append('folder_id', folderId);
     }
 
-    const response = await fetch(`${API_BASE_URL}/assets/upload`, {
-      method: 'POST',
-      headers: {
-        ...(token && { Authorization: `Bearer ${token}` }),
-      },
-      body: formData,
-    });
-
-    if (!response.ok) {
-      let errorMessage = `HTTP ${response.status}`;
-      try {
-        const errorData = await response.json();
-        if (errorData.detail) errorMessage = errorData.detail;
-      } catch {
-        // Ignore JSON parse errors
+    // XMLHttpRequest is used instead of fetch because it exposes
+    // upload progress events (xhr.upload.onprogress).
+    return new Promise<any>((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open('POST', `${API_BASE_URL}/assets/upload`);
+      if (token) {
+        xhr.setRequestHeader('Authorization', `Bearer ${token}`);
       }
-      throw new ApiError(errorMessage, response.status);
-    }
 
-    return response.json();
+      xhr.upload.onprogress = (event) => {
+        if (event.lengthComputable && onProgress) {
+          onProgress(Math.round((event.loaded / event.total) * 100));
+        }
+      };
+
+      xhr.onload = () => {
+        let data: any = null;
+        try {
+          data = xhr.responseText ? JSON.parse(xhr.responseText) : null;
+        } catch {
+          // Ignore JSON parse errors
+        }
+        if (xhr.status >= 200 && xhr.status < 300) {
+          resolve(data);
+        } else {
+          const errorMessage = data?.detail || `HTTP ${xhr.status}`;
+          reject(new ApiError(errorMessage, xhr.status));
+        }
+      };
+
+      xhr.onerror = () => {
+        reject(new ApiError('Network error during upload', 0));
+      };
+
+      xhr.send(formData);
+    });
   },
 };
