@@ -30,6 +30,7 @@ import {
   Audiotrack as AudioIcon,
   PhotoLibrary as PhotoLibraryIcon,
   PictureAsPdf as PdfIcon,
+  ViewInAr as ModelIcon,
 } from '@mui/icons-material';
 import { useRouter } from 'next/navigation';
 import { FolderItem } from '../../services/folders';
@@ -330,6 +331,9 @@ export default function FolderItemCard({
       if (item.mime_type === 'application/pdf') {
         return <PdfIcon sx={{ fontSize: 48, color: 'text.secondary' }} />;
       }
+      if (item.mime_type === 'model/gltf-binary') {
+        return <ModelIcon sx={{ fontSize: 48, color: 'text.secondary' }} />;
+      }
       return <FileIcon sx={{ fontSize: 48, color: 'text.secondary' }} />;
     }
 
@@ -345,11 +349,13 @@ export default function FolderItemCard({
     if (item.mime_type?.startsWith('video/')) return 'Video';
     if (item.mime_type?.startsWith('audio/')) return 'Audio';
     if (item.mime_type === 'application/pdf') return 'PDF';
+    if (item.mime_type === 'model/gltf-binary') return 'GLB';
     return item.mime_type ? item.mime_type.split('/')[1]?.toUpperCase() : 'File';
   };
 
   const isImageWithThumb = item.kind === 'asset' && item.is_image && thumbSrc;
   const isVideoWithThumb = item.kind === 'asset' && item.mime_type?.startsWith('video/') && thumbSrc;
+  const isGlbWithThumb = item.kind === 'asset' && item.mime_type === 'model/gltf-binary' && thumbSrc;
   const isMarkdownWithPreview = item.kind === 'asset' && item.is_markdown && item.file_meta?.preview;
   const isFolder = item.kind === 'folder';
 
@@ -410,7 +416,7 @@ export default function FolderItemCard({
             alignItems: 'center',
             position: 'relative',
             overflow: 'hidden',
-            ...(isImageWithThumb || isVideoWithThumb || isMarkdownWithPreview
+            ...(isImageWithThumb || isVideoWithThumb || isGlbWithThumb || isMarkdownWithPreview
               ? { p: 0, aspectRatio: '4/3' }
               : { py: 3 }),
           }}
@@ -538,6 +544,117 @@ export default function FolderItemCard({
                   }}
                 >
                   <MovieIcon sx={{ color: '#fff', fontSize: 24 }} />
+                </Box>
+              </Box>
+              <Box
+                sx={{
+                  mt: 'auto',
+                  width: '100%',
+                  position: 'relative',
+                  zIndex: 1,
+                  background: (theme) =>
+                    `linear-gradient(to top, ${theme.palette.common.black} 0%, transparent 100%)`,
+                  px: 1.5,
+                  pb: 1.5,
+                  pt: 4,
+                }}
+              >
+                {isRenaming ? (
+                  <TextField
+                    inputRef={renameInputRef}
+                    value={renameValue}
+                    onChange={(e) => setRenameValue(e.target.value)}
+                    onKeyDown={handleRenameKeyDown}
+                    onBlur={handleRenameSubmit}
+                    disabled={isSubmittingRename}
+                    size="small"
+                    fullWidth
+
+                    sx={{
+                      '& .MuiInputBase-input': {
+                        textAlign: 'center',
+                        fontSize: '0.875rem',
+                        fontWeight: 500,
+                        py: 0.5,
+                        color: '#fff',
+                      },
+                      '& .MuiOutlinedInput-notchedOutline': {
+                        borderColor: 'rgba(255,255,255,0.3)',
+                      },
+                    }}
+                    onClick={(e) => e.stopPropagation()}
+                  />
+                ) : (
+                  <Typography
+                    variant="body2"
+                    sx={{
+                      fontWeight: 500,
+                      wordBreak: 'break-word',
+                      lineHeight: 1.3,
+                      color: '#fff',
+                      textShadow: '0 1px 3px rgba(0,0,0,0.5)',
+                      display: '-webkit-box',
+                      WebkitLineClamp: 2,
+                      WebkitBoxOrient: 'vertical',
+                      overflow: 'hidden',
+                    }}
+                  >
+                    {item.name}
+                  </Typography>
+                )}
+                <Box sx={{ mt: 0.5, display: 'flex' }}>
+                  <Chip
+                    label={getKindLabel()}
+                    size="small"
+                    variant="outlined"
+                    sx={{
+                      fontSize: '0.65rem',
+                      height: 20,
+                      color: 'rgba(255,255,255,0.85)',
+                      borderColor: 'rgba(255,255,255,0.4)',
+                      '& .MuiChip-label': { px: 1 },
+                    }}
+                  />
+                </Box>
+              </Box>
+            </>
+          ) : isGlbWithThumb ? (
+            <>
+              <Box
+                component="img"
+                src={thumbSrc}
+                alt={item.name}
+                sx={{
+                  width: '100%',
+                  height: '100%',
+                  objectFit: 'cover',
+                  position: 'absolute',
+                  inset: 0,
+                }}
+              />
+              {/* 3D model indicator overlay */}
+              <Box
+                sx={{
+                  position: 'absolute',
+                  inset: 0,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  zIndex: 1,
+                }}
+              >
+                <Box
+                  sx={{
+                    width: 48,
+                    height: 48,
+                    borderRadius: '50%',
+                    bgcolor: 'rgba(0,0,0,0.5)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <ModelIcon sx={{ color: '#fff', fontSize: 24 }} />
                 </Box>
               </Box>
               <Box

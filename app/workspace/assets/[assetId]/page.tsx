@@ -21,6 +21,7 @@ import { Download, ContentCopy, Public, Lock } from '@mui/icons-material';
 import ProtectedRoute from '../../../../components/auth/ProtectedRoute';
 import WorkspaceLayout from '../../../../components/layout/WorkspaceLayout';
 import MarkdownEditor from '../../../../components/workspace/MarkdownEditor';
+import GlbViewer from '../../../../components/workspace/GlbViewer';
 import { SmartVideoPlayer } from '../../../../components/ui/SmartVideoPlayer';
 import { AudioPlayerThemed } from '../../../../components/ui/AudioPlayer';
 import { assetService, Asset, getAssetSignedUrl } from '../../../../services/assets';
@@ -193,6 +194,10 @@ function AssetViewerContent() {
     asset?.mime_type === 'application/pdf' ? asset.id : null
   );
 
+  const glbSrc = useSignedAssetUrl(
+    asset?.mime_type === 'model/gltf-binary' ? asset.id : null
+  );
+
   const handleDownload = async (assetId: string, filename: string, size?: number) => {
     try {
       const signedPath = await getAssetSignedUrl(assetId, size);
@@ -222,6 +227,7 @@ function AssetViewerContent() {
   const isVideoAsset = asset?.mime_type?.startsWith('video/');
   const isAudioAsset = asset?.mime_type?.startsWith('audio/');
   const isPdfAsset = asset?.mime_type === 'application/pdf';
+  const isGlbAsset = asset?.mime_type === 'model/gltf-binary';
 
   // Left panel: file metadata + share
   const leftPanel = asset ? (
@@ -265,7 +271,7 @@ function AssetViewerContent() {
         </Typography>
       </Box>
 
-      {asset.is_image && thumbSizes.length > 0 && (
+      {(asset.is_image || isGlbAsset) && thumbSizes.length > 0 && (
         <>
           <Divider sx={{ my: 2 }} />
           <Typography variant="subtitle2" sx={{ mb: 1.5, fontWeight: 600 }}>
@@ -298,7 +304,7 @@ function AssetViewerContent() {
         </>
       )}
 
-      {(isVideoAsset || isAudioAsset || isPdfAsset) && (
+      {(isVideoAsset || isAudioAsset || isPdfAsset || isGlbAsset) && (
         <>
           <Divider sx={{ my: 2 }} />
           <Typography variant="subtitle2" sx={{ mb: 1.5, fontWeight: 600 }}>
@@ -536,6 +542,29 @@ function AssetViewerContent() {
             />
             {/* Dead space to compensate for iOS bottom-bar clipping */}
             <Box sx={{ height: { xs: 200, sm: 0 } }} />
+          </Paper>
+        ) : isGlbAsset ? (
+          <Paper
+            sx={{
+              flex: 1,
+              minHeight: 0,
+              display: 'flex',
+              flexDirection: 'column',
+              bgcolor: 'background.default',
+              overflow: 'auto',
+            }}
+          >
+            {glbSrc ? (
+              <GlbViewer
+                src={glbSrc}
+                name={asset.name}
+                height="calc(100dvh - 200px)"
+              />
+            ) : (
+              <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', flex: 1 }}>
+                <Typography color="text.secondary">Loading 3D model...</Typography>
+              </Box>
+            )}
           </Paper>
         ) : asset.is_markdown ? (
           loadingContent ? (

@@ -12,6 +12,7 @@ import {
   OpenInNew as OpenIcon,
   Public as PublicIcon,
   PlayArrow as PlayIcon,
+  ViewInAr as ModelIcon,
 } from '@mui/icons-material';
 import { useSignedAssetUrl } from '../../hooks/useSignedAssetUrl';
 
@@ -40,6 +41,7 @@ function getKindIcon(kind?: string) {
   if (lowerKind.includes('markdown') || lowerKind.includes('md')) return <MarkdownIcon fontSize="small" />;
   if (lowerKind.includes('json')) return <JsonIcon fontSize="small" />;
   if (lowerKind.includes('map')) return <MapIcon fontSize="small" />;
+  if (lowerKind.includes('glb') || lowerKind.includes('gltf') || lowerKind.includes('model')) return <ModelIcon fontSize="small" />;
   if (lowerKind.includes('note')) return <ArticleIcon fontSize="small" />;
   return <FileIcon fontSize="small" />;
 }
@@ -51,12 +53,14 @@ function getKindColor(kind?: string) {
   if (lowerKind.includes('markdown') || lowerKind.includes('md')) return 'success';
   if (lowerKind.includes('json')) return 'warning';
   if (lowerKind.includes('map')) return 'primary';
+  if (lowerKind.includes('glb') || lowerKind.includes('gltf') || lowerKind.includes('model')) return 'secondary';
   if (lowerKind.includes('note')) return 'default';
   return 'default';
 }
 
 function getKindLabel(kind?: string, mime_type?: string) {
   if (kind) return kind;
+  if (mime_type === 'model/gltf-binary') return 'GLB';
   if (mime_type) return mime_type.split('/')[1]?.toUpperCase() || 'File';
   return 'File';
 }
@@ -65,7 +69,13 @@ export default function AssociationMediaCard({ association, variant, onClick }: 
   const isAsset = association.type === 'asset';
   const isImage = isAsset && (association.is_image || association.kind?.toLowerCase().includes('image'));
   const isVideo = isAsset && (association.kind?.toLowerCase().includes('video') || association.mime_type?.startsWith('video/'));
-  const isMedia = isImage || isVideo;
+  const isGlb = isAsset && (
+    association.mime_type === 'model/gltf-binary' ||
+    association.kind?.toLowerCase().includes('glb') ||
+    association.kind?.toLowerCase().includes('gltf') ||
+    association.kind?.toLowerCase().includes('model')
+  );
+  const isMedia = isImage || isVideo || isGlb;
 
   // Editor: use signed thumbnail URLs for both images and videos
   const editorThumbSrc = useSignedAssetUrl(
@@ -137,6 +147,20 @@ export default function AssociationMediaCard({ association, variant, onClick }: 
               }}
             >
               <PlayIcon sx={{ color: '#fff', fontSize: 40, opacity: 0.9 }} />
+            </Box>
+          )}
+          {isGlb && (
+            <Box
+              sx={{
+                position: 'absolute',
+                inset: 0,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                bgcolor: 'rgba(0,0,0,0.3)',
+              }}
+            >
+              <ModelIcon sx={{ color: '#fff', fontSize: 40, opacity: 0.9 }} />
             </Box>
           )}
         </Box>

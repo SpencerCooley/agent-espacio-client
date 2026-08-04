@@ -4,6 +4,7 @@ import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { Box, Typography, Paper, Chip, Button, IconButton, Select, MenuItem, FormControl, Drawer, useTheme, useMediaQuery } from '@mui/material';
 import { Download as DownloadIcon, Close as CloseIcon, Article as ArticleIcon, Map as MapIcon, Movie as MovieIcon, Description as MarkdownIcon, DataObject as JsonIcon } from '@mui/icons-material';
 import InlineThumbnail from '../workspace/InlineThumbnail';
+import GlbViewer from '../workspace/GlbViewer';
 import { SmartVideoPlayer } from '../ui/SmartVideoPlayer';
 import { AudioPlayerThemed } from '../ui/AudioPlayer';
 import { marked } from 'marked';
@@ -39,6 +40,7 @@ export function PublicAssetView({
   const isVideo = mime_type?.startsWith('video/');
   const isAudio = mime_type?.startsWith('audio/');
   const isPdf = mime_type === 'application/pdf';
+  const isGlb = mime_type === 'model/gltf-binary';
   const downloadUrl = customDownloadUrl || `${API_BASE_URL}/public/assets/${public_magic_id || id}/download`;
   const posterUrl = isVideo ? `${downloadUrl}?size=512` : undefined;
 
@@ -117,6 +119,19 @@ export function PublicAssetView({
         <SmartVideoPlayer src={downloadUrl} name={name} poster={posterUrl} />
       ) : isAudio ? (
         <AudioPlayerThemed src={downloadUrl} name={name} height={200} />
+      ) : isGlb ? (
+        <Box
+          sx={{
+            width: '100%',
+            height: '70dvh',
+            borderRadius: 2,
+            overflow: 'hidden',
+            border: '1px solid',
+            borderColor: 'divider',
+          }}
+        >
+          <GlbViewer src={downloadUrl} name={name} height="100%" />
+        </Box>
       ) : isMarkdown ? (
         <Paper sx={{ p: 4 }}>
           {loadingMarkdown ? (

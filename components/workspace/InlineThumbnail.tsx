@@ -5,6 +5,7 @@ import { useSignedAssetUrl } from '../../hooks/useSignedAssetUrl';
 import {
   Movie as MovieIcon,
   Audiotrack as AudioIcon,
+  ViewInAr as ModelIcon,
 } from '@mui/icons-material';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
@@ -24,6 +25,7 @@ export default function InlineThumbnail({
   type,
   id,
   kind,
+  mime_type,
   is_image,
   public_magic_id,
   size = 40,
@@ -32,9 +34,15 @@ export default function InlineThumbnail({
   const isImage = type === 'asset' && (is_image || kind?.includes('image'));
   const isVideo = type === 'asset' && kind?.includes('video');
   const isAudio = type === 'asset' && kind?.includes('audio');
+  const isGlb = type === 'asset' && (
+    mime_type === 'model/gltf-binary' ||
+    kind?.toLowerCase().includes('glb') ||
+    kind?.toLowerCase().includes('gltf') ||
+    kind?.toLowerCase().includes('model')
+  );
 
-  // Use generated thumbnails for both images and videos (backend ffmpeg)
-  const needsThumbnail = isImage || isVideo;
+  // Use generated thumbnails for images, videos, and GLB models (backend renderer)
+  const needsThumbnail = isImage || isVideo || isGlb;
   const thumbnailSize = size > 100 ? 256 : size;
 
   if (variant === 'editor' || variant === 'workspace') {
@@ -74,6 +82,21 @@ export default function InlineThumbnail({
               <MovieIcon sx={{ color: '#fff', fontSize: size * 0.4 }} />
             </Box>
           )}
+          {isGlb && (
+            <Box
+              sx={{
+                position: 'absolute',
+                inset: 0,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                bgcolor: 'rgba(0,0,0,0.3)',
+                borderRadius: 0.5,
+              }}
+            >
+              <ModelIcon sx={{ color: '#fff', fontSize: size * 0.4 }} />
+            </Box>
+          )}
         </Box>
       );
     }
@@ -92,6 +115,15 @@ export default function InlineThumbnail({
       return (
         <Box sx={{ width: size, height: size, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <AudioIcon sx={{ color: 'text.secondary', fontSize: size * 0.5 }} />
+        </Box>
+      );
+    }
+
+    // Fallback icon for GLB models
+    if (isGlb) {
+      return (
+        <Box sx={{ width: size, height: size, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <ModelIcon sx={{ color: 'text.secondary', fontSize: size * 0.5 }} />
         </Box>
       );
     }
@@ -128,6 +160,21 @@ export default function InlineThumbnail({
               }}
             >
               <MovieIcon sx={{ color: '#fff', fontSize: size * 0.4 }} />
+            </Box>
+          )}
+          {isGlb && (
+            <Box
+              sx={{
+                position: 'absolute',
+                inset: 0,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                bgcolor: 'rgba(0,0,0,0.3)',
+                borderRadius: 0.5,
+              }}
+            >
+              <ModelIcon sx={{ color: '#fff', fontSize: size * 0.4 }} />
             </Box>
           )}
         </Box>

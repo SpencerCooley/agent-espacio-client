@@ -46,6 +46,7 @@
     "react-dom": "^19.0.0",
     "react-hook-form": "^7.54.2",
     "react-simple-code-editor": "^0.14.1",
+    "three": "^0.170.0",
     "turndown": "^7.2.4",
     "turndown-plugin-gfm": "^1.0.2"
   },
@@ -53,6 +54,7 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@types/three": "^0.170.0",
     "@types/turndown": "^5.0.6",
     "typescript": "^5"
   }

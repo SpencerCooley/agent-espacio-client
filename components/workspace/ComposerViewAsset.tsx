@@ -4,6 +4,7 @@ import React from 'react';
 import { Box, Typography, CircularProgress } from '@mui/material';
 import { SmartVideoPlayer } from '../ui/SmartVideoPlayer';
 import { AudioPlayerThemed } from '../ui/AudioPlayer';
+import GlbViewer from './GlbViewer';
 import { useAuthStreamingUrl } from '../../hooks/useAuthStreamingUrl';
 import { useSignedAssetUrl } from '../../hooks/useSignedAssetUrl';
 
@@ -20,6 +21,7 @@ export default function ComposerViewAsset({ item, isPreview, isPublicView }: Com
 
   const isVideo = item.mime_type?.startsWith('video/');
   const isAudio = item.mime_type?.startsWith('audio/');
+  const isGlb = item.mime_type === 'model/gltf-binary';
 
   const publicUrl = `${API_BASE_URL}/public/assets/${item.public_magic_id || item.id}/download`;
   // Use signed URL in workspace/preview (non-public view), public URL in public view
@@ -30,9 +32,10 @@ export default function ComposerViewAsset({ item, isPreview, isPublicView }: Com
   const streamUrl = useAuthStreamingUrl(authUrl);
   const src = isPublicView ? publicUrl : (streamUrl || '');
   const posterUrl = useSignedAssetUrl(item?.id || null, 512);
+  const glbSrc = useSignedAssetUrl(isGlb && !isPublicView ? item.id : null);
   const isLoading = !isPublicView && !streamUrl;
 
-  if (!isVideo && !isAudio) {
+  if (!isVideo && !isAudio && !isGlb) {
     return (
       <Typography color="text.secondary">
         This asset type cannot be previewed in a composition.
@@ -46,7 +49,7 @@ export default function ComposerViewAsset({ item, isPreview, isPublicView }: Com
         {item.name}
       </Typography>
 
-      {isLoading && (
+      {isLoading && !isGlb && (
         <Box
           sx={{
             width: '100%',
@@ -68,6 +71,10 @@ export default function ComposerViewAsset({ item, isPreview, isPublicView }: Com
 
       {isAudio && !isLoading && (
         <AudioPlayerThemed src={src} name={item.name} height={200} />
+      )}
+
+      {isGlb && (
+        <GlbViewer src={isPublicView ? publicUrl : (glbSrc || '')} name={item.name} height={400} />
       )}
     </Box>
   );

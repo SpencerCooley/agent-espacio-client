@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useSearchParams } from 'next/navigation';
 import NextLink from 'next/link';
 import { Box, Typography, Grid, Paper, Breadcrumbs, Link, Chip, TextField, InputAdornment, CircularProgress, ClickAwayListener, Menu, MenuItem, Button } from '@mui/material';
-import { Folder as FolderIcon, InsertDriveFile as FileIcon, Image as ImageIcon, Article as ArticleIcon, Map as MapIcon, Movie as MovieIcon, Audiotrack as AudiotrackIcon, PhotoLibrary as PhotoLibraryIcon, AutoAwesomeMosaic as ComposerIcon, Search as SearchIcon, Terminal as TerminalIcon, OpenInNew as OpenInNewIcon, PictureAsPdf as PdfIcon, Download as DownloadIcon } from '@mui/icons-material';
+import { Folder as FolderIcon, InsertDriveFile as FileIcon, Image as ImageIcon, Article as ArticleIcon, Map as MapIcon, Movie as MovieIcon, Audiotrack as AudiotrackIcon, PhotoLibrary as PhotoLibraryIcon, AutoAwesomeMosaic as ComposerIcon, Search as SearchIcon, Terminal as TerminalIcon, OpenInNew as OpenInNewIcon, PictureAsPdf as PdfIcon, Download as DownloadIcon, ViewInAr as ModelIcon } from '@mui/icons-material';
 import InlineThumbnail from '../../../../components/workspace/InlineThumbnail';
 import WorkflowPublicView from '../../../../components/workspace/WorkflowPublicView';
 import GalleryPublicView from '../../../../components/workspace/GalleryPublicView';
@@ -163,6 +163,7 @@ export default function PublicViewPage() {
     if (item.mime_type?.startsWith('video/')) return 'video';
     if (item.mime_type?.startsWith('audio/')) return 'audio';
     if (item.mime_type === 'application/pdf') return 'pdf';
+    if (item.mime_type === 'model/gltf-binary') return '3d';
     return 'other';
   };
 
@@ -218,6 +219,7 @@ export default function PublicViewPage() {
       if (item.is_image) return <ImageIcon fontSize="large" />;
       if (item.mime_type?.startsWith('audio/')) return <AudiotrackIcon fontSize="large" />;
       if (item.mime_type === 'application/pdf') return <PdfIcon fontSize="large" />;
+      if (item.mime_type === 'model/gltf-binary') return <ModelIcon fontSize="large" />;
       return <FileIcon fontSize="large" />;
     }
     if (item.kind === 'artifact') {
@@ -476,7 +478,8 @@ export default function PublicViewPage() {
 
               const isImage = item.kind === 'asset' && item.is_image;
               const isVideo = item.kind === 'asset' && item.mime_type?.startsWith('video/');
-              const isMedia = isImage || isVideo;
+              const isGlb = item.kind === 'asset' && item.mime_type === 'model/gltf-binary';
+              const isMedia = isImage || isVideo || isGlb;
 
               return (
                 <Grid item xs={12} sm={6} md={4} lg={3} key={`${item.kind}-${item.id}`}>
@@ -528,6 +531,32 @@ export default function PublicViewPage() {
                                 }}
                               >
                                 <MovieIcon sx={{ color: '#fff', fontSize: 24 }} />
+                              </Box>
+                            </Box>
+                          )}
+                          {isGlb && (
+                            <Box
+                              sx={{
+                                position: 'absolute',
+                                inset: 0,
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                zIndex: 1,
+                              }}
+                            >
+                              <Box
+                                sx={{
+                                  width: 48,
+                                  height: 48,
+                                  borderRadius: '50%',
+                                  bgcolor: 'rgba(0,0,0,0.5)',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                }}
+                              >
+                                <ModelIcon sx={{ color: '#fff', fontSize: 24 }} />
                               </Box>
                             </Box>
                           )}

@@ -90,7 +90,7 @@ export default function ComposerEditor({ artifact }: ComposerEditorProps) {
             try {
               const asset = await assetService.getAsset(id);
               const mime = asset.mime_type || '';
-              if (mime.startsWith('video/') || mime.startsWith('audio/')) {
+              if (mime.startsWith('video/') || mime.startsWith('audio/') || mime === 'model/gltf-binary') {
                 items.push({
                   id: asset.id,
                   name: asset.name,
@@ -152,7 +152,7 @@ export default function ComposerEditor({ artifact }: ComposerEditorProps) {
           .filter((item: any) => item.kind === 'asset')
           .filter((item: any) => {
             const mime = item.mime_type || '';
-            return mime.startsWith('video/') || mime.startsWith('audio/');
+            return mime.startsWith('video/') || mime.startsWith('audio/') || mime === 'model/gltf-binary';
           })
           .map((item: any) => ({
             id: item.id,
