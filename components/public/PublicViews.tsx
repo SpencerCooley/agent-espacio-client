@@ -130,7 +130,7 @@ export function PublicAssetView({
             borderColor: 'divider',
           }}
         >
-          <GlbViewer src={downloadUrl} name={name} height="100%" />
+          <GlbViewer src={downloadUrl} height="100%" />
         </Box>
       ) : isMarkdown ? (
         <Paper sx={{ p: 4 }}>

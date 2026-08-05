@@ -6,7 +6,6 @@ import {
   RotateRight as ResetIcon,
   AspectRatio as FullscreenIcon,
   FullscreenExit as FullscreenExitIcon,
-  ViewInAr as ModelIcon,
 } from '@mui/icons-material';
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
@@ -15,7 +14,6 @@ import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment
 
 interface GlbViewerProps {
   src: string;
-  name?: string;
   autoRotate?: boolean;
   height?: string | number;
 }
@@ -33,7 +31,6 @@ interface ViewerState {
 
 export default function GlbViewer({
   src,
-  name,
   autoRotate: initialAutoRotate = true,
   height,
 }: GlbViewerProps) {
@@ -269,38 +266,16 @@ export default function GlbViewer({
         </Alert>
       )}
 
-      {name && !error && (
-        <Box
-          sx={{
-            position: 'absolute',
-            top: 12,
-            left: 12,
-            zIndex: 2,
-            display: 'flex',
-            alignItems: 'center',
-            gap: 0.75,
-            bgcolor: 'background.paper',
-            borderRadius: 1,
-            px: 1.25,
-            py: 0.75,
-            boxShadow: 2,
-            maxWidth: '70%',
-          }}
-        >
-          <ModelIcon sx={{ fontSize: 18, color: 'text.secondary' }} />
-          <Typography
-            variant="caption"
-            sx={{ fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
-          >
-            {name}
-          </Typography>
-        </Box>
-      )}
-
       <Stack
         direction="row"
         spacing={0.5}
-        sx={{ position: 'absolute', bottom: 12, right: 12, zIndex: 2 }}
+        sx={{
+          position: 'absolute',
+          bottom: 12,
+          right: 12,
+          zIndex: 2,
+          display: { xs: 'none', md: 'flex' },
+        }}
       >
         <Tooltip title={autoRotate ? 'Stop rotating' : 'Auto-rotate'}>
           <IconButton

@@ -48,7 +48,7 @@ function ViewportGatedGlbViewer({
       }}
     >
       {isInViewport ? (
-        <GlbViewer src={src} name={name} height={GLB_VIEWER_HEIGHT} />
+        <GlbViewer src={src} height={GLB_VIEWER_HEIGHT} />
       ) : (
         <Box
           sx={{

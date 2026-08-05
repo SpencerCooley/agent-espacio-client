@@ -557,7 +557,6 @@ function AssetViewerContent() {
             {glbSrc ? (
               <GlbViewer
                 src={glbSrc}
-                name={asset.name}
                 height="calc(100dvh - 200px)"
               />
             ) : (
