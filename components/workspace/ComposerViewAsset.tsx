@@ -2,18 +2,104 @@
 
 import React from 'react';
 import { Box, Typography, CircularProgress } from '@mui/material';
+import { ViewInAr as ModelIcon } from '@mui/icons-material';
 import { SmartVideoPlayer } from '../ui/SmartVideoPlayer';
 import { AudioPlayerThemed } from '../ui/AudioPlayer';
 import GlbViewer from './GlbViewer';
 import { useAuthStreamingUrl } from '../../hooks/useAuthStreamingUrl';
 import { useSignedAssetUrl } from '../../hooks/useSignedAssetUrl';
+import { useInViewport } from '../../hooks/useInViewport';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+
+const GLB_VIEWER_HEIGHT = 400;
 
 interface ComposerViewAssetProps {
   item: any;
   isPreview?: boolean;
   isPublicView?: boolean;
+}
+
+function ViewportGatedGlbViewer({
+  src,
+  name,
+  thumbnailSrc,
+}: {
+  src: string;
+  name: string;
+  thumbnailSrc: string | null;
+}) {
+  const [containerRef, isInViewport] = useInViewport<HTMLDivElement>({
+    bufferPx: 200,
+  });
+
+  return (
+    <Box
+      ref={containerRef}
+      sx={{
+        width: '100%',
+        height: GLB_VIEWER_HEIGHT,
+        borderRadius: 1,
+        overflow: 'hidden',
+        border: '1px solid',
+        borderColor: 'divider',
+        bgcolor: 'background.default',
+        position: 'relative',
+      }}
+    >
+      {isInViewport ? (
+        <GlbViewer src={src} name={name} height={GLB_VIEWER_HEIGHT} />
+      ) : (
+        <Box
+          sx={{
+            width: '100%',
+            height: '100%',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 1.5,
+            bgcolor: 'background.default',
+          }}
+        >
+          {thumbnailSrc ? (
+            <Box
+              component="img"
+              src={thumbnailSrc}
+              alt={name}
+              sx={{
+                width: '100%',
+                height: '100%',
+                objectFit: 'cover',
+                opacity: 0.6,
+              }}
+            />
+          ) : (
+            <ModelIcon sx={{ fontSize: 48, color: 'text.secondary', opacity: 0.5 }} />
+          )}
+          <Box
+            sx={{
+              position: 'absolute',
+              inset: 0,
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 1,
+            }}
+          >
+            <ModelIcon sx={{ fontSize: 40, color: 'text.secondary' }} />
+            <Typography variant="caption" color="text.secondary">
+              {name}
+            </Typography>
+            <Typography variant="caption" color="text.secondary" sx={{ opacity: 0.7 }}>
+              Scroll to view 3D
+            </Typography>
+          </Box>
+        </Box>
+      )}
+    </Box>
+  );
 }
 
 export default function ComposerViewAsset({ item, isPreview, isPublicView }: ComposerViewAssetProps) {
@@ -74,7 +160,11 @@ export default function ComposerViewAsset({ item, isPreview, isPublicView }: Com
       )}
 
       {isGlb && (
-        <GlbViewer src={isPublicView ? publicUrl : (glbSrc || '')} name={item.name} height={400} />
+        <ViewportGatedGlbViewer
+          src={isPublicView ? publicUrl : (glbSrc || '')}
+          name={item.name}
+          thumbnailSrc={posterUrl}
+        />
       )}
     </Box>
   );
