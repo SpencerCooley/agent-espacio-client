@@ -1,14 +1,15 @@
 'use client';
 
-import React from 'react';
-import { Box, Typography, CircularProgress } from '@mui/material';
-import { ViewInAr as ModelIcon } from '@mui/icons-material';
+import React, { useState } from 'react';
+import { Box, Typography, CircularProgress, Button } from '@mui/material';
+import { ViewInAr as ModelIcon, Download as DownloadIcon } from '@mui/icons-material';
 import { SmartVideoPlayer } from '../ui/SmartVideoPlayer';
 import { AudioPlayerThemed } from '../ui/AudioPlayer';
 import GlbViewer from './GlbViewer';
 import { useAuthStreamingUrl } from '../../hooks/useAuthStreamingUrl';
 import { useSignedAssetUrl } from '../../hooks/useSignedAssetUrl';
 import { useInViewport } from '../../hooks/useInViewport';
+import { getAssetSignedUrl } from '../../services/assets';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
@@ -24,14 +25,38 @@ function ViewportGatedGlbViewer({
   src,
   name,
   thumbnailSrc,
+  downloadUrl,
 }: {
   src: string;
   name: string;
   thumbnailSrc: string | null;
+  downloadUrl: string | null;
 }) {
   const [containerRef, isInViewport] = useInViewport<HTMLDivElement>({
     bufferPx: 200,
   });
+
+  const [isDownloading, setIsDownloading] = useState(false);
+
+  const handleDownload = async () => {
+    if (!downloadUrl) return;
+    setIsDownloading(true);
+    try {
+      const res = await fetch(downloadUrl);
+      if (!res.ok) throw new Error('Download failed');
+      const blob = await res.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = blobUrl;
+      a.download = name;
+      a.click();
+      URL.revokeObjectURL(blobUrl);
+    } catch (err) {
+      console.error('Download failed:', err);
+    } finally {
+      setIsDownloading(false);
+    }
+  };
 
   return (
     <Box
@@ -47,6 +72,26 @@ function ViewportGatedGlbViewer({
         position: 'relative',
       }}
     >
+      {downloadUrl && (
+        <Button
+          variant="outlined"
+          size="small"
+          startIcon={<DownloadIcon />}
+          onClick={handleDownload}
+          disabled={isDownloading}
+          sx={{
+            position: 'absolute',
+            top: 8,
+            right: 8,
+            zIndex: 3,
+            bgcolor: 'background.paper',
+            '&:hover': { bgcolor: 'action.hover' },
+          }}
+        >
+          {isDownloading ? 'Downloading...' : 'Download'}
+        </Button>
+      )}
+
       {isInViewport ? (
         <GlbViewer src={src} height={GLB_VIEWER_HEIGHT} />
       ) : (
@@ -164,6 +209,7 @@ export default function ComposerViewAsset({ item, isPreview, isPublicView }: Com
           src={isPublicView ? publicUrl : (glbSrc || '')}
           name={item.name}
           thumbnailSrc={posterUrl}
+          downloadUrl={isPublicView ? publicUrl : glbSrc}
         />
       )}
     </Box>
