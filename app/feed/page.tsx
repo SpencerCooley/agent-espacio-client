@@ -1,10 +1,10 @@
 'use client';
 
-import React from 'react';
+import React, { Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import PublicFeed from '../../components/public/PublicFeed';
 
-export default function TagFeedPage() {
+function FeedInner() {
   const searchParams = useSearchParams();
   const tag = searchParams.get('tag') || undefined;
 
@@ -13,5 +13,15 @@ export default function TagFeedPage() {
       tag={tag}
       title={tag ? `${tag}` : 'Feed'}
     />
+  );
+}
+
+// useSearchParams() requires a Suspense boundary so the page shell can be
+// statically generated; the param-dependent content renders on the client.
+export default function TagFeedPage() {
+  return (
+    <Suspense fallback={null}>
+      <FeedInner />
+    </Suspense>
   );
 }
