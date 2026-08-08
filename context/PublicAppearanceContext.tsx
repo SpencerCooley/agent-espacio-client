@@ -64,16 +64,34 @@ const defaultThemeOptions: ThemeOptions = {
 
 const PublicAppearanceContext = createContext<PublicAppearanceContextType | undefined>(undefined);
 
-export function PublicAppearanceProvider({ children }: { children: ReactNode }) {
+/**
+ * Server-provided appearance seed. Public pages fetch this during SSR and pass
+ * it down so the first paint (and the SSR'd HTML) already has the real theme
+ * and branding — no flash of the default theme while the client fetches.
+ */
+export interface PublicAppearanceInitial {
+  themeId: string;
+  mode: 'light' | 'dark';
+  definition: ThemeDefinition | null;
+  branding: Branding;
+}
+
+export function PublicAppearanceProvider({
+  children,
+  initial,
+}: {
+  children: ReactNode;
+  initial?: PublicAppearanceInitial;
+}) {
   // Branding state
-  const [branding, setBranding] = useState<Branding>(defaultBranding);
-  const [brandingLoading, setBrandingLoading] = useState(true);
+  const [branding, setBranding] = useState<Branding>(initial?.branding ?? defaultBranding);
+  const [brandingLoading, setBrandingLoading] = useState(!initial);
 
   // Theme state
-  const [themeId, setThemeId] = useState('');
-  const [themeMode, setThemeMode] = useState<'light' | 'dark'>('light');
-  const [themeDefinition, setThemeDefinition] = useState<ThemeDefinition | null>(null);
-  const [themeLoading, setThemeLoading] = useState(true);
+  const [themeId, setThemeId] = useState(initial?.themeId ?? '');
+  const [themeMode, setThemeMode] = useState<'light' | 'dark'>(initial?.mode ?? 'light');
+  const [themeDefinition, setThemeDefinition] = useState<ThemeDefinition | null>(initial?.definition ?? null);
+  const [themeLoading, setThemeLoading] = useState(!initial);
   const [draftDefinition, setDraftDefinition] = useState<ThemeDefinition | null>(null);
 
   // Load branding
@@ -121,10 +139,11 @@ export function PublicAppearanceProvider({ children }: { children: ReactNode }) 
     await Promise.all([refreshBranding(), refreshTheme()]);
   }, [refreshBranding, refreshTheme]);
 
-  // Initial load
+  // Initial load — skipped when the server seeded the appearance
   useEffect(() => {
+    if (initial) return;
     refreshAppearance();
-  }, [refreshAppearance]);
+  }, [refreshAppearance, initial]);
 
   // Update branding
   const updateBranding = useCallback(async (updates: Partial<Branding>) => {

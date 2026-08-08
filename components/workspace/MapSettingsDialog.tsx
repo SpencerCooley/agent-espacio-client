@@ -17,12 +17,15 @@ import PublicIcon from '@mui/icons-material/Public';
 import MapIcon from '@mui/icons-material/Map';
 import DarkModeIcon from '@mui/icons-material/DarkMode';
 import SatelliteIcon from '@mui/icons-material/Satellite';
+import { Artifact } from '../../services/artifacts';
+import CoverImagePicker from './CoverImagePicker';
 
 interface MapSettingsDialogProps {
   open: boolean;
   onClose: () => void;
   style: string;
   onStyleChange: (style: string) => void;
+  artifact: Artifact;
   viewport?: {
     latitude: number;
     longitude: number;
@@ -44,6 +47,7 @@ export default function MapSettingsDialog({
   onClose,
   style,
   onStyleChange,
+  artifact,
   viewport,
 }: MapSettingsDialogProps) {
   return (
@@ -73,6 +77,12 @@ export default function MapSettingsDialog({
               />
             ))}
           </RadioGroup>
+        </Box>
+
+        <Divider sx={{ mb: 2 }} />
+
+        <Box sx={{ mb: 3 }}>
+          <CoverImagePicker artifact={artifact} />
         </Box>
 
         <Divider sx={{ mb: 2 }} />

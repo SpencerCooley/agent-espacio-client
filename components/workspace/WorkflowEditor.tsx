@@ -18,9 +18,10 @@ import {
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { Box, Button, Typography, Paper, TextField, IconButton, Tooltip, Drawer, useTheme, useMediaQuery } from '@mui/material';
-import { Add, Delete, Undo, Redo, MenuOpen as MenuOpenIcon, Close as CloseIcon } from '@mui/icons-material';
+import { Add, Delete, Undo, Redo, MenuOpen as MenuOpenIcon, Close as CloseIcon, Settings as SettingsIcon } from '@mui/icons-material';
 import WorkflowNode from './WorkflowNode';
 import WorkflowNodePanel from './WorkflowNodePanel';
+import WorkflowSettingsDialog from './WorkflowSettingsDialog';
 import { artifactService } from '../../services/artifacts';
 import { useThemeContext } from '../../context/ThemeContext';
 
@@ -50,6 +51,9 @@ interface WorkflowEditorProps {
   artifact: {
     id: string;
     name: string;
+    description?: string | null;
+    meta?: Record<string, unknown> | null;
+    folder_id?: string;
     content: {
       nodes?: Array<{
         id: string;
@@ -96,6 +100,7 @@ function WorkflowEditorInner({ artifact }: WorkflowEditorProps) {
   const [selectedNode, setSelectedNode] = useState<any>(null);
   const [name, setName] = useState(artifact.name);
   const lastSavedName = useRef(artifact.name);
+  const [showSettings, setShowSettings] = useState(false);
 
   const viewportRef = useRef(artifact.content?.viewport || { x: 0, y: 0, zoom: 1 });
   const hasRestoredViewport = useRef(false);
@@ -602,6 +607,14 @@ function WorkflowEditorInner({ artifact }: WorkflowEditorProps) {
                   <MenuOpenIcon fontSize="small" />
                 </IconButton>
               </Tooltip>
+              <Tooltip title="Workflow settings">
+                <IconButton
+                  size="small"
+                  onClick={() => setShowSettings(true)}
+                >
+                  <SettingsIcon fontSize="small" />
+                </IconButton>
+              </Tooltip>
             </Paper>
             </Box>
           </Panel>
@@ -675,6 +688,13 @@ function WorkflowEditorInner({ artifact }: WorkflowEditorProps) {
           onUpdate={onUpdateNode}
         />
       </Drawer>
+
+      {/* Settings Dialog */}
+      <WorkflowSettingsDialog
+        open={showSettings}
+        onClose={() => setShowSettings(false)}
+        artifact={artifact}
+      />
     </Box>
   );
 }

@@ -1,27 +1,29 @@
-'use client';
+import FeedClient from "./feed-client";
+import { PublicAppearanceProvider } from "../../context/PublicAppearanceContext";
+import { getPublicAppearance } from "@/lib/server/api";
 
-import React, { Suspense } from 'react';
-import { useSearchParams } from 'next/navigation';
-import PublicFeed from '../../components/public/PublicFeed';
+// Rendered at request time so the public theme/branding can be seeded into
+// the page — no flash of the default theme while the client fetches. The
+// underlying API call is cached (revalidate: 60), so this stays cheap.
+export const dynamic = "force-dynamic";
 
-function FeedInner() {
-  const searchParams = useSearchParams();
-  const tag = searchParams.get('tag') || undefined;
+export default async function TagFeedPage() {
+  const appearance = await getPublicAppearance().catch(() => null);
 
   return (
-    <PublicFeed
-      tag={tag}
-      title={tag ? `${tag}` : 'Feed'}
-    />
-  );
-}
-
-// useSearchParams() requires a Suspense boundary so the page shell can be
-// statically generated; the param-dependent content renders on the client.
-export default function TagFeedPage() {
-  return (
-    <Suspense fallback={null}>
-      <FeedInner />
-    </Suspense>
+    <PublicAppearanceProvider
+      initial={
+        appearance
+          ? {
+              themeId: appearance.theme.theme_id,
+              mode: appearance.theme.mode,
+              definition: appearance.theme.definition,
+              branding: appearance.branding,
+            }
+          : undefined
+      }
+    >
+      <FeedClient />
+    </PublicAppearanceProvider>
   );
 }

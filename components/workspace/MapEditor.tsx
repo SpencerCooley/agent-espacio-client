@@ -1931,6 +1931,7 @@ export default function MapEditor({ artifact }: MapEditorProps) {
         onClose={() => setShowSettingsDialog(false)}
         style={style}
         onStyleChange={handleStyleChange}
+        artifact={artifact}
         viewport={currentViewport}
       />
 

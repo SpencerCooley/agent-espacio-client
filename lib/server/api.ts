@@ -86,6 +86,10 @@ export interface PublicViewData {
     description?: string;
     content: any;
     public_magic_id: string;
+    created_at?: string | null;
+    updated_at?: string | null;
+    /** Signed URL for the featured image (meta.cover_asset_id), when set. */
+    cover_url?: string | null;
     publish?: {
       render_mode: string;
       slug: string;
@@ -98,7 +102,7 @@ export interface PublicViewData {
   public_theme?: {
     theme_id: string;
     mode: "light" | "dark";
-    definition: any;
+    definition: PublicThemeDefinition | null;
   };
 }
 
@@ -142,6 +146,38 @@ export interface PublicSitemapItem {
 export interface PublicSitemapData {
   items: PublicSitemapItem[];
   total: number;
+}
+
+// ============================================================================
+// Public appearance (theme + branding, seeded into SSR'd public pages)
+// ============================================================================
+
+export interface PublicThemeDefinition {
+  id: string;
+  name: string;
+  light_definition: Record<string, any>;
+  dark_definition: Record<string, any>;
+}
+
+export interface PublicAppearanceData {
+  theme: {
+    theme_id: string;
+    mode: "light" | "dark";
+    definition: PublicThemeDefinition | null;
+  };
+  branding: {
+    logo_light_asset_id: string | null;
+    logo_dark_asset_id: string | null;
+    background_asset_id: string | null;
+    background_style: "cover" | "tile";
+    logo_light_url: string | null;
+    logo_dark_url: string | null;
+    background_url: string | null;
+  };
+}
+
+export function getPublicAppearance(): Promise<PublicAppearanceData> {
+  return serverFetch<PublicAppearanceData>(`/public/appearance`);
 }
 
 // ============================================================================
