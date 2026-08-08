@@ -1,3 +1,5 @@
+# syntax=docker/dockerfile:1
+#
 # Agent Espacio Client — Next.js server (production)
 # Multi-stage build. The Next.js server renders public pages server-side
 # (SSR metadata, JSON-LD, semantic HTML) and serves Route Handlers for the
@@ -14,7 +16,9 @@ FROM node:24-alpine AS base
 FROM base AS deps
 WORKDIR /app
 COPY package.json package-lock.json ./
-RUN npm ci
+# BuildKit cache mount: npm's download cache persists between builds,
+# so lockfile changes don't re-download the world on a 1-vCPU box.
+RUN --mount=type=cache,target=/root/.npm npm ci
 
 FROM base AS builder
 WORKDIR /app
@@ -37,7 +41,9 @@ ENV NEXT_PUBLIC_SITE_DESCRIPTION=$NEXT_PUBLIC_SITE_DESCRIPTION
 ENV NEXT_PUBLIC_OG_IMAGE_URL=$NEXT_PUBLIC_OG_IMAGE_URL
 ENV NEXT_PUBLIC_FAVICON_URL=$NEXT_PUBLIC_FAVICON_URL
 
-RUN npm run build
+# Next's build cache persists between builds — incremental builds are
+# dramatically faster (only changed pages recompile).
+RUN --mount=type=cache,target=/app/.next/cache npm run build
 
 FROM base AS runner
 WORKDIR /app

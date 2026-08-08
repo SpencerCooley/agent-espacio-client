@@ -14,9 +14,23 @@
 #   NEXT_PUBLIC_API_URL=https://api.example.com
 #   NEXT_PUBLIC_SITE_URL=https://app.example.com
 #   CLIENT_PORT=3000
+#
+# Two ways to run:
+#
+#   A) Build on this machine (fine locally, slow on a 1-vCPU VPS):
+#        docker compose up -d --build
+#
+#   B) Pull a prebuilt image (recommended for the VPS — no build there at all):
+#        # on your dev machine:
+#        CLIENT_IMAGE=ghcr.io/<you>/agentespacio-client:latest \
+#          docker compose build && docker compose push
+#        # on the server:
+#        CLIENT_IMAGE=ghcr.io/<you>/agentespacio-client:latest \
+#          docker compose pull && docker compose up -d
 
 services:
   client:
+    image: ${CLIENT_IMAGE:-agentespacio-client:latest}
     build:
       context: .
       args:
