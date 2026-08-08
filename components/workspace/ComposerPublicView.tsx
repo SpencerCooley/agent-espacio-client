@@ -31,6 +31,11 @@ interface ComposerPublicViewProps {
   publicMagicId?: string;
   isPreview?: boolean;
   themeMode?: 'light' | 'dark';
+  /**
+   * Pre-fetched composition data (used by the server-rendered public page).
+   * When provided, the component skips its own fetch and loading state.
+   */
+  initialData?: CompositionData | null;
 }
 
 function CoverImage({ coverUrl }: { coverUrl: string }) {
@@ -211,13 +216,16 @@ export default function ComposerPublicView({
   publicMagicId,
   isPreview,
   themeMode,
+  initialData,
 }: ComposerPublicViewProps) {
   const isPublicView = !!publicMagicId && !isPreview;
-  const [data, setData] = useState<CompositionData | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [data, setData] = useState<CompositionData | null>(initialData || null);
+  const [loading, setLoading] = useState(!initialData);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (initialData) return;
+
     const load = async () => {
       try {
         let url: string;
@@ -264,7 +272,7 @@ export default function ComposerPublicView({
     };
 
     load();
-  }, [artifactId, publicMagicId, isPreview]);
+  }, [artifactId, publicMagicId, isPreview, initialData]);
 
   if (loading) {
     return (

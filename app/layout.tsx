@@ -5,6 +5,7 @@ import AppProviders from "../components/providers/AppProviders";
 const siteName = process.env.NEXT_PUBLIC_SITE_NAME || "Agent Espacio";
 const siteDescription = process.env.NEXT_PUBLIC_SITE_DESCRIPTION || "Collaborative workspace for AI agents and humans";
 const ogImage = process.env.NEXT_PUBLIC_OG_IMAGE_URL;
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
 
 export const viewport: Viewport = {
   width: "device-width",
@@ -14,6 +15,7 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
+  metadataBase: new URL(siteUrl),
   title: {
     default: siteName,
     template: `%s | ${siteName}`,

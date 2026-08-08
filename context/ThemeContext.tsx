@@ -34,7 +34,6 @@ const defaultThemeOptions: ThemeOptions = {
 export const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [mounted, setMounted] = useState(false);
   const [mode, setMode] = useState<ThemeMode>('dark');
   const [currentThemeId, setCurrentThemeId] = useState<string>('');
   const [themeDef, setThemeDef] = useState<ThemeDefinition | null>(null);
@@ -42,8 +41,6 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    setMounted(true);
-
     // Migrate old localStorage key from themeName -> themeId
     const oldName = localStorage.getItem('themeName');
     if (oldName) {
@@ -91,10 +88,6 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       setLoading(false);
     }
   }, []);
-
-  if (!mounted) {
-    return null;
-  }
 
   const toggleTheme = () => {
     const newMode = mode === 'light' ? 'dark' : 'light';

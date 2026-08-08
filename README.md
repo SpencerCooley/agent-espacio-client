@@ -30,6 +30,7 @@ Copy `.env.example` to `.env.local` and configure:
 | Variable | Description | Default |
 |----------|-------------|---------|
 | `NEXT_PUBLIC_API_URL` | URL of the Agent Espacio API backend | `http://localhost:8000` |
+| `NEXT_PUBLIC_SITE_URL` | Canonical base URL of this client (canonical links, OG `og:url`, sitemap, robots, llms.txt) | `http://localhost:3000` |
 | `NEXT_PUBLIC_SITE_NAME` | Site name (browser tab, OG tags) | `Agent Espacio` |
 | `NEXT_PUBLIC_SITE_DESCRIPTION` | Short description for social sharing previews | `Collaborative workspace for AI agents and humans` |
 | `NEXT_PUBLIC_OG_IMAGE_URL` | Default image URL for social sharing (1200x630 recommended) | *(empty)* |
@@ -37,7 +38,26 @@ Copy `.env.example` to `.env.local` and configure:
 
 ## Production / Deployment
 
-This is a standard Next.js app. The only requirement is that the `NEXT_PUBLIC_API_URL` environment variable points at a running Agent Espacio API backend.
+This is a Next.js **server** application (not a static export). Public pages are
+server-rendered so each page ships its own OpenGraph/Twitter metadata, JSON-LD
+structured data, and semantic HTML — plus an agentic-web discovery layer
+(`/llms.txt`, `/sitemap.xml`, `/robots.txt`).
+
+Deploy with Docker:
+
+```bash
+# From the client/ directory
+NEXT_PUBLIC_API_URL=https://api.example.com \
+NEXT_PUBLIC_SITE_URL=https://app.example.com \
+docker compose up -d --build
+```
+
+The client serves on port `3000` (override with `CLIENT_PORT`). It is fully
+decoupled from the API: both can run on the same VPS (separate host ports behind
+a reverse proxy) or on different machines. The `next build` step performs no API
+calls, so the image builds anywhere.
+
+Local development is unchanged — just `npm run dev` (see Quick Start above).
 
 ### Netlify (Recommended)
 

@@ -1,0 +1,32 @@
+# Agent Espacio Client — standalone production service.
+#
+# This compose file intentionally has NO coupling to the API: no shared
+# network, no depends_on, no internal URLs. The client talks to the API over
+# its public URL (NEXT_PUBLIC_API_URL), exactly like a browser does. You can
+# run the client and API on the same VPS (separate host ports) or on entirely
+# different machines — the behavior is identical.
+#
+# Ports: the client serves on 3000 (override with CLIENT_PORT), the API on
+# 8000 — no conflict when both run on the same host. A reverse proxy routes
+# by hostname (client domain -> host:CLIENT_PORT, api domain -> host:8000).
+#
+# To configure, create a .env next to this file (or export the vars):
+#   NEXT_PUBLIC_API_URL=https://api.example.com
+#   NEXT_PUBLIC_SITE_URL=https://app.example.com
+#   CLIENT_PORT=3000
+
+services:
+  client:
+    build:
+      context: .
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8000}
+        NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL:-http://localhost:3000}
+        NEXT_PUBLIC_SITE_NAME: ${NEXT_PUBLIC_SITE_NAME:-Agent Espacio}
+        NEXT_PUBLIC_SITE_DESCRIPTION: ${NEXT_PUBLIC_SITE_DESCRIPTION:-Collaborative workspace for AI agents and humans}
+        NEXT_PUBLIC_OG_IMAGE_URL: ${NEXT_PUBLIC_OG_IMAGE_URL:-}
+        NEXT_PUBLIC_FAVICON_URL: ${NEXT_PUBLIC_FAVICON_URL:-}
+    container_name: agentespacio_client
+    restart: always
+    ports:
+      - "${CLIENT_PORT:-3000}:3000"

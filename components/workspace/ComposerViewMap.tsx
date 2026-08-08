@@ -215,6 +215,17 @@ export default function ComposerViewMap({ content, name, publicMagicId, isPrevie
       <Box
         ref={mapContainerRef}
         sx={{
+          // The map root must be positioned so marker/pane absolutely-positioned
+          // children resolve against THIS box. Maplibre normally adds
+          // `maplibregl-map` (position: relative) to the container itself, but a
+          // React re-render (theme/appearance updates after the map mounts) can
+          // rewrite className and clobber it — losing the positioning context and
+          // letting markers paint outside the box. Set it via sx so React owns it.
+          position: 'relative',
+          // Hard containment: nothing inside the map may paint outside this box,
+          // regardless of library internals or mount timing.
+          contain: 'paint',
+          isolation: 'isolate',
           width: '100%',
           height: 400,
           borderRadius: 1,
