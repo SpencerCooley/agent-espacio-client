@@ -78,6 +78,11 @@ export interface PublicViewData {
     human_readable_size: string;
     is_image: boolean;
     public_magic_id: string;
+    download_url: string;
+    thumbnail_url?: string | null;
+    preview?: string | null;
+    created_at?: string | null;
+    updated_at?: string | null;
   };
   artifact?: {
     id: string;

@@ -49,7 +49,13 @@ export async function GET() {
       lines.push(`## Other public items (${others.length})`);
       lines.push("");
       for (const item of others) {
-        lines.push(`- [${item.name} (${item.kind})](${SITE_URL}/public/view/${item.public_magic_id})`);
+        if (item.kind === "asset") {
+          lines.push(
+            `- [${item.name}](${SITE_URL}/public/view/${item.public_magic_id}) — public asset, downloadable at ${SITE_URL}/public/assets/${item.public_magic_id}/download`
+          );
+        } else {
+          lines.push(`- [${item.name} (${item.kind})](${SITE_URL}/public/view/${item.public_magic_id})`);
+        }
       }
       lines.push("");
     }

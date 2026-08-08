@@ -64,6 +64,7 @@ import { useAuthBlob } from '../../hooks/useAuthBlob';
 import { useWebSocket } from '../../context/WebSocketContext';
 import CodeBlock from './CodeBlock';
 import DiffViewer from './DiffViewer';
+import CoverImagePicker from './CoverImagePicker';
 
 interface RepoViewerProps {
   artifact: Artifact;
@@ -1052,6 +1053,10 @@ export default function RepoViewer({ artifact }: RepoViewerProps) {
       >
         <DialogTitle>Repository Settings</DialogTitle>
         <DialogContent>
+          <Box sx={{ mb: 2 }}>
+            <CoverImagePicker artifact={artifact} />
+          </Box>
+          <Divider sx={{ mb: 2 }} />
           <FormControl component="fieldset" sx={{ width: '100%', mt: 1 }}>
             <FormLabel component="legend" sx={{ mb: 1 }}>Artifact Type</FormLabel>
             <RadioGroup

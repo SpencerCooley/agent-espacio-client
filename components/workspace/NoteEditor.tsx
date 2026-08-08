@@ -58,9 +58,11 @@ import FormatClearIcon from '@mui/icons-material/FormatClear';
 import LinkIcon from '@mui/icons-material/Link';
 import HorizontalRuleIcon from '@mui/icons-material/HorizontalRule';
 import TagIcon from '@mui/icons-material/Tag';
+import SettingsIcon from '@mui/icons-material/Settings';
 import { artifactService, Artifact } from '../../services/artifacts';
 import { assetService, getAssetDownloadUrl } from '../../services/assets';
 import AssetImageNodeView from './AssetImageNodeView';
+import NoteSettingsDialog from './NoteSettingsDialog';
 
 const TEXT_COLORS = [
   { label: 'Black', value: '#000000' },
@@ -118,6 +120,7 @@ export default function NoteEditor({ artifact }: NoteEditorProps) {
   const [highlightAnchor, setHighlightAnchor] = useState<null | HTMLElement>(null);
   const [linkAnchor, setLinkAnchor] = useState<null | HTMLElement>(null);
   const [linkUrl, setLinkUrl] = useState('');
+  const [showSettings, setShowSettings] = useState(false);
   const saveRef = useRef<(json: Record<string, unknown>) => Promise<void>>(null!);
   const [selectedImage, setSelectedImage] = useState<{
     pos: number;
@@ -433,15 +436,22 @@ export default function NoteEditor({ artifact }: NoteEditorProps) {
         }
       `}</style>
       <Box className="task-list-fix" sx={{ display: 'flex', flexDirection: 'column', height: '100%', gap: 0 }}>
-      <TextField
-        variant="outlined"
-        size="small"
-        value={name}
-        onChange={(e) => handleNameChange(e.target.value)}
-        onBlur={handleNameBlur}
-        placeholder="Untitled"
-        sx={{ mb: 1.5 }}
-      />
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5 }}>
+        <TextField
+          variant="outlined"
+          size="small"
+          value={name}
+          onChange={(e) => handleNameChange(e.target.value)}
+          onBlur={handleNameBlur}
+          placeholder="Untitled"
+          sx={{ flex: 1 }}
+        />
+        <Tooltip title="Note settings">
+          <IconButton size="small" onClick={() => setShowSettings(true)}>
+            <SettingsIcon fontSize="small" />
+          </IconButton>
+        </Tooltip>
+      </Box>
       <Paper
         variant="outlined"
         sx={{
@@ -1042,6 +1052,12 @@ export default function NoteEditor({ artifact }: NoteEditorProps) {
         )}
       </Paper>
       </Box>
+
+      <NoteSettingsDialog
+        open={showSettings}
+        onClose={() => setShowSettings(false)}
+        artifact={artifact}
+      />
     </Box>
   );
 }

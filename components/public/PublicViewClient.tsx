@@ -53,6 +53,9 @@ interface PublicViewData {
     human_readable_size: string;
     is_image: boolean;
     public_magic_id: string;
+    download_url: string;
+    thumbnail_url?: string | null;
+    preview?: string | null;
   };
   artifact?: {
     id: string;
@@ -736,6 +739,9 @@ export default function PublicViewClient() {
           human_readable_size={asset.human_readable_size}
           is_image={asset.is_image}
           public_magic_id={asset.public_magic_id}
+          download_url={asset.download_url}
+          thumbnail_url={asset.thumbnail_url}
+          preview={asset.preview}
         />
       );
     }

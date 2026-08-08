@@ -3,6 +3,7 @@ import PublicShell from "@/components/public/PublicShell";
 import PublicViewClient from "@/components/public/PublicViewClient";
 import ComposerPublicView from "@/components/workspace/ComposerPublicView";
 import { PublicAppearanceProvider } from "@/context/PublicAppearanceContext";
+import { extractNoteText } from "@/lib/server/content-text";
 import {
   API_BASE_URL,
   SITE_NAME,
@@ -34,7 +35,6 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     const view = await getPublicView(magicId);
     const name = view.folder?.name || view.asset?.name || view.artifact?.name || magicId;
     let description = view.artifact?.description ?? undefined;
-    let image: string | undefined;
     let ogType: "website" | "article" = "website";
 
     if (view.kind === "artifact" && view.artifact?.type === "composer") {
@@ -45,20 +45,16 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
           comp.composer.description ||
           comp.composer.meta?.excerpt ||
           undefined;
-        if (comp.composer.cover_url) {
-          image = `${API_BASE_URL}${comp.composer.cover_url}`;
-        }
       }
       ogType = "article";
     }
 
-    // Any artifact type with a featured image (meta.cover_asset_id → cover_url)
-    if (!image && view.artifact?.cover_url) {
-      image = `${API_BASE_URL}${view.artifact.cover_url}`;
-    }
-
     const url = `${SITE_URL}/public/view/${magicId}`;
 
+    // og:image is provided by the opengraph-image.tsx file convention in the
+    // same route segment. It handles redirects to actual covers and renders a
+    // branded fallback card for everything else. The convention URL is stable
+    // and never expires, unlike the signed cover URLs we used previously.
     return {
       title: name,
       description,
@@ -68,13 +64,11 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
         type: ogType,
         url,
         siteName: SITE_NAME,
-        images: image ? [{ url: image, width: 1200, height: 630 }] : undefined,
       },
       twitter: {
         card: "summary_large_image",
         title: name,
         description,
-        images: image ? [image] : undefined,
       },
       alternates: { canonical: url },
     };
@@ -92,18 +86,19 @@ function safeJsonLd(obj: unknown): string {
 }
 
 /**
- * JSON-LD for non-composer artifact pages (maps, workflows). The interactive
- * body stays client-rendered; this gives crawlers/social cards the metadata.
+ * JSON-LD for non-composer artifact pages (maps, workflows, notes, galleries, repos).
+ * The interactive body stays client-rendered; this gives crawlers/social cards the metadata.
  */
 function buildArtifactJsonLd(view: PublicViewData, magicId: string) {
   if (view.kind !== "artifact" || !view.artifact) return null;
   const type = view.artifact.type;
-  if (type !== "map" && type !== "workflow") return null;
+  if (type !== "map" && type !== "workflow" && type !== "note" && type !== "gallery" && type !== "repo") {
+    return null;
+  }
 
   const canonical = `${SITE_URL}/public/view/${magicId}`;
-  return {
+  const base = {
     "@context": "https://schema.org",
-    "@type": type === "map" ? "Map" : "CreativeWork",
     name: view.artifact.name,
     description: view.artifact.description || undefined,
     datePublished: view.artifact.created_at || undefined,
@@ -112,6 +107,67 @@ function buildArtifactJsonLd(view: PublicViewData, magicId: string) {
       ? `${API_BASE_URL}${view.artifact.cover_url}`
       : undefined,
     url: canonical,
+    inLanguage: "en",
+    mainEntityOfPage: canonical,
+    publisher: { "@type": "Organization", name: SITE_NAME },
+  };
+
+  if (type === "map") {
+    return { ...base, "@type": "Map" };
+  }
+  if (type === "workflow") {
+    return { ...base, "@type": "CreativeWork" };
+  }
+  if (type === "note") {
+    const body = extractNoteText(view.artifact.content?.content, 2000);
+    return { ...base, "@type": "Article", articleBody: body || undefined };
+  }
+  if (type === "gallery") {
+    return { ...base, "@type": "ImageGallery" };
+  }
+  if (type === "repo") {
+    const publish = view.artifact.content?.publish || view.artifact.publish;
+    const isPublishedSite = publish?.render_mode === "embedded" || publish?.render_mode === "direct";
+    if (isPublishedSite) {
+      return { ...base, "@type": "WebSite" };
+    }
+    return {
+      ...base,
+      "@type": "SoftwareSourceCode",
+      codeRepository: `${API_BASE_URL}/public/repo/${view.artifact.public_magic_id}`,
+    };
+  }
+  return null;
+}
+
+/**
+ * JSON-LD for public asset pages. Tells crawlers exactly what the file is,
+ * where to download it, and what its thumbnail looks like.
+ */
+function buildAssetJsonLd(view: PublicViewData, magicId: string) {
+  if (view.kind !== "asset" || !view.asset) return null;
+
+  const asset = view.asset;
+  const canonical = `${SITE_URL}/public/view/${magicId}`;
+  const mime = asset.mime_type || "";
+
+  let schemaType = "MediaObject";
+  if (asset.is_image) schemaType = "ImageObject";
+  else if (mime.startsWith("video/")) schemaType = "VideoObject";
+  else if (mime.startsWith("audio/")) schemaType = "AudioObject";
+  else if (mime === "application/pdf") schemaType = "DigitalDocument";
+
+  return {
+    "@context": "https://schema.org",
+    "@type": schemaType,
+    name: asset.name,
+    contentUrl: asset.download_url,
+    encodingFormat: asset.mime_type,
+    contentSize: String(asset.size_bytes),
+    thumbnailUrl: asset.thumbnail_url || undefined,
+    url: canonical,
+    datePublished: asset.created_at || undefined,
+    dateModified: asset.updated_at || undefined,
     inLanguage: "en",
     mainEntityOfPage: canonical,
     publisher: { "@type": "Organization", name: SITE_NAME },
@@ -217,9 +273,10 @@ export default async function PublicViewPage({ params }: PageProps) {
 
   if (!isComposer) {
     // Non-composer public pages keep their existing client-rendered
-    // experience; we add JSON-LD so maps/workflows carry full OG/search
+    // experience; we add JSON-LD so maps/workflows/assets carry full OG/search
     // metadata even without a server-rendered body.
-    const jsonLd = buildArtifactJsonLd(view, magicId);
+    const jsonLd =
+      buildArtifactJsonLd(view, magicId) || buildAssetJsonLd(view, magicId);
     return (
       <PublicAppearanceProvider initial={appearanceInitial}>
         {jsonLd && (

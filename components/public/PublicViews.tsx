@@ -11,6 +11,7 @@ import { marked } from 'marked';
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { highlightCode } from '../../lib/prism-highlight';
+import 'prismjs/themes/prism-tomorrow.css';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
@@ -22,6 +23,12 @@ interface AssetViewProps {
   human_readable_size: string;
   is_image: boolean;
   public_magic_id?: string;
+  /** Absolute public download URL (server-provided when available). */
+  download_url?: string;
+  /** Thumbnail/preview URL (images, video, GLB). */
+  thumbnail_url?: string | null;
+  /** Markdown preview text (first 300 chars). */
+  preview?: string | null;
   // For preview mode - allows authenticated download URLs
   downloadUrl?: string;
 }
@@ -33,6 +40,9 @@ export function PublicAssetView({
   human_readable_size,
   is_image,
   public_magic_id,
+  download_url: serverDownloadUrl,
+  thumbnail_url: serverThumbnailUrl,
+  preview: serverPreview,
   downloadUrl: customDownloadUrl
 }: AssetViewProps) {
   const isImage = is_image;
@@ -41,11 +51,15 @@ export function PublicAssetView({
   const isAudio = mime_type?.startsWith('audio/');
   const isPdf = mime_type === 'application/pdf';
   const isGlb = mime_type === 'model/gltf-binary';
-  const downloadUrl = customDownloadUrl || `${API_BASE_URL}/public/assets/${public_magic_id || id}/download`;
-  const posterUrl = isVideo ? `${downloadUrl}?size=512` : undefined;
+  const isJson = mime_type === 'application/json';
+  const isText = mime_type?.startsWith('text/') && !isMarkdown;
+  const downloadUrl = customDownloadUrl || serverDownloadUrl || `${API_BASE_URL}/public/assets/${public_magic_id || id}/download`;
+  const posterUrl = serverThumbnailUrl || (isVideo ? `${downloadUrl}?size=512` : undefined);
 
   const [markdownContent, setMarkdownContent] = useState<string | null>(null);
   const [loadingMarkdown, setLoadingMarkdown] = useState(false);
+  const [rawContent, setRawContent] = useState<string | null>(null);
+  const [loadingRaw, setLoadingRaw] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
 
   useEffect(() => {
@@ -64,6 +78,17 @@ export function PublicAssetView({
         });
     }
   }, [isMarkdown, downloadUrl]);
+
+  useEffect(() => {
+    if (isJson || isText) {
+      setLoadingRaw(true);
+      fetch(downloadUrl)
+        .then((res) => res.text())
+        .then((text) => setRawContent(text))
+        .catch(() => setRawContent(null))
+        .finally(() => setLoadingRaw(false));
+    }
+  }, [isJson, isText, downloadUrl]);
 
   const handleDownload = async () => {
     setIsDownloading(true);
@@ -134,6 +159,11 @@ export function PublicAssetView({
         </Box>
       ) : isMarkdown ? (
         <Paper sx={{ p: 4 }}>
+          {serverPreview && (
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 2, fontStyle: 'italic' }}>
+              {serverPreview}
+            </Typography>
+          )}
           {loadingMarkdown ? (
             <Typography color="text.secondary">Loading markdown...</Typography>
           ) : markdownContent !== null ? (
@@ -169,6 +199,61 @@ export function PublicAssetView({
             </Box>
           ) : (
             <Typography color="text.secondary">Failed to load markdown content</Typography>
+          )}
+        </Paper>
+      ) : isJson ? (
+        <Paper sx={{ p: 3, overflow: 'auto' }}>
+          {loadingRaw ? (
+            <Typography color="text.secondary">Loading...</Typography>
+          ) : rawContent ? (
+            <Box
+              component="pre"
+              sx={{
+                fontFamily: 'monospace',
+                fontSize: 14,
+                lineHeight: 1.5,
+                margin: 0,
+                whiteSpace: 'pre-wrap',
+                wordBreak: 'break-word',
+              }}
+              dangerouslySetInnerHTML={{
+                __html: highlightCode(
+                  (() => {
+                    try {
+                      return JSON.stringify(JSON.parse(rawContent), null, 2);
+                    } catch {
+                      return rawContent;
+                    }
+                  })(),
+                  name
+                ),
+              }}
+            />
+          ) : (
+            <Typography color="text.secondary">Failed to load content</Typography>
+          )}
+        </Paper>
+      ) : isText ? (
+        <Paper sx={{ p: 3, overflow: 'auto' }}>
+          {loadingRaw ? (
+            <Typography color="text.secondary">Loading...</Typography>
+          ) : rawContent !== null ? (
+            <Box
+              component="pre"
+              sx={{
+                fontFamily: 'monospace',
+                fontSize: 14,
+                lineHeight: 1.5,
+                margin: 0,
+                whiteSpace: 'pre-wrap',
+                wordBreak: 'break-word',
+              }}
+            >
+              {rawContent.split('\n').slice(0, 100).join('\n')}
+              {rawContent.split('\n').length > 100 ? '\n\n... (truncated)' : ''}
+            </Box>
+          ) : (
+            <Typography color="text.secondary">Failed to load content</Typography>
           )}
         </Paper>
       ) : (
