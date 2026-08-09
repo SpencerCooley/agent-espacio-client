@@ -163,22 +163,24 @@ export default function ComposerViewRepo({
         <Box
           sx={{
             display: 'flex',
-            alignItems: 'center',
+            flexDirection: { xs: 'column', sm: 'row' },
+            alignItems: { xs: 'stretch', sm: 'center' },
             gap: 1.5,
             mb: 1.5,
-            flexWrap: 'wrap',
           }}
         >
-          <WebIcon sx={{ fontSize: 20, color: 'success.main' }} />
-          <Typography variant="subtitle1" sx={{ fontWeight: 600, flex: 1, minWidth: 0 }}>
-            {name}
-          </Typography>
-          {description && (
-            <Typography variant="body2" color="text.secondary" sx={{ flex: 1, minWidth: 0 }}>
-              {description}
+          <WebIcon sx={{ fontSize: 20, color: 'success.main', display: { xs: 'none', sm: 'block' } }} />
+          <Box sx={{ flex: 1, minWidth: 0 }}>
+            <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
+              {name}
             </Typography>
-          )}
-          <Box sx={{ display: 'flex', gap: 1, flexShrink: 0 }}>
+            {description && (
+              <Typography variant="body2" color="text.secondary">
+                {description}
+              </Typography>
+            )}
+          </Box>
+          <Box sx={{ display: 'flex', gap: 1, flexShrink: 0, flexWrap: 'wrap' }}>
             <Button
               size="small"
               endIcon={<OpenInNewIcon />}
