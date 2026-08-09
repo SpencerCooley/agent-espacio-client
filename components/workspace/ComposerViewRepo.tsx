@@ -87,9 +87,16 @@ export default function ComposerViewRepo({
     return (
       <Paper
         variant="outlined"
-        sx={{ p: 2, display: 'flex', alignItems: 'center', gap: 2, borderRadius: 1 }}
+        sx={{
+          p: 2,
+          display: 'flex',
+          flexDirection: { xs: 'column', sm: 'row' },
+          alignItems: { xs: 'stretch', sm: 'center' },
+          gap: 2,
+          borderRadius: 1,
+        }}
       >
-        <GitBranchIcon sx={{ fontSize: 36, color: 'primary.main', flexShrink: 0 }} />
+        <GitBranchIcon sx={{ fontSize: 36, color: 'primary.main', flexShrink: 0, display: { xs: 'none', sm: 'block' } }} />
         <Box sx={{ flex: 1, minWidth: 0 }}>
           <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
             {name}
@@ -125,7 +132,7 @@ export default function ComposerViewRepo({
             <Typography variant="caption" color="text.secondary">Loading...</Typography>
           )}
         </Box>
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, flexShrink: 0 }}>
+        <Box sx={{ display: 'flex', flexDirection: { xs: 'row', sm: 'column' }, gap: 0.5, flexShrink: 0, flexWrap: 'wrap' }}>
           <Button
             size="small"
             endIcon={<OpenInNewIcon />}
@@ -233,9 +240,16 @@ export default function ComposerViewRepo({
   return (
     <Paper
       variant="outlined"
-      sx={{ p: 2, display: 'flex', alignItems: 'center', gap: 2, borderRadius: 1 }}
+      sx={{
+        p: 2,
+        display: 'flex',
+        flexDirection: { xs: 'column', sm: 'row' },
+        alignItems: { xs: 'stretch', sm: 'center' },
+        gap: 2,
+        borderRadius: 1,
+      }}
     >
-      <GitBranchIcon sx={{ fontSize: 36, color: 'primary.main', flexShrink: 0 }} />
+      <GitBranchIcon sx={{ fontSize: 36, color: 'primary.main', flexShrink: 0, display: { xs: 'none', sm: 'block' } }} />
       <Box sx={{ flex: 1, minWidth: 0 }}>
         <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
           {name}
@@ -271,7 +285,7 @@ export default function ComposerViewRepo({
           <Typography variant="caption" color="text.secondary">Loading...</Typography>
         )}
       </Box>
-      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, flexShrink: 0 }}>
+      <Box sx={{ display: 'flex', flexDirection: { xs: 'row', sm: 'column' }, gap: 0.5, flexShrink: 0, flexWrap: 'wrap' }}>
         {viewUrl && (
           <Button
             size="small"
