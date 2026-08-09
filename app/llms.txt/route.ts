@@ -1,4 +1,10 @@
-import { SITE_URL, SITE_NAME, SITE_DESCRIPTION, getPublicSitemap } from "@/lib/server/api";
+import {
+  SITE_URL,
+  SITE_NAME,
+  SITE_DESCRIPTION,
+  getPublicSitemap,
+  getPublicFeed,
+} from "@/lib/server/api";
 
 export const dynamic = "force-dynamic";
 
@@ -56,6 +62,26 @@ export async function GET() {
         } else {
           lines.push(`- [${item.name} (${item.kind})](${SITE_URL}/public/view/${item.public_magic_id})`);
         }
+      }
+      lines.push("");
+    }
+  } catch {
+    // API unreachable — llms.txt still lists the instance info above.
+  }
+
+  // Curated feed snapshot (top items that appear on the homepage)
+  try {
+    const feedData = await getPublicFeed(undefined, 10, 0);
+    if (feedData.items.length > 0) {
+      lines.push(`## Featured feed items (${feedData.items.length})`);
+      lines.push("");
+      for (const item of feedData.items) {
+        const itemUrl = item.public_magic_id
+          ? `${SITE_URL}/public/view/${item.public_magic_id}`
+          : `${SITE_URL}/public/view/${item.id}`;
+        const tags = item.meta?.tags || [];
+        const tagNote = tags.length > 0 ? ` (${tags.join(", ")})` : "";
+        lines.push(`- [${item.name}](${itemUrl})${item.description ? ` — ${item.description}` : ""}${tagNote}`);
       }
       lines.push("");
     }

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   Box,
   Typography,
@@ -46,6 +46,9 @@ interface FeedResponse {
 interface PublicFeedProps {
   tag?: string;
   title?: string;
+  /** Server-rendered initial items. When provided the component skips the
+   * initial client fetch and renders immediately (useful for SSR + crawlers). */
+  initialItems?: FeedItem[];
 }
 
 type CardSize = 'hero' | 'large' | 'medium' | 'compact';
@@ -231,13 +234,14 @@ function FeedCard({ item, size }: { item: FeedItem; size: CardSize }) {
 /* Main component                                                     */
 /* ------------------------------------------------------------------ */
 
-export default function PublicFeed({ tag, title }: PublicFeedProps) {
-  const [items, setItems] = useState<FeedItem[]>([]);
-  const [loading, setLoading] = useState(true);
+export default function PublicFeed({ tag, title, initialItems }: PublicFeedProps) {
+  const [items, setItems] = useState<FeedItem[]>(initialItems || []);
+  const [loading, setLoading] = useState(!initialItems || initialItems.length === 0);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [hasMore, setHasMore] = useState(false);
   const [offset, setOffset] = useState(0);
+  const hasConsumedInitial = useRef(!!initialItems && initialItems.length > 0);
 
   const pageLimit = tag ? 10 : 20;
 
@@ -266,10 +270,17 @@ export default function PublicFeed({ tag, title }: PublicFeedProps) {
     setHasMore(false);
     setOffset(0);
 
+    if (hasConsumedInitial.current && initialItems && initialItems.length > 0) {
+      setItems(initialItems);
+      setLoading(false);
+      hasConsumedInitial.current = false;
+      return;
+    }
+
     fetchFeed(0, false)
       .catch((err) => setError(err.message || 'Failed to load feed'))
       .finally(() => setLoading(false));
-  }, [fetchFeed, tag]);
+  }, [fetchFeed, tag, initialItems]);
 
   const handleScrollToLatest = () => {
     const el = document.getElementById('latest-section');

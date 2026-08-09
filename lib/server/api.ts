@@ -186,6 +186,33 @@ export function getPublicAppearance(): Promise<PublicAppearanceData> {
 }
 
 // ============================================================================
+// Feed types
+// ============================================================================
+
+export interface FeedItem {
+  id: string;
+  name: string;
+  description?: string;
+  public_magic_id: string | null;
+  created_at?: string;
+  updated_at?: string;
+  meta?: any;
+  cover_url?: string | null;
+  featured_level?: number | null;
+}
+
+export interface FeedResponse {
+  items: FeedItem[];
+  total: number;
+  has_more: boolean;
+  public_theme?: {
+    theme_id: string;
+    mode: "light" | "dark";
+    definition: any;
+  };
+}
+
+// ============================================================================
 // Public data fetchers
 // ============================================================================
 
@@ -195,6 +222,18 @@ export function getPublicView(magicId: string): Promise<PublicViewData> {
 
 export function getPublicComposition(magicId: string): Promise<PublicCompositionData> {
   return serverFetch<PublicCompositionData>(`/public/composition/${magicId}`);
+}
+
+export function getPublicFeed(
+  tag?: string,
+  limit: number = 20,
+  offset: number = 0
+): Promise<FeedResponse> {
+  const query = new URLSearchParams();
+  if (tag) query.set("tag", tag);
+  query.set("limit", String(limit));
+  query.set("offset", String(offset));
+  return serverFetch<FeedResponse>(`/feed?${query.toString()}`, 60);
 }
 
 export function getPublicSitemap(): Promise<PublicSitemapData> {
