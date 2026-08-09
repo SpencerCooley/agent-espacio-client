@@ -2,28 +2,34 @@ import type { Metadata } from "next";
 import PublicFeed from "../components/public/PublicFeed";
 import { PublicAppearanceProvider } from "@/context/PublicAppearanceContext";
 import {
+  API_BASE_URL,
   SITE_NAME,
   SITE_URL,
+  SITE_DESCRIPTION,
   getPublicAppearance,
   getPublicFeed,
 } from "@/lib/server/api";
+
+const ogImage = process.env.NEXT_PUBLIC_OG_IMAGE_URL;
 
 export const dynamic = "force-dynamic";
 
 export async function generateMetadata(): Promise<Metadata> {
   return {
-    title: `Featured | ${SITE_NAME}`,
-    description: `Curated public feed — compositions, stories, and interactive content from ${SITE_NAME}.`,
+    title: { absolute: SITE_NAME },
+    description: SITE_DESCRIPTION,
     openGraph: {
-      title: `Featured | ${SITE_NAME}`,
-      description: `Curated public feed — compositions, stories, and interactive content from ${SITE_NAME}.`,
+      title: { absolute: SITE_NAME },
+      description: SITE_DESCRIPTION,
       type: "website",
       siteName: SITE_NAME,
+      images: ogImage ? [{ url: ogImage }] : undefined,
     },
     twitter: {
       card: "summary_large_image",
-      title: `Featured | ${SITE_NAME}`,
-      description: `Curated public feed — compositions, stories, and interactive content from ${SITE_NAME}.`,
+      title: { absolute: SITE_NAME },
+      description: SITE_DESCRIPTION,
+      images: ogImage ? [ogImage] : undefined,
     },
     alternates: { canonical: `${SITE_URL}/` },
   };
@@ -37,7 +43,7 @@ function buildFeedJsonLd(items: any[]) {
       "@type": "CreativeWork",
       name: item.name,
       description: item.description || undefined,
-      image: item.cover_url ? `${process.env.NEXT_PUBLIC_API_URL || ""}${item.cover_url}` : undefined,
+      image: item.cover_url ? `${API_BASE_URL}${item.cover_url}` : undefined,
       url: item.public_magic_id
         ? `${SITE_URL}/public/view/${item.public_magic_id}`
         : undefined,

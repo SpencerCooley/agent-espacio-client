@@ -2,11 +2,15 @@ import type { Metadata } from "next";
 import FeedClient from "./feed-client";
 import { PublicAppearanceProvider } from "../../context/PublicAppearanceContext";
 import {
+  API_BASE_URL,
   SITE_NAME,
   SITE_URL,
+  SITE_DESCRIPTION,
   getPublicAppearance,
   getPublicFeed,
 } from "@/lib/server/api";
+
+const ogImage = process.env.NEXT_PUBLIC_OG_IMAGE_URL;
 
 export const dynamic = "force-dynamic";
 
@@ -19,17 +23,32 @@ export async function generateMetadata({
 }: PageProps): Promise<Metadata> {
   const { tag } = await searchParams;
   const tagStr = typeof tag === "string" ? tag : undefined;
-  const title = tagStr ? `${tagStr} | ${SITE_NAME}` : `Feed | ${SITE_NAME}`;
+  const title = tagStr
+    ? { absolute: `${tagStr} | ${SITE_NAME}` }
+    : { absolute: SITE_NAME };
   const description = tagStr
-    ? `Public compositions tagged with ${tagStr} on ${SITE_NAME}.`
-    : `Curated public feed — compositions, stories, and interactive content from ${SITE_NAME}.`;
+    ? `${SITE_DESCRIPTION} — tagged: ${tagStr}`
+    : SITE_DESCRIPTION;
 
   return {
     title,
     description,
-    openGraph: { title, description, type: "website", siteName: SITE_NAME },
-    twitter: { card: "summary_large_image", title, description },
-    alternates: { canonical: `${SITE_URL}/feed${tagStr ? `?tag=${encodeURIComponent(tagStr)}` : ""}` },
+    openGraph: {
+      title,
+      description,
+      type: "website",
+      siteName: SITE_NAME,
+      images: ogImage ? [{ url: ogImage }] : undefined,
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+      images: ogImage ? [ogImage] : undefined,
+    },
+    alternates: {
+      canonical: `${SITE_URL}/feed${tagStr ? `?tag=${encodeURIComponent(tagStr)}` : ""}`,
+    },
   };
 }
 
@@ -41,7 +60,7 @@ function buildFeedJsonLd(items: any[], tagStr?: string) {
       "@type": "CreativeWork",
       name: item.name,
       description: item.description || undefined,
-      image: item.cover_url ? `${process.env.NEXT_PUBLIC_API_URL || ""}${item.cover_url}` : undefined,
+      image: item.cover_url ? `${API_BASE_URL}${item.cover_url}` : undefined,
       url: item.public_magic_id
         ? `${SITE_URL}/public/view/${item.public_magic_id}`
         : undefined,
