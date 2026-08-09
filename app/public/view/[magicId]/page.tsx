@@ -201,6 +201,7 @@ function ComposerSemanticPage({
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "Article",
+    "@id": canonical,
     headline: name,
     description: description || undefined,
     datePublished: composer?.created_at || undefined,
@@ -212,8 +213,16 @@ function ComposerSemanticPage({
     publisher: { "@type": "Organization", name: SITE_NAME },
     hasPart: sections.map((s, i) => ({
       "@type": s.artifact?.mime_type ? "MediaObject" : "CreativeWork",
+      "@id": s.artifact?.public_magic_id
+        ? `${SITE_URL}/public/view/${s.artifact.public_magic_id}`
+        : undefined,
       name: s.artifact?.name || `Section ${i + 1}`,
       description: s.artifact?.description || s.caption || undefined,
+      url: s.artifact?.public_magic_id
+        ? `${SITE_URL}/public/view/${s.artifact.public_magic_id}`
+        : s.artifact_id
+          ? `${SITE_URL}/public/view/${s.artifact_id}`
+          : undefined,
       position: i + 1,
     })),
   };

@@ -125,11 +125,15 @@ function getFeaturedCardSize(level: number): CardSize {
 /* Sub-component: FeedCard                                            */
 /* ------------------------------------------------------------------ */
 
+const SITE_URL_CLIENT = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
+
 function FeedCard({ item, size }: { item: FeedItem; size: CardSize }) {
   const cfg = SIZE_CONFIG[size];
   const itemUrl = item.public_magic_id
-    ? `/public/view/${item.public_magic_id}`
-    : '#';
+    ? `${SITE_URL_CLIENT}/public/view/${item.public_magic_id}`
+    : item.id
+      ? `${SITE_URL_CLIENT}/public/view/${item.id}`
+      : '#';
   const tags = item.meta?.tags || [];
   const coverUrl = item.cover_url
     ? `${API_BASE_URL}${item.cover_url}`

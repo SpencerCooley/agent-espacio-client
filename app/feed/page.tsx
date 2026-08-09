@@ -73,6 +73,7 @@ function buildFeedJsonLd(items: any[], tagStr?: string) {
   return {
     "@context": "https://schema.org",
     "@type": "CollectionPage",
+    "@id": `${SITE_URL}/feed${tagStr ? `?tag=${encodeURIComponent(tagStr)}` : ""}`,
     name: tagStr ? `${tagStr} | ${SITE_NAME}` : `Feed | ${SITE_NAME}`,
     url: `${SITE_URL}/feed${tagStr ? `?tag=${encodeURIComponent(tagStr)}` : ""}`,
     mainEntity: {

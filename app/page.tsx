@@ -56,6 +56,7 @@ function buildFeedJsonLd(items: any[]) {
   return {
     "@context": "https://schema.org",
     "@type": "CollectionPage",
+    "@id": `${SITE_URL}/`,
     name: `Featured | ${SITE_NAME}`,
     url: `${SITE_URL}/`,
     mainEntity: {
