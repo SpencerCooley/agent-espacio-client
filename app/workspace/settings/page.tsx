@@ -7,6 +7,7 @@ import { useApp } from '../../../context/AppContext';
 import { useThemeContext } from '../../../context/ThemeContext';
 import { settingsService, PublicTheme } from '../../../services/settings';
 import { repoService, SshKey } from '../../../services/repos';
+import { Profile, getMyProfile, updateMyProfile, uploadAvatar } from '../../../services/profiles';
 import {
   Typography,
   Paper,
@@ -32,6 +33,7 @@ import {
   DialogContent,
   DialogActions,
   Alert,
+  CircularProgress,
 } from '@mui/material';
 import {
   Brightness4 as DarkModeIcon,
@@ -47,6 +49,7 @@ import {
   Info as InfoIcon,
 } from '@mui/icons-material';
 import Link from 'next/link';
+import ProfileEditor from '../../../components/workspace/ProfileEditor';
 
 function PublicAppearanceSection() {
   const [publicTheme, setPublicTheme] = useState<PublicTheme>({ theme_id: '', mode: 'dark' });
@@ -367,6 +370,52 @@ function SettingsContent() {
   const { user } = useApp();
   const { mode, toggleTheme, currentThemeId, setThemeId, availableThemes } = useThemeContext();
   const isAdmin = user?.role === 'admin';
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [profileLoading, setProfileLoading] = useState(true);
+  const [profileError, setProfileError] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+
+  useEffect(() => {
+    loadProfile();
+  }, []);
+
+  const loadProfile = async () => {
+    try {
+      setProfileLoading(true);
+      setProfileError(null);
+      const data = await getMyProfile();
+      setProfile(data);
+    } catch (err) {
+      setProfileError(err instanceof Error ? err.message : 'Failed to load profile');
+    } finally {
+      setProfileLoading(false);
+    }
+  };
+
+  const handleProfileUpdate = async (data: { display_name?: string; bio?: string }) => {
+    setIsSaving(true);
+    try {
+      const updated = await updateMyProfile(data);
+      setProfile(updated);
+    } catch (err) {
+      setProfileError(err instanceof Error ? err.message : 'Failed to update profile');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleAvatarUpload = async (file: File) => {
+    setIsUploading(true);
+    try {
+      const updated = await uploadAvatar(file);
+      setProfile(updated);
+    } catch (err) {
+      setProfileError(err instanceof Error ? err.message : 'Failed to upload avatar');
+    } finally {
+      setIsUploading(false);
+    }
+  };
 
   const handleThemeChange = (event: SelectChangeEvent<string>) => {
     setThemeId(event.target.value);
@@ -388,8 +437,37 @@ function SettingsContent() {
         </Typography>
       </Box>
 
-      {/* User Info */}
+      {/* Profile / User Info */}
       <Paper sx={{ mb: 3 }}>
+        <Typography variant="h6" sx={{ px: 2, pt: 2, pb: 1 }} color="text.primary">
+          Profile
+        </Typography>
+        <Divider />
+        {profileLoading ? (
+          <Box sx={{ p: 3, textAlign: 'center' }}>
+            <CircularProgress size={24} />
+          </Box>
+        ) : profileError ? (
+          <Alert severity="error" sx={{ m: 2 }}>
+            {profileError}
+          </Alert>
+        ) : profile ? (
+          <ProfileEditor
+            profile={profile}
+            onProfileUpdate={handleProfileUpdate}
+            onAvatarUpload={handleAvatarUpload}
+            isSaving={isSaving}
+            isUploading={isUploading}
+          />
+        ) : null}
+      </Paper>
+
+      {/* Account Info */}
+      <Paper sx={{ mb: 3 }}>
+        <Typography variant="h6" sx={{ px: 2, pt: 2, pb: 1 }} color="text.primary">
+          Account
+        </Typography>
+        <Divider />
         <List>
           <ListItem>
             <ListItemIcon>

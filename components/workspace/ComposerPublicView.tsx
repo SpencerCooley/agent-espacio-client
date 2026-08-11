@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { Box, Typography, Paper, Alert, Divider } from '@mui/material';
 import { Warning as WarningIcon } from '@mui/icons-material';
 import dynamic from 'next/dynamic';
+import AuthorByline from './AuthorByline';
 
 const ComposerViewNote = dynamic(() => import('./ComposerViewNote'), { ssr: false });
 const ComposerViewMap = dynamic(() => import('./ComposerViewMap'), { ssr: false });
@@ -308,6 +309,10 @@ export default function ComposerPublicView({
       <Typography variant="h1" sx={{ fontWeight: 700, mb: 1 }}>
         {composer.name}
       </Typography>
+
+      {/* Author Byline */}
+      <AuthorByline author={composer.author} publishedAt={composer.published_at} />
+
       {composer.description && (
         <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
           {composer.description}

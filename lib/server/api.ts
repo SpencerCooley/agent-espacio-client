@@ -199,6 +199,12 @@ export interface FeedItem {
   meta?: any;
   cover_url?: string | null;
   featured_level?: number | null;
+  author?: {
+    user_id: number;
+    display_name: string | null;
+    avatar_url: string | null;
+  } | null;
+  published_at?: string | null;
 }
 
 export interface FeedResponse {
@@ -238,4 +244,44 @@ export function getPublicFeed(
 
 export function getPublicSitemap(): Promise<PublicSitemapData> {
   return serverFetch<PublicSitemapData>("/public/sitemap", 300);
+}
+
+// ============================================================================
+// Public profile types
+// ============================================================================
+
+export interface PublicCompositionInfo {
+  id: string;
+  name: string;
+  description?: string | null;
+  cover_url?: string | null;
+  published_at?: string | null;
+  public_magic_id: string;
+}
+
+export interface PublicProfileWithCompositions {
+  user_id: number;
+  display_name: string | null;
+  bio: string | null;
+  avatar_url: string | null;
+  compositions: PublicCompositionInfo[];
+  total: number;
+  has_more: boolean;
+}
+
+export interface PublicAuthorListItem {
+  user_id: number;
+  display_name: string;
+  bio: string | null;
+  avatar_url: string | null;
+  composition_count: number;
+  latest_published_at: string | null;
+}
+
+export function getPublicProfile(userId: number): Promise<PublicProfileWithCompositions> {
+  return serverFetch<PublicProfileWithCompositions>(`/public/profiles/${userId}`, 30);
+}
+
+export function getPublicAuthors(): Promise<PublicAuthorListItem[]> {
+  return serverFetch<PublicAuthorListItem[]>("/public/authors", 60);
 }

@@ -13,6 +13,7 @@ import {
 } from '@mui/material';
 import NextLink from 'next/link';
 import PublicShell from './PublicShell';
+import AuthorByline from '../workspace/AuthorByline';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
@@ -30,6 +31,12 @@ interface FeedItem {
   meta?: any;
   cover_url?: string | null;
   featured_level?: number | null;
+  author?: {
+    user_id: number;
+    display_name: string | null;
+    avatar_url: string | null;
+  } | null;
+  published_at?: string | null;
 }
 
 interface FeedResponse {
@@ -211,6 +218,11 @@ function FeedCard({ item, size }: { item: FeedItem; size: CardSize }) {
               {item.description}
             </Typography>
           )}
+
+          {/* Author byline */}
+          <Box sx={{ mt: 'auto' }}>
+            <AuthorByline author={item.author || null} publishedAt={item.published_at || null} />
+          </Box>
         </Box>
       </Link>
 

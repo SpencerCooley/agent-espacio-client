@@ -24,12 +24,15 @@ import {
   Image as ImageIcon,
   CloudUpload as UploadIcon,
   Close as CloseIcon,
+  Person as PersonIcon,
 } from '@mui/icons-material';
 import { Artifact, artifactService } from '../../services/artifacts';
 import { feedService } from '../../services/feed';
 import { Asset, assetService } from '../../services/assets';
 import { folderService } from '../../services/folders';
 import { useSignedAssetUrl } from '../../hooks/useSignedAssetUrl';
+import AuthorSelector from './AuthorSelector';
+import { parseISO, format } from 'date-fns';
 
 interface ComposerMetaPanelProps {
   artifact: Artifact;
@@ -64,6 +67,23 @@ export default function ComposerMetaPanel({ artifact, onArtifactUpdate }: Compos
   const [isDragOver, setIsDragOver] = useState(false);
   const dragCounterRef = useRef(0);
   const coverInputRef = useRef<HTMLInputElement>(null);
+
+  // Author and publish date state
+  const content = artifact.content || {};
+  const [authorId, setAuthorId] = useState<string | null>((content.author_id as string) || null);
+  const [publishedAt, setPublishedAt] = useState<string | null>((content.published_at as string) || null);
+  const [authorSaving, setAuthorSaving] = useState(false);
+
+  // Ref to always have latest artifact content
+  const artifactRef = useRef(artifact);
+  artifactRef.current = artifact;
+
+  // Sync state when artifact prop changes (e.g., after save)
+  useEffect(() => {
+    const c = artifact.content || {};
+    setAuthorId((c.author_id as string) || null);
+    setPublishedAt((c.published_at as string) || null);
+  }, [artifact.content]);
 
   // Check feed status on mount
   useEffect(() => {
@@ -258,6 +278,59 @@ export default function ComposerMetaPanel({ artifact, onArtifactUpdate }: Compos
     saveCoverAssetId(null);
   }, [saveCoverAssetId]);
 
+  // Save author
+  const handleAuthorChange = async (newAuthorId: string | null) => {
+    setAuthorSaving(true);
+    setAuthorId(newAuthorId);
+    const current = artifactRef.current;
+    try {
+      const updated = await artifactService.updateArtifact(current.id, {
+        content: { ...(current.content || {}), author_id: newAuthorId },
+      });
+      onArtifactUpdate(updated);
+    } catch (err: any) {
+      console.error('Failed to save author', err);
+    } finally {
+      setAuthorSaving(false);
+    }
+  };
+
+  // Save publish date
+  const handlePublishedAtChange = async (dateStr: string) => {
+    const newDate = dateStr || null;
+    setPublishedAt(newDate);
+    const current = artifactRef.current;
+    try {
+      const token = localStorage.getItem('accessToken');
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/artifacts/${current.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({
+          content: { ...(current.content || {}), published_at: newDate },
+        }),
+      });
+      if (res.ok) {
+        const updated = await res.json();
+        onArtifactUpdate(updated);
+      }
+    } catch (err: any) {
+      console.error('Failed to save publish date', err);
+    }
+  };
+
+  // Format date for input
+  const formatDateForInput = (dateStr: string | null): string => {
+    if (!dateStr) return '';
+    try {
+      return format(parseISO(dateStr), 'yyyy-MM-dd\'T\'HH:mm');
+    } catch {
+      return '';
+    }
+  };
+
   // Drag-and-drop upload
   const handleDragEnter = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -405,6 +478,44 @@ export default function ComposerMetaPanel({ artifact, onArtifactUpdate }: Compos
             )}
           </Box>
         )}
+      </Paper>
+
+      <Divider sx={{ my: 2 }} />
+
+      {/* Author Section */}
+      <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+        <PersonIcon fontSize="small" />
+        Author
+        {authorSaving && <CircularProgress size={14} thickness={4} sx={{ ml: 1 }} />}
+      </Typography>
+
+      <Paper variant="outlined" sx={{ p: 1.5, mb: 3 }}>
+        <AuthorSelector
+          authorId={authorId}
+          onAuthorChange={handleAuthorChange}
+        />
+
+        <Box sx={{ mt: 2 }}>
+          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
+            Publish date (optional):
+          </Typography>
+          <TextField
+            type="date"
+            size="small"
+            defaultValue={publishedAt ? publishedAt.slice(0, 10) : ''}
+            onChange={(e) => {
+              const val = e.target.value;
+              if (val) {
+                handlePublishedAtChange(`${val}T12:00:00`);
+              }
+            }}
+            fullWidth
+            inputProps={{ style: { fontSize: '0.875rem' } }}
+          />
+          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
+            Leave empty to use creation date
+          </Typography>
+        </Box>
       </Paper>
 
       <Divider sx={{ my: 2 }} />
