@@ -14,13 +14,16 @@ export default function AssetImageNodeView(props: NodeViewProps) {
   const assetId: string | undefined = node.attrs['data-asset-id'];
   const thumbSize: number = node.attrs['data-thumb-size'] || 512;
 
-  // Use backend-injected signed_url if available (public/preview view),
-  // otherwise fetch a fresh signed URL via the hook (workspace editor)
+  // Use backend-injected signed_url if available (preview/workspace view),
+  // otherwise use the src attr (public view now injects public URLs into src),
+  // or fetch a fresh signed URL via the hook (workspace editor)
   const fullPreSignedUrl = preSignedUrl && preSignedUrl.startsWith('/')
     ? `${API_BASE_URL}${preSignedUrl}`
     : preSignedUrl;
+  const rawSrc = node.attrs['src'] || '';
+  const fullSrc = rawSrc.startsWith('/') ? `${API_BASE_URL}${rawSrc}` : rawSrc;
   const liveSignedUrl = useSignedAssetUrl(fullPreSignedUrl ? null : assetId || null, thumbSize);
-  const signedUrl = fullPreSignedUrl || liveSignedUrl || null;
+  const signedUrl = fullPreSignedUrl || liveSignedUrl || fullSrc || null;
 
   const textAlign: string | null = node.attrs.textAlign ?? null;
 
