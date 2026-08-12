@@ -152,7 +152,12 @@ export default function RepoPublicView({
         setDescription(meta.description || '');
         setCommitCount(meta.commit_count || 0);
         setFileCount(meta.file_count || 0);
-        setCloneUrl(meta.clone_url || '');
+        const rawCloneUrl = meta.clone_url || '';
+        setCloneUrl(
+          rawCloneUrl && !rawCloneUrl.startsWith('http') && !rawCloneUrl.startsWith('//')
+            ? `${API_BASE_URL}${rawCloneUrl}`
+            : rawCloneUrl
+        );
         // Get site URL from publish config
         const pub = meta.publish;
         if (pub?.slug) {

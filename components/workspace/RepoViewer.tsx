@@ -66,6 +66,8 @@ import CodeBlock from './CodeBlock';
 import DiffViewer from './DiffViewer';
 import CoverImagePicker from './CoverImagePicker';
 
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+
 interface RepoViewerProps {
   artifact: Artifact;
 }
@@ -711,7 +713,11 @@ export default function RepoViewer({ artifact }: RepoViewerProps) {
               <Tooltip title="Open published site">
                 <IconButton
                   size="small"
-                  href={publishSettings.site_url}
+                  href={
+                    publishSettings.site_url.startsWith('http') || publishSettings.site_url.startsWith('//')
+                      ? publishSettings.site_url
+                      : `${API_BASE_URL}${publishSettings.site_url}`
+                  }
                   target="_blank"
                   component="a"
                 >

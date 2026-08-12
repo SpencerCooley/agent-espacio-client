@@ -141,6 +141,15 @@ function buildArtifactJsonLd(view: PublicViewData, magicId: string) {
 }
 
 /**
+ * Resolve a relative API URL to absolute using API_BASE_URL.
+ * Handles both absolute (already http/s) and relative (/public/...) URLs.
+ */
+function resolveApiUrl(url?: string | null): string | undefined {
+  if (!url) return undefined;
+  return url.startsWith("http") || url.startsWith("//") ? url : `${API_BASE_URL}${url}`;
+}
+
+/**
  * JSON-LD for public asset pages. Tells crawlers exactly what the file is,
  * where to download it, and what its thumbnail looks like.
  */
@@ -161,10 +170,10 @@ function buildAssetJsonLd(view: PublicViewData, magicId: string) {
     "@context": "https://schema.org",
     "@type": schemaType,
     name: asset.name,
-    contentUrl: asset.download_url,
+    contentUrl: resolveApiUrl(asset.download_url),
     encodingFormat: asset.mime_type,
     contentSize: String(asset.size_bytes),
-    thumbnailUrl: asset.thumbnail_url || undefined,
+    thumbnailUrl: resolveApiUrl(asset.thumbnail_url),
     url: canonical,
     datePublished: asset.created_at || undefined,
     dateModified: asset.updated_at || undefined,

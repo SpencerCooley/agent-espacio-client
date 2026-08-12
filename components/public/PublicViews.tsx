@@ -53,8 +53,16 @@ export function PublicAssetView({
   const isGlb = mime_type === 'model/gltf-binary';
   const isJson = mime_type === 'application/json';
   const isText = mime_type?.startsWith('text/') && !isMarkdown;
-  const downloadUrl = customDownloadUrl || serverDownloadUrl || `${API_BASE_URL}/public/assets/${public_magic_id || id}/download`;
-  const posterUrl = serverThumbnailUrl || (isVideo ? `${downloadUrl}?size=512` : undefined);
+
+  // Resolve relative backend URLs against API_BASE_URL to avoid http:// leaks
+  // from request.base_url behind reverse proxies.
+  const resolveApiUrl = (url?: string | null): string => {
+    if (!url) return '';
+    return url.startsWith('http') || url.startsWith('//') ? url : `${API_BASE_URL}${url}`;
+  };
+
+  const downloadUrl = resolveApiUrl(customDownloadUrl || serverDownloadUrl) || `${API_BASE_URL}/public/assets/${public_magic_id || id}/download`;
+  const posterUrl = resolveApiUrl(serverThumbnailUrl) || (isVideo ? `${downloadUrl}?size=512` : undefined);
 
   const [markdownContent, setMarkdownContent] = useState<string | null>(null);
   const [loadingMarkdown, setLoadingMarkdown] = useState(false);

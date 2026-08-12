@@ -75,8 +75,12 @@ export default function ComposerViewRepo({
       });
   }, [baseUrl, isPreview]);
 
+  const rawSiteUrl = meta?.publish?.site_url;
+  const fallbackSiteUrl = meta?.publish?.slug ? `${API_BASE_URL}/published/${meta.publish.slug}/` : null;
   const siteUrl = meta?.publish?.enabled && meta?.publish?.slug
-    ? (meta.publish.site_url || `${API_BASE_URL}/published/${meta.publish.slug}/`)
+    ? (rawSiteUrl && (rawSiteUrl.startsWith('http') || rawSiteUrl.startsWith('//'))
+        ? rawSiteUrl
+        : (rawSiteUrl ? `${API_BASE_URL}${rawSiteUrl}` : fallbackSiteUrl))
     : null;
 
   const isRepoLink = meta?.publish?.render_mode === 'repo_link';
