@@ -653,7 +653,12 @@ export default function PublicViewClient() {
     if (data.kind === 'asset' && data.asset) {
       const asset = data.asset;
       const isPdf = asset.mime_type === 'application/pdf';
-      const downloadUrl = `${API_BASE_URL}/public/assets/${asset.public_magic_id}/download`;
+      // Use server-provided download_url (now relative) or fall back to raw asset id.
+      // Never use public_magic_id alone — inherited-public assets have null magic ids.
+      const rawDownloadUrl = asset.download_url || `/public/assets/${asset.id}/download`;
+      const downloadUrl = rawDownloadUrl.startsWith('http') || rawDownloadUrl.startsWith('//')
+        ? rawDownloadUrl
+        : `${API_BASE_URL}${rawDownloadUrl}`;
 
       // PDFs render full-bleed like maps/workflows
       if (isPdf) {
