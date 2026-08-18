@@ -58,6 +58,8 @@ export default function UserManagement() {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
+  const formatRole = (role: string) => (role === 'admin' ? 'Admin' : 'Editor');
+
   useEffect(() => {
     loadUsers();
   }, []);
@@ -149,10 +151,10 @@ export default function UserManagement() {
               label="Role"
               select
               SelectProps={{ native: true }}
-              defaultValue="user"
+              defaultValue="editor"
               {...register('role', { required: 'Role is required' })}
             >
-              <option value="user">User</option>
+              <option value="editor">Editor</option>
               <option value="admin">Admin</option>
             </TextField>
           </Box>
@@ -292,7 +294,7 @@ export default function UserManagement() {
               <CardContent>
                 <Typography variant="h6">{user.email}</Typography>
                 <Chip 
-                  label={user.role} 
+                  label={formatRole(user.role)} 
                   color={user.role === 'admin' ? 'primary' : 'default'}
                   size="small"
                   sx={{ mt: 1, mb: 1 }}
@@ -343,7 +345,7 @@ export default function UserManagement() {
                   <TableCell>{user.email}</TableCell>
                   <TableCell>
                     <Chip 
-                      label={user.role} 
+                      label={formatRole(user.role)} 
                       color={user.role === 'admin' ? 'primary' : 'default'}
                       size="small"
                     />

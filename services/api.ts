@@ -146,6 +146,9 @@ export const userService = {
   resetPassword: (userId: number, newPassword: string) => 
     apiClient.post(`/users/${userId}/reset-password`, { new_password: newPassword }),
   
+  changePassword: (currentPassword: string, newPassword: string) => 
+    apiClient.post('/users/me/change-password', { current_password: currentPassword, new_password: newPassword }),
+  
   deleteUser: (userId: number) => 
     apiClient.delete(`/users/${userId}`),
 };

@@ -23,7 +23,7 @@ export default function BlankCanvas() {
           </Typography>
           
           <Chip 
-            label={user?.role === 'admin' ? 'Administrator' : 'User'} 
+            label={user?.role === 'admin' ? 'Administrator' : 'Editor'} 
             color={user?.role === 'admin' ? 'primary' : 'default'}
             size="small"
             sx={{ mt: 1 }}

@@ -8,6 +8,7 @@ import { useThemeContext } from '../../../context/ThemeContext';
 import { settingsService, PublicTheme } from '../../../services/settings';
 import { repoService, SshKey } from '../../../services/repos';
 import { Profile, getMyProfile, updateMyProfile, uploadAvatar } from '../../../services/profiles';
+import { userService, ApiError } from '../../../services/api';
 import {
   Typography,
   Paper,
@@ -366,6 +367,141 @@ function SshKeysSection() {
   );
 }
 
+function PasswordSection() {
+  const { logout } = useApp();
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
+
+  const resetFields = () => {
+    setCurrentPassword('');
+    setNewPassword('');
+    setConfirmPassword('');
+    setError(null);
+    setSuccess(false);
+  };
+
+  const handleSubmit = async () => {
+    if (!currentPassword) {
+      setError('Please enter your current password');
+      return;
+    }
+    if (newPassword.length < 8) {
+      setError('New password must be at least 8 characters');
+      return;
+    }
+    if (newPassword === currentPassword) {
+      setError('New password must be different from the current password');
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setError('New password and confirmation do not match');
+      return;
+    }
+
+    setSaving(true);
+    setError(null);
+    setSuccess(false);
+    try {
+      await userService.changePassword(currentPassword, newPassword);
+      setSuccess(true);
+      setTimeout(() => {
+        setDialogOpen(false);
+        resetFields();
+        logout();
+        window.location.href = '/login';
+      }, 1200);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Failed to change password');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Paper sx={{ mb: 3 }}>
+      <Typography variant="h6" sx={{ px: 2, pt: 2, pb: 1 }} color="text.primary">
+        Password
+      </Typography>
+      <Typography variant="caption" sx={{ px: 2, pb: 1, display: 'block' }} color="text.secondary">
+        Change the password you use to sign in
+      </Typography>
+      <Divider />
+      <Box sx={{ px: 2, py: 2 }}>
+        <Button
+          variant="outlined"
+          size="small"
+          startIcon={<VpnKeyIcon />}
+          onClick={() => { setError(null); setSuccess(false); setDialogOpen(true); }}
+        >
+          Change Password
+        </Button>
+      </Box>
+
+      <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>Change Password</DialogTitle>
+        <DialogContent>
+          {error && (
+            <Alert severity="error" sx={{ mb: 2 }}>
+              {error}
+            </Alert>
+          )}
+          {success && (
+            <Alert severity="success" sx={{ mb: 2 }}>
+              Password changed successfully. Redirecting to login...
+            </Alert>
+          )}
+          <TextField
+            autoFocus
+            margin="dense"
+            label="Current Password"
+            type="password"
+            fullWidth
+            variant="outlined"
+            value={currentPassword}
+            onChange={(e) => setCurrentPassword(e.target.value)}
+            sx={{ mb: 2 }}
+          />
+          <TextField
+            margin="dense"
+            label="New Password"
+            type="password"
+            fullWidth
+            variant="outlined"
+            value={newPassword}
+            onChange={(e) => setNewPassword(e.target.value)}
+            sx={{ mb: 2 }}
+          />
+          <TextField
+            margin="dense"
+            label="Confirm New Password"
+            type="password"
+            fullWidth
+            variant="outlined"
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
+          />
+          <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
+            After changing your password you will be logged out of all sessions and need to sign in again.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => { setDialogOpen(false); resetFields(); }} disabled={saving || success}>
+            Cancel
+          </Button>
+          <Button onClick={handleSubmit} variant="contained" disabled={saving || success}>
+            {saving ? 'Saving...' : 'Change Password'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+    </Paper>
+  );
+}
+
 function SettingsContent() {
   const { user } = useApp();
   const { mode, toggleTheme, currentThemeId, setThemeId, availableThemes } = useThemeContext();
@@ -486,7 +622,7 @@ function SettingsContent() {
               primary="Role"
               secondary={
                 <Chip
-                  label={isAdmin ? 'Administrator' : 'User'}
+                  label={isAdmin ? 'Administrator' : 'Editor'}
                   color={isAdmin ? 'primary' : 'default'}
                   size="small"
                 />
@@ -496,6 +632,9 @@ function SettingsContent() {
           </ListItem>
         </List>
       </Paper>
+
+      {/* Password */}
+      <PasswordSection />
 
       {/* SSH Keys */}
       <SshKeysSection />
