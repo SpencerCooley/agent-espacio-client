@@ -5,6 +5,7 @@ import { Box, Typography, Paper, Alert, Divider } from '@mui/material';
 import { Warning as WarningIcon } from '@mui/icons-material';
 import dynamic from 'next/dynamic';
 import AuthorByline from './AuthorByline';
+import { API_BASE_URL } from '../../services/api';
 
 const ComposerViewNote = dynamic(() => import('./ComposerViewNote'), { ssr: false });
 const ComposerViewMap = dynamic(() => import('./ComposerViewMap'), { ssr: false });
@@ -13,7 +14,7 @@ const ComposerViewWorkflow = dynamic(() => import('./ComposerViewWorkflow'), { s
 const ComposerViewAsset = dynamic(() => import('./ComposerViewAsset'), { ssr: false });
 const ComposerViewRepo = dynamic(() => import('./ComposerViewRepo'), { ssr: false });
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+
 
 interface CompositionSection {
   artifact: any;

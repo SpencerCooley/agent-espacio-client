@@ -15,8 +15,7 @@ import {
   Close,
 } from '@mui/icons-material';
 import { useSignedAssetUrl } from '../../hooks/useSignedAssetUrl';
-
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+import { API_BASE_URL } from '../../services/api';
 
 interface GalleryItem {
   asset_id: string;

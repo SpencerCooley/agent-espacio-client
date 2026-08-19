@@ -35,8 +35,7 @@ import CodeBlock from './CodeBlock';
 import DiffViewer from './DiffViewer';
 import { isImageFile } from '../../services/repos';
 import { useAuthBlob } from '../../hooks/useAuthBlob';
-
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+import { API_BASE_URL } from '../../services/api';
 
 function encodeRepoPath(filePath: string): string {
   return encodeURIComponent(filePath).replace(/%2F/g, '/');

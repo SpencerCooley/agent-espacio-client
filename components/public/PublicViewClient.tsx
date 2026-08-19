@@ -12,8 +12,7 @@ import ComposerPublicView from '@/components/workspace/ComposerPublicView';
 import RepoPublicView from '@/components/workspace/RepoPublicView';
 import { PublicAssetView, NotePublicView, MapPublicView } from '@/components/public/PublicViews';
 import PublicShell from '@/components/public/PublicShell';
-
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+import { API_BASE_URL } from '@/services/api';
 
 interface PublicItem {
   kind: string;

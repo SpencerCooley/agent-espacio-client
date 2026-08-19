@@ -14,8 +14,7 @@ import {
 import NextLink from 'next/link';
 import PublicShell from './PublicShell';
 import AuthorByline from '../workspace/AuthorByline';
-
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+import { API_BASE_URL } from '../../services/api';
 
 /* ------------------------------------------------------------------ */
 /* Types                                                              */

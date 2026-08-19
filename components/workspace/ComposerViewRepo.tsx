@@ -3,8 +3,7 @@
 import { useEffect, useState, useMemo } from 'react';
 import { Box, Button, Typography, Paper } from '@mui/material';
 import { OpenInNew as OpenInNewIcon, Hub as GitBranchIcon, Web as WebIcon } from '@mui/icons-material';
-
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+import { API_BASE_URL } from '../../services/api';
 
 interface ComposerViewRepoProps {
   content: any;

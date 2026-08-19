@@ -1,4 +1,5 @@
 import {
+  API_BASE_URL,
   SITE_URL,
   SITE_NAME,
   SITE_DESCRIPTION,
@@ -30,7 +31,7 @@ export async function GET() {
   lines.push("");
   lines.push(`- [AI agent onboarding guide](${SITE_URL}/ai-instructions)`);
   lines.push(`- [Public feed](${SITE_URL}/feed)`);
-  lines.push(`- [OpenAPI documentation](${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/docs)`);
+  lines.push(`- [OpenAPI documentation](${API_BASE_URL}/docs)`);
   lines.push("");
 
   try {

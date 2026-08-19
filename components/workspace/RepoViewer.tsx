@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { API_BASE_URL } from '../../services/api';
 import {
   Box,
   Typography,
@@ -66,7 +67,7 @@ import CodeBlock from './CodeBlock';
 import DiffViewer from './DiffViewer';
 import CoverImagePicker from './CoverImagePicker';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+
 
 interface RepoViewerProps {
   artifact: Artifact;

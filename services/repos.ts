@@ -1,4 +1,4 @@
-import { apiClient } from './api';
+import { apiClient, API_BASE_URL } from './api';
 
 export interface RepoMetadata {
   name: string;
@@ -147,8 +147,7 @@ export const repoService = {
     if (ref) params.append('ref', ref);
     const query = params.toString();
     const encodedPath = encodeURIComponent(filePath).replace(/%2F/g, '/');
-    const base = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-    return `${base}/artifacts/${artifactId}/repo/raw/${encodedPath}${query ? `?${query}` : ''}`;
+    return `${API_BASE_URL}/artifacts/${artifactId}/repo/raw/${encodedPath}${query ? `?${query}` : ''}`;
   },
 
 

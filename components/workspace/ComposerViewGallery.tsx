@@ -4,8 +4,7 @@ import React from 'react';
 import { Box, Button, Typography, Chip } from '@mui/material';
 import { OpenInNew as OpenInNewIcon, PhotoLibrary as PhotoLibraryIcon } from '@mui/icons-material';
 import { useSignedAssetUrl } from '../../hooks/useSignedAssetUrl';
-
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+import { API_BASE_URL } from '../../services/api';
 
 interface Association {
   id: string;

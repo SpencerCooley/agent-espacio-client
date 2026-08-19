@@ -9,9 +9,8 @@ import GlbViewer from './GlbViewer';
 import { useAuthStreamingUrl } from '../../hooks/useAuthStreamingUrl';
 import { useSignedAssetUrl } from '../../hooks/useSignedAssetUrl';
 import { useInViewport } from '../../hooks/useInViewport';
-import { getAssetSignedUrl } from '../../services/assets';
+import { API_BASE_URL } from '../../services/api';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
 const GLB_VIEWER_HEIGHT = 400;
 

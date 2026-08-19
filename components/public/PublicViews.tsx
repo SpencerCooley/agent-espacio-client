@@ -12,8 +12,7 @@ import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { highlightCode } from '../../lib/prism-highlight';
 import 'prismjs/themes/prism-tomorrow.css';
-
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+import { API_BASE_URL } from '../../services/api';
 
 interface AssetViewProps {
   id: string;

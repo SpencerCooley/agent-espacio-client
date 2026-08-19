@@ -1,6 +1,7 @@
 'use client';
 
 import { createContext, useContext, useEffect, useRef, useState, useCallback, ReactNode } from 'react';
+import { API_BASE_URL } from '../services/api';
 
 interface WebSocketContextType {
   subscribe: (channel: string, callback: (event: any) => void) => void;
@@ -10,10 +11,7 @@ interface WebSocketContextType {
 
 export const WebSocketContext = createContext<WebSocketContextType | undefined>(undefined);
 
-const WS_URL = (() => {
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-  return apiUrl.replace(/^http/, 'ws') + '/ws/events';
-})();
+const WS_URL = (API_BASE_URL!).replace(/^http/, 'ws') + '/ws/events';
 
 const RECONNECT_DELAY_BASE = 1000;
 const MAX_RECONNECT_DELAY = 30000;

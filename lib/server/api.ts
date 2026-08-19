@@ -14,7 +14,11 @@
  * server-only by design. Client components fetch directly as they always did.
  */
 
-export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL;
+
+if (!API_BASE_URL) {
+  throw new Error("NEXT_PUBLIC_API_URL environment variable is not defined");
+}
 
 export const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000").replace(/\/$/, "");
 export const SITE_NAME = process.env.NEXT_PUBLIC_SITE_NAME || "Agent Espacio";

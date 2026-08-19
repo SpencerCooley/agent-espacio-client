@@ -7,8 +7,7 @@ import {
   Audiotrack as AudioIcon,
   ViewInAr as ModelIcon,
 } from '@mui/icons-material';
-
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+import { API_BASE_URL } from '../../services/api';
 
 interface InlineThumbnailProps {
   type: 'artifact' | 'asset';

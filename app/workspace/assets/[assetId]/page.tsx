@@ -26,6 +26,7 @@ import { SmartVideoPlayer } from '../../../../components/ui/SmartVideoPlayer';
 import { AudioPlayerThemed } from '../../../../components/ui/AudioPlayer';
 import { assetService, Asset, getAssetSignedUrl } from '../../../../services/assets';
 import { folderService } from '../../../../services/folders';
+import { API_BASE_URL } from '../../../../services/api';
 import { useSignedAssetUrl } from '../../../../hooks/useSignedAssetUrl';
 import { useAuthStreamingUrl } from '../../../../hooks/useAuthStreamingUrl';
 
@@ -210,7 +211,7 @@ function AssetViewerContent() {
   const handleDownload = async (assetId: string, filename: string, size?: number) => {
     try {
       const signedPath = await getAssetSignedUrl(assetId, size);
-      const url = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}${signedPath}`;
+      const url = `${API_BASE_URL}${signedPath}`;
       const res = await fetch(url);
       if (!res.ok) throw new Error('Download failed');
       const blob = await res.blob();
@@ -539,7 +540,7 @@ function AssetViewerContent() {
           >
             <Box
               component="embed"
-              src={pdfSrc || `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/assets/${asset.id}/download`}
+              src={pdfSrc || `${API_BASE_URL}/assets/${asset.id}/download`}
               type="application/pdf"
               sx={{
                 width: '100%',
