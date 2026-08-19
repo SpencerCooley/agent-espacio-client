@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   Box,
   Typography,
@@ -24,14 +24,24 @@ import {
   CardContent,
   useMediaQuery,
   useTheme,
+  Autocomplete,
+  CircularProgress,
+  Stack,
 } from '@mui/material';
 import {
   Add as AddIcon,
   Delete as DeleteIcon,
   LockReset as LockResetIcon,
+  Folder as FolderIcon,
 } from '@mui/icons-material';
 import { useForm } from 'react-hook-form';
-import { userService, apiKeyService, User, ApiKey, ApiError } from '../../services/api';
+import {
+  userService,
+  User,
+  ApiError,
+  ScopeFolder,
+} from '../../services/api';
+import { folderService, FolderItem } from '../../services/folders';
 
 interface CreateUserFormData {
   email: string;
@@ -53,6 +63,7 @@ export default function UserManagement() {
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [resetPasswordDialogOpen, setResetPasswordDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [scopesDialogOpen, setScopesDialogOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   
   const theme = useTheme();
@@ -261,6 +272,200 @@ export default function UserManagement() {
     </Dialog>
   );
 
+  // Folder scopes dialog
+  const ROOT_FOLDER_ID = '00000000-0000-0000-0000-000000000001';
+
+  const ScopesDialog = () => {
+    const [scopes, setScopes] = useState<ScopeFolder[]>([]);
+    const [scopesLoading, setScopesLoading] = useState(false);
+    const [searchInput, setSearchInput] = useState('');
+    const [searchOptions, setSearchOptions] = useState<FolderItem[]>([]);
+    const [searchLoading, setSearchLoading] = useState(false);
+    const [actionError, setActionError] = useState<string | null>(null);
+
+    const loadScopes = useCallback(async () => {
+      if (!selectedUser) return;
+      setScopesLoading(true);
+      setActionError(null);
+      try {
+        const data = await userService.listScopes(selectedUser.id);
+        setScopes(data.scopes);
+      } catch (err) {
+        setActionError(err instanceof ApiError ? err.message : 'Failed to load scopes');
+      } finally {
+        setScopesLoading(false);
+      }
+    }, [selectedUser]);
+
+    useEffect(() => {
+      if (scopesDialogOpen && selectedUser) {
+        loadScopes();
+      }
+    }, [scopesDialogOpen, selectedUser, loadScopes]);
+
+    useEffect(() => {
+      if (!scopesDialogOpen) return;
+      if (!searchInput.trim()) {
+        setSearchOptions([]);
+        return;
+      }
+      let cancelled = false;
+      const timer = setTimeout(async () => {
+        setSearchLoading(true);
+        try {
+          const res = await folderService.searchScopedItems(searchInput.trim());
+          if (cancelled) return;
+          const folders = (res.items || []).filter((i) => i.kind === 'folder');
+          // Also allow granting My Drive root via exact name match
+          setSearchOptions(folders);
+        } catch {
+          if (!cancelled) setSearchOptions([]);
+        } finally {
+          if (!cancelled) setSearchLoading(false);
+        }
+      }, 300);
+      return () => {
+        cancelled = true;
+        clearTimeout(timer);
+      };
+    }, [searchInput, scopesDialogOpen]);
+
+    const handleAddById = async (folderId: string, name: string) => {
+      if (!selectedUser) return;
+      setActionError(null);
+      try {
+        await userService.addScope(selectedUser.id, folderId);
+        setSearchInput('');
+        setSearchOptions([]);
+        await loadScopes();
+        showSuccess(`Granted access to "${name}"`);
+      } catch (err) {
+        setActionError(err instanceof ApiError ? err.message : 'Failed to add scope');
+      }
+    };
+
+    const handleAdd = async (folder: FolderItem | null) => {
+      if (!folder) return;
+      await handleAddById(folder.id, folder.name);
+    };
+
+    const handleRemove = async (folderId: string, name: string) => {
+      if (!selectedUser) return;
+      setActionError(null);
+      try {
+        await userService.removeScope(selectedUser.id, folderId);
+        await loadScopes();
+        showSuccess(`Removed access to "${name}"`);
+      } catch (err) {
+        setActionError(err instanceof ApiError ? err.message : 'Failed to remove scope');
+      }
+    };
+
+    const handleClose = () => {
+      setScopesDialogOpen(false);
+      setSelectedUser(null);
+      setScopes([]);
+      setSearchInput('');
+      setActionError(null);
+    };
+
+    const grantedIds = new Set(scopes.map((s) => s.folder_id));
+
+    return (
+      <Dialog open={scopesDialogOpen} onClose={handleClose} maxWidth="sm" fullWidth>
+        <DialogTitle>Folder Access</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            Grants for <strong>{selectedUser?.email}</strong>. Each grant includes
+            that folder and all of its subfolders. Zero grants = no workspace access.
+          </Typography>
+
+          {actionError && (
+            <Alert severity="error" sx={{ mb: 2 }} onClose={() => setActionError(null)}>
+              {actionError}
+            </Alert>
+          )}
+
+          <Autocomplete
+            options={searchOptions.filter((o) => !grantedIds.has(o.id))}
+            getOptionLabel={(o) => o.name}
+            loading={searchLoading}
+            inputValue={searchInput}
+            onInputChange={(_, value) => setSearchInput(value)}
+            onChange={(_, value) => handleAdd(value)}
+            filterOptions={(x) => x}
+            noOptionsText={
+              searchInput.trim()
+                ? searchLoading
+                  ? 'Searching…'
+                  : 'No folders found'
+                : 'Type to search folders'
+            }
+            renderInput={(params) => (
+              <TextField
+                {...params}
+                label="Add folder grant"
+                placeholder="Search folders…"
+                InputProps={{
+                  ...params.InputProps,
+                  endAdornment: (
+                    <>
+                      {searchLoading ? <CircularProgress color="inherit" size={16} /> : null}
+                      {params.InputProps.endAdornment}
+                    </>
+                  ),
+                }}
+              />
+            )}
+            sx={{ mb: 1 }}
+          />
+
+          {!grantedIds.has(ROOT_FOLDER_ID) && (
+            <Button
+              size="small"
+              variant="outlined"
+              startIcon={<FolderIcon />}
+              onClick={() => handleAddById(ROOT_FOLDER_ID, 'My Drive')}
+              sx={{ mb: 2 }}
+            >
+              Grant full access (My Drive)
+            </Button>
+          )}
+
+          {scopesLoading ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', py: 3 }}>
+              <CircularProgress size={24} />
+            </Box>
+          ) : scopes.length === 0 ? (
+            <Typography variant="body2" color="text.secondary" sx={{ py: 2 }}>
+              No folder grants yet. This editor cannot access any content.
+            </Typography>
+          ) : (
+            <Stack direction="row" flexWrap="wrap" gap={1}>
+              {scopes.map((s) => (
+                <Chip
+                  key={s.folder_id}
+                  icon={<FolderIcon />}
+                  label={s.is_root ? `${s.name} (full access)` : s.name}
+                  onDelete={() => handleRemove(s.folder_id, s.name)}
+                  color={s.is_root ? 'primary' : 'default'}
+                />
+              ))}
+            </Stack>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleClose}>Done</Button>
+        </DialogActions>
+      </Dialog>
+    );
+  };
+
+  const openScopes = (user: User) => {
+    setSelectedUser(user);
+    setScopesDialogOpen(true);
+  };
+
   return (
     <Box>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
@@ -303,6 +508,15 @@ export default function UserManagement() {
                   Created: {new Date(user.created_at).toLocaleDateString()}
                 </Typography>
                 <Box sx={{ mt: 2, display: 'flex', gap: 1 }}>
+                  {user.role !== 'admin' && (
+                    <IconButton
+                      size="small"
+                      onClick={() => openScopes(user)}
+                      title="Folder access"
+                    >
+                      <FolderIcon />
+                    </IconButton>
+                  )}
                   <IconButton
                     size="small"
                     onClick={() => {
@@ -352,6 +566,14 @@ export default function UserManagement() {
                   </TableCell>
                   <TableCell>{new Date(user.created_at).toLocaleDateString()}</TableCell>
                   <TableCell>
+                    {user.role !== 'admin' && (
+                      <IconButton
+                        onClick={() => openScopes(user)}
+                        title="Folder access"
+                      >
+                        <FolderIcon />
+                      </IconButton>
+                    )}
                     <IconButton
                       onClick={() => {
                         setSelectedUser(user);
@@ -382,6 +604,7 @@ export default function UserManagement() {
       <CreateUserDialog />
       <ResetPasswordDialog />
       <DeleteDialog />
+      <ScopesDialog />
     </Box>
   );
 }

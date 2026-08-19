@@ -135,8 +135,7 @@ export default function ComposerEditor({ artifact }: ComposerEditorProps) {
     setSearchLoading(true);
     const timer = setTimeout(async () => {
       try {
-        const rootFolderId = '00000000-0000-0000-0000-000000000001';
-        const res = await folderService.searchFolderItems(rootFolderId, searchQuery.trim());
+        const res = await folderService.searchScopedItems(searchQuery.trim());
 
         const artifactItems: PickerItem[] = (res.items || [])
           .filter((item: any) => item.kind === 'artifact')

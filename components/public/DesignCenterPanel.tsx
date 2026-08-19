@@ -19,7 +19,8 @@ import BrandingTab from './BrandingTab';
 import ThemeTab from './ThemeTab';
 
 export default function DesignCenterPanel() {
-  const { isAuthenticated } = useApp();
+  const { user } = useApp();
+  const isAdmin = user?.role === 'admin';
   const [open, setOpen] = useState(false);
   const [activeTab, setActiveTab] = useState(0);
   const [mounted, setMounted] = useState(false);
@@ -33,7 +34,7 @@ export default function DesignCenterPanel() {
     }
   }, [open]);
 
-  if (!isAuthenticated) return null;
+  if (!isAdmin) return null;
 
   return (
     <>

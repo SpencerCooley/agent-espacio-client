@@ -65,8 +65,7 @@ export default function AssociationExplorer({ open, onClose, onSelect }: Associa
 
     const timer = setTimeout(async () => {
       try {
-        const rootFolderId = '00000000-0000-0000-0000-000000000001';
-        const res = await folderService.searchFolderItems(rootFolderId, search.trim());
+        const res = await folderService.searchScopedItems(search.trim());
 
         const artifacts: ExplorerItem[] = (res.items || [])
           .filter((item: any) => item.kind === 'artifact')

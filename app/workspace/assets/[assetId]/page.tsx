@@ -155,7 +155,7 @@ function AssetViewerContent() {
 
   const breadcrumb = asset
     ? [
-        { label: 'My Drive', href: '/workspace', folderId: '00000000-0000-0000-0000-000000000001' },
+        { label: 'Workspace', href: '/workspace' },
         ...ancestors.map((f) => ({
           label: f.name,
           href: `/workspace/folders/${f.id}`,
@@ -163,7 +163,7 @@ function AssetViewerContent() {
         })),
         { label: asset.name },
       ]
-    : [{ label: 'My Drive', href: '/workspace' }];
+    : [{ label: 'Workspace', href: '/workspace' }];
 
   const dims = asset?.file_meta
     ? `${asset.file_meta.width} \u00d7 ${asset.file_meta.height}`

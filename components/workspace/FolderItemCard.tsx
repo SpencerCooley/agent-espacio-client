@@ -38,13 +38,12 @@ import { useSignedAssetUrl } from '../../hooks/useSignedAssetUrl';
 
 interface FolderItemCardProps {
   item: FolderItem;
-  onDelete: (item: FolderItem) => void;
+  onDelete?: (item: FolderItem) => void;
   onRename?: (item: FolderItem, newName: string) => Promise<void>;
   onMoveItem?: (draggedItem: FolderItem, targetFolderId: string) => Promise<void>;
   onUploadToFolder?: (folderId: string, files: FileList) => Promise<void>;
   isNew?: boolean;
 }
-
 /**
  * FolderItemCard - Displays a single folder item (folder, asset, or artifact)
  * as a card with an appropriate icon.
@@ -177,7 +176,7 @@ export default function FolderItemCard({
 
   const handleDelete = () => {
     handleCloseContextMenu();
-    onDelete(item);
+    onDelete?.(item);
   };
 
   // ── Drag handlers ──
@@ -904,12 +903,14 @@ export default function FolderItemCard({
           </MenuItem>
         )}
 
-        <MenuItem onClick={handleDelete}>
-          <ListItemIcon>
-            <DeleteIcon fontSize="small" color="error" />
-          </ListItemIcon>
-          <ListItemText sx={{ color: 'error.main' }}>Delete</ListItemText>
-        </MenuItem>
+        {onDelete && (
+          <MenuItem onClick={handleDelete}>
+            <ListItemIcon>
+              <DeleteIcon fontSize="small" color="error" />
+            </ListItemIcon>
+            <ListItemText sx={{ color: 'error.main' }}>Delete</ListItemText>
+          </MenuItem>
+        )}
       </Menu>
     </>
   );

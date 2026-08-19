@@ -642,7 +642,7 @@ function SettingsContent() {
       {/* Appearance */}
       <Paper sx={{ mb: 3 }}>
         <Typography variant="h6" sx={{ px: 2, pt: 2, pb: 1 }} color="text.primary">
-          Admin Appearance
+          Appearance
         </Typography>
         <Divider />
         <List>
@@ -653,7 +653,7 @@ function SettingsContent() {
             </ListItemIcon>
             <ListItemText
               primary="Theme"
-              secondary="Choose your visual style"
+              secondary="Choose your personal visual style"
             />
             <FormControl sx={{ minWidth: 200 }} size="small">
               <InputLabel id="theme-select-label">Theme</InputLabel>
@@ -693,11 +693,13 @@ function SettingsContent() {
         </List>
       </Paper>
 
-      {/* Public Appearance */}
-      <PublicAppearanceSection />
-
-      {/* Branding */}
-      <BrandingSection />
+      {/* Public Appearance + Branding — admin only */}
+      {isAdmin && (
+        <>
+          <PublicAppearanceSection />
+          <BrandingSection />
+        </>
+      )}
 
       {/* Admin Section */}
       {isAdmin && (

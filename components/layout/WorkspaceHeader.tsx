@@ -140,16 +140,18 @@ export default function WorkspaceHeader({
     setModalOpen(true);
   };
 
-  // Search handlers
+  // Search handlers — folder-scoped when inside a folder, else full principal scope
   const performSearch = async (query: string) => {
-    if (!query.trim() || !currentFolderId) {
+    if (!query.trim()) {
       setSearchResults([]);
       setSearchLoading(false);
       return;
     }
     setSearchLoading(true);
     try {
-      const response = await folderService.searchFolderItems(currentFolderId, query.trim());
+      const response = currentFolderId
+        ? await folderService.searchFolderItems(currentFolderId, query.trim())
+        : await folderService.searchScopedItems(query.trim());
       setSearchResults(response.items.slice(0, 20));
     } catch {
       setSearchResults([]);

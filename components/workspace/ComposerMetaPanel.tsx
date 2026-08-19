@@ -32,6 +32,7 @@ import { Asset, assetService } from '../../services/assets';
 import { folderService } from '../../services/folders';
 import { useSignedAssetUrl } from '../../hooks/useSignedAssetUrl';
 import AuthorSelector from './AuthorSelector';
+import { useApp } from '../../context/AppContext';
 import { parseISO, format } from 'date-fns';
 
 interface ComposerMetaPanelProps {
@@ -40,6 +41,8 @@ interface ComposerMetaPanelProps {
 }
 
 export default function ComposerMetaPanel({ artifact, onArtifactUpdate }: ComposerMetaPanelProps) {
+  const { user } = useApp();
+  const isAdmin = user?.role === 'admin';
   const [inFeed, setInFeed] = useState(false);
   const [checkingFeed, setCheckingFeed] = useState(true);
   const [feedActionLoading, setFeedActionLoading] = useState(false);
@@ -85,8 +88,12 @@ export default function ComposerMetaPanel({ artifact, onArtifactUpdate }: Compos
     setPublishedAt((c.published_at as string) || null);
   }, [artifact.content]);
 
-  // Check feed status on mount
+  // Check feed status on mount (admin only — feed curation is admin-gated)
   useEffect(() => {
+    if (!isAdmin) {
+      setCheckingFeed(false);
+      return;
+    }
     setCheckingFeed(true);
     feedService.getFeedItemStatus(artifact.id)
       .then((feedItem) => {
@@ -98,7 +105,7 @@ export default function ComposerMetaPanel({ artifact, onArtifactUpdate }: Compos
         setFeaturedLevel(null);
       })
       .finally(() => setCheckingFeed(false));
-  }, [artifact.id]);
+  }, [artifact.id, isAdmin]);
 
   // Load currently selected cover asset on mount so it can display in the picker
   useEffect(() => {
@@ -124,8 +131,7 @@ export default function ComposerMetaPanel({ artifact, onArtifactUpdate }: Compos
     setImageSearchLoading(true);
     const timer = setTimeout(async () => {
       try {
-        const rootFolderId = '00000000-0000-0000-0000-000000000001';
-        const res = await folderService.searchFolderItems(rootFolderId, imageSearchQuery.trim());
+        const res = await folderService.searchScopedItems(imageSearchQuery.trim());
 
         const imageItems: Asset[] = (res.items || [])
           .filter((item: any) => item.kind === 'asset')
@@ -397,90 +403,94 @@ export default function ComposerMetaPanel({ artifact, onArtifactUpdate }: Compos
 
   return (
     <Box sx={{ p: 2 }}>
-      <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
-        <FeedIcon fontSize="small" />
-        Feed Curation
-      </Typography>
+      {isAdmin && (
+        <>
+          <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+            <FeedIcon fontSize="small" />
+            Feed Curation
+          </Typography>
 
-      {feedError && (
-        <Alert severity="error" sx={{ mb: 2 }}>
-          {feedError}
-        </Alert>
-      )}
+          {feedError && (
+            <Alert severity="error" sx={{ mb: 2 }}>
+              {feedError}
+            </Alert>
+          )}
 
-      <Paper variant="outlined" sx={{ p: 1.5, mb: 3 }}>
-        <FormControlLabel
-          control={
-            <Switch
-              checked={inFeed}
-              onChange={handleFeedToggle}
-              disabled={checkingFeed || feedActionLoading}
-              size="small"
+          <Paper variant="outlined" sx={{ p: 1.5, mb: 3 }}>
+            <FormControlLabel
+              control={
+                <Switch
+                  checked={inFeed}
+                  onChange={handleFeedToggle}
+                  disabled={checkingFeed || feedActionLoading}
+                  size="small"
+                />
+              }
+              label={
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                  <Typography variant="body2">
+                    {checkingFeed
+                      ? 'Checking...'
+                      : inFeed
+                        ? 'In main feed'
+                        : 'Not in feed'}
+                  </Typography>
+                  {feedActionLoading && <CircularProgress size={14} thickness={4} />}
+                </Box>
+              }
             />
-          }
-          label={
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-              <Typography variant="body2">
-                {checkingFeed
-                  ? 'Checking...'
-                  : inFeed
-                    ? 'In main feed'
-                    : 'Not in feed'}
-              </Typography>
-              {feedActionLoading && <CircularProgress size={14} thickness={4} />}
-            </Box>
-          }
-        />
-        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5, ml: 4 }}>
-          {inFeed
-            ? 'This composition appears on the home page.'
-            : 'Add to the curated feed to feature on the home page.'}
-        </Typography>
-
-        {inFeed && (
-          <Box sx={{ mt: 2, ml: 4 }}>
-            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.75 }}>
-              Featured slot:
+            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5, ml: 4 }}>
+              {inFeed
+                ? 'This composition appears on the home page.'
+                : 'Add to the curated feed to feature on the home page.'}
             </Typography>
-            <ButtonGroup
-              variant="contained"
-              size="small"
-              disabled={featuredLoading}
-              aria-label="Featured slot"
-            >
-              <Button
-                color={featuredLevel === 1 ? 'primary' : 'inherit'}
-                onClick={() => handleFeaturedLevelChange(1)}
-              >
-                1
-              </Button>
-              <Button
-                color={featuredLevel === 2 ? 'primary' : 'inherit'}
-                onClick={() => handleFeaturedLevelChange(2)}
-              >
-                2
-              </Button>
-              <Button
-                color={featuredLevel === 3 ? 'primary' : 'inherit'}
-                onClick={() => handleFeaturedLevelChange(3)}
-              >
-                3
-              </Button>
-              <Button
-                color={featuredLevel === null || featuredLevel === 0 ? 'primary' : 'inherit'}
-                onClick={() => handleFeaturedLevelChange(null)}
-              >
-                X
-              </Button>
-            </ButtonGroup>
-            {featuredLoading && (
-              <CircularProgress size={14} thickness={4} sx={{ ml: 1, verticalAlign: 'middle' }} />
-            )}
-          </Box>
-        )}
-      </Paper>
 
-      <Divider sx={{ my: 2 }} />
+            {inFeed && (
+              <Box sx={{ mt: 2, ml: 4 }}>
+                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.75 }}>
+                  Featured slot:
+                </Typography>
+                <ButtonGroup
+                  variant="contained"
+                  size="small"
+                  disabled={featuredLoading}
+                  aria-label="Featured slot"
+                >
+                  <Button
+                    color={featuredLevel === 1 ? 'primary' : 'inherit'}
+                    onClick={() => handleFeaturedLevelChange(1)}
+                  >
+                    1
+                  </Button>
+                  <Button
+                    color={featuredLevel === 2 ? 'primary' : 'inherit'}
+                    onClick={() => handleFeaturedLevelChange(2)}
+                  >
+                    2
+                  </Button>
+                  <Button
+                    color={featuredLevel === 3 ? 'primary' : 'inherit'}
+                    onClick={() => handleFeaturedLevelChange(3)}
+                  >
+                    3
+                  </Button>
+                  <Button
+                    color={featuredLevel === null || featuredLevel === 0 ? 'primary' : 'inherit'}
+                    onClick={() => handleFeaturedLevelChange(null)}
+                  >
+                    X
+                  </Button>
+                </ButtonGroup>
+                {featuredLoading && (
+                  <CircularProgress size={14} thickness={4} sx={{ ml: 1, verticalAlign: 'middle' }} />
+                )}
+              </Box>
+            )}
+          </Paper>
+
+          <Divider sx={{ my: 2 }} />
+        </>
+      )}
 
       {/* Author Section */}
       <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>

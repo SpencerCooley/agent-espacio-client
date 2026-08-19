@@ -33,6 +33,15 @@ export interface ApiKey {
   is_active: boolean;
   created_at: string;
   last_used_at: string | null;
+  user_id: number | null;
+}
+
+export interface ScopeFolder {
+  folder_id: string;
+  name: string;
+  path: string;
+  is_root: boolean;
+  created_at: string | null;
 }
 
 // Helper to get token from localStorage
@@ -151,14 +160,26 @@ export const userService = {
   
   deleteUser: (userId: number) => 
     apiClient.delete(`/users/${userId}`),
+
+  listScopes: (userId: number) =>
+    apiClient.get<{ scopes: ScopeFolder[]; total: number }>(`/users/${userId}/scopes`),
+
+  addScope: (userId: number, folderId: string) =>
+    apiClient.post<ScopeFolder>(`/users/${userId}/scopes`, { folder_id: folderId }),
+
+  removeScope: (userId: number, folderId: string) =>
+    apiClient.delete(`/users/${userId}/scopes/${folderId}`),
 };
 
 export const apiKeyService = {
   listApiKeys: () => 
     apiClient.get<{ keys: (ApiKey & { key?: string })[]; total: number }>('/api-keys'),
   
-  createApiKey: (name: string) => 
-    apiClient.post<ApiKey & { key: string }>('/api-keys', { name }),
+  createApiKey: (name: string, userId?: number | null) => 
+    apiClient.post<ApiKey & { key: string }>('/api-keys', {
+      name,
+      ...(userId != null ? { user_id: userId } : {}),
+    }),
   
   revokeApiKey: (id: number) => 
     apiClient.delete(`/api-keys/${id}`),

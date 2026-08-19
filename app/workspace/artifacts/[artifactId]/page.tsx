@@ -187,7 +187,7 @@ function ArtifactViewerContent() {
 
   const breadcrumb = artifact
     ? [
-        { label: 'My Drive', href: '/workspace', folderId: '00000000-0000-0000-0000-000000000001' },
+        { label: 'Workspace', href: '/workspace' },
         ...ancestors.map((f) => ({
           label: f.name,
           href: `/workspace/folders/${f.id}`,
@@ -195,7 +195,7 @@ function ArtifactViewerContent() {
         })),
         { label: artifact.name },
       ]
-    : [{ label: 'My Drive', href: '/workspace' }];
+    : [{ label: 'Workspace', href: '/workspace' }];
 
   if (loading) {
     return (

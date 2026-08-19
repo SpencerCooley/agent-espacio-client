@@ -74,4 +74,9 @@ export const folderService = {
 
   searchFolderItems: (folderId: string, query: string) =>
     apiClient.get<FolderContentsResponse>(`/folders/${folderId}/search?q=${encodeURIComponent(query)}`),
+
+  searchScopedItems: (query: string) =>
+    apiClient.get<FolderContentsResponse>(
+      `/folders/scoped/search?q=${encodeURIComponent(query)}`
+    ),
 };

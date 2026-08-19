@@ -25,6 +25,7 @@ import {
   useMediaQuery,
   useTheme,
   Snackbar,
+  MenuItem,
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -33,14 +34,16 @@ import {
   CheckCircle as CheckCircleIcon,
 } from '@mui/icons-material';
 import { useForm } from 'react-hook-form';
-import { apiKeyService, ApiKey, ApiError } from '../../services/api';
+import { apiKeyService, userService, ApiKey, User, ApiError } from '../../services/api';
 
 interface CreateKeyFormData {
   name: string;
+  user_id: string; // '' = global
 }
 
 export default function ApiKeyManagement() {
   const [apiKeys, setApiKeys] = useState<ApiKey[]>([]);
+  const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
@@ -57,6 +60,7 @@ export default function ApiKeyManagement() {
 
   useEffect(() => {
     loadApiKeys();
+    loadUsers();
   }, []);
 
   const loadApiKeys = async () => {
@@ -73,6 +77,20 @@ export default function ApiKeyManagement() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const loadUsers = async () => {
+    try {
+      const data = await userService.listUsers();
+      setUsers(data.users.filter((u) => u.role !== 'admin'));
+    } catch {
+      // Non-fatal; assignment dropdown will just be empty
+    }
+  };
+
+  const userEmailById = (userId: number | null | undefined) => {
+    if (userId == null) return null;
+    return users.find((u) => u.id === userId)?.email ?? `User #${userId}`;
   };
 
   const showSuccess = (message: string) => {
@@ -97,11 +115,14 @@ export default function ApiKeyManagement() {
       handleSubmit,
       reset,
       formState: { errors },
-    } = useForm<CreateKeyFormData>();
+    } = useForm<CreateKeyFormData>({
+      defaultValues: { name: '', user_id: '' },
+    });
 
     const onSubmit = async (data: CreateKeyFormData) => {
       try {
-        const result = await apiKeyService.createApiKey(data.name);
+        const userId = data.user_id ? Number(data.user_id) : null;
+        const result = await apiKeyService.createApiKey(data.name, userId);
         setNewlyCreatedKey(result.key);
         setCreateDialogOpen(false);
         setNewKeyDialogOpen(true);
@@ -120,8 +141,9 @@ export default function ApiKeyManagement() {
         <DialogTitle>Create New API Key</DialogTitle>
         <DialogContent>
           <Typography variant="body2" color="textSecondary" sx={{ mb: 2 }}>
-            Create an API key for AI agents to authenticate with the system.
-            The full key will be shown only once after creation.
+            Create an API key for AI agents. The full key is shown only once.
+            Optionally assign an editor so the key inherits that user&apos;s folder grants.
+            Leave unassigned for a global (unrestricted) key.
           </Typography>
           <TextField
             margin="normal"
@@ -139,6 +161,22 @@ export default function ApiKeyManagement() {
             error={!!errors.name}
             helperText={errors.name?.message}
           />
+          <TextField
+            margin="normal"
+            fullWidth
+            label="Assign to editor (optional)"
+            select
+            defaultValue=""
+            {...register('user_id')}
+            helperText="Unassigned = global access. Assigned = inherits that editor's folder grants."
+          >
+            <MenuItem value="">Global (unrestricted)</MenuItem>
+            {users.map((u) => (
+              <MenuItem key={u.id} value={String(u.id)}>
+                {u.email}
+              </MenuItem>
+            ))}
+          </TextField>
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setCreateDialogOpen(false)}>Cancel</Button>
@@ -210,7 +248,7 @@ export default function ApiKeyManagement() {
           }} 
           variant="contained"
         >
-          I've Saved The Key
+          I&apos;ve Saved The Key
         </Button>
       </DialogActions>
     </Dialog>
@@ -275,11 +313,17 @@ export default function ApiKeyManagement() {
                 <Typography variant="body2" color="textSecondary" sx={{ mt: 1, fontFamily: 'monospace' }}>
                   {key.prefix}...
                 </Typography>
-                <Box sx={{ mt: 1, display: 'flex', gap: 1, alignItems: 'center' }}>
+                <Box sx={{ mt: 1, display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap' }}>
                   <Chip 
                     label={key.is_active ? 'Active' : 'Revoked'} 
                     color={key.is_active ? 'success' : 'default'}
                     size="small"
+                  />
+                  <Chip
+                    label={key.user_id == null ? 'Global' : userEmailById(key.user_id) || 'Assigned'}
+                    size="small"
+                    color={key.user_id == null ? 'warning' : 'default'}
+                    variant="outlined"
                   />
                 </Box>
                 <Typography variant="caption" color="textSecondary" sx={{ mt: 1, display: 'block' }}>
@@ -321,6 +365,7 @@ export default function ApiKeyManagement() {
               <TableRow>
                 <TableCell>Name</TableCell>
                 <TableCell>Prefix</TableCell>
+                <TableCell>Scope</TableCell>
                 <TableCell>Created</TableCell>
                 <TableCell>Last Used</TableCell>
                 <TableCell>Status</TableCell>
@@ -332,6 +377,14 @@ export default function ApiKeyManagement() {
                 <TableRow key={key.id}>
                   <TableCell>{key.name}</TableCell>
                   <TableCell sx={{ fontFamily: 'monospace' }}>{key.prefix}...</TableCell>
+                  <TableCell>
+                    <Chip
+                      label={key.user_id == null ? 'Global' : userEmailById(key.user_id) || `User #${key.user_id}`}
+                      size="small"
+                      color={key.user_id == null ? 'warning' : 'default'}
+                      variant="outlined"
+                    />
+                  </TableCell>
                   <TableCell>{new Date(key.created_at).toLocaleDateString()}</TableCell>
                   <TableCell>
                     {key.last_used_at 

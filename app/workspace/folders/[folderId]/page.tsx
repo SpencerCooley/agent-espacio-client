@@ -512,9 +512,11 @@ function FolderExplorerContent() {
     return '';
   };
 
+  // Ancestors are already scope-clamped by the API (editors don't see My Drive
+  // when outside their grants). Home crumb always points at /workspace.
   const breadcrumb: BreadcrumbItem[] = data
     ? [
-        { label: 'My Drive', href: '/workspace', folderId: '00000000-0000-0000-0000-000000000001' },
+        { label: 'Workspace', href: '/workspace' },
         ...ancestors.map((f) => ({
           label: f.name,
           href: `/workspace/folders/${f.id}`,
@@ -522,7 +524,7 @@ function FolderExplorerContent() {
         })),
         { label: data.folder.name },
       ]
-    : [{ label: 'My Drive', href: '/workspace', folderId: '00000000-0000-0000-0000-000000000001' }];
+    : [{ label: 'Workspace', href: '/workspace' }];
 
   // Breadcrumb drop handler
   const handleDropOnBreadcrumb = async (targetFolderId: string, event: React.DragEvent) => {

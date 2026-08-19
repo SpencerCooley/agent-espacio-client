@@ -80,8 +80,7 @@ export default function CoverImagePicker({ artifact, onChange }: CoverImagePicke
     setImageSearchLoading(true);
     const timer = setTimeout(async () => {
       try {
-        const rootFolderId = '00000000-0000-0000-0000-000000000001';
-        const res = await folderService.searchFolderItems(rootFolderId, imageSearchQuery.trim());
+        const res = await folderService.searchScopedItems(imageSearchQuery.trim());
 
         const imageItems: Asset[] = (res.items || [])
           .filter((item: any) => item.kind === 'asset')
