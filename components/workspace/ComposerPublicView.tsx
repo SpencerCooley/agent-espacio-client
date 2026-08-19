@@ -236,14 +236,14 @@ export default function ComposerPublicView({
           // Public view
           url = `${API_BASE_URL}/public/composition/${publicMagicId}`;
         } else if (isPreview) {
-          // Preview via auth
+          // Preview via auth — signed URLs so nested out-of-scope assets load
           const token = localStorage.getItem('accessToken');
           if (!token) {
             setError('Not authenticated');
             setLoading(false);
             return;
           }
-          url = `${API_BASE_URL}/artifacts/${artifactId}/composition`;
+          url = `${API_BASE_URL}/artifacts/${artifactId}/composition?signed=true`;
           headers = { Authorization: `Bearer ${token}` };
         } else {
           // Workspace authenticated view

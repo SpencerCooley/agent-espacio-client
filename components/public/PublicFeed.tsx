@@ -298,14 +298,6 @@ export default function PublicFeed({ tag, title, initialItems }: PublicFeedProps
       .finally(() => setLoading(false));
   }, [fetchFeed, tag, initialItems]);
 
-  const handleScrollToLatest = () => {
-    const el = document.getElementById('latest-section');
-    if (el) {
-      const y = el.getBoundingClientRect().top + window.scrollY - 80;
-      window.scrollTo({ top: y, behavior: 'smooth' });
-    }
-  };
-
   const handleLoadMore = async () => {
     if (isLoadingMore || !hasMore) return;
     setIsLoadingMore(true);
@@ -470,13 +462,8 @@ export default function PublicFeed({ tag, title, initialItems }: PublicFeedProps
     feedContent
   );
 
-  const showLatestButton = !tag && featuredItems.length > 0 && latestItems.length > 0;
-
   return (
-    <PublicShell
-      showLatestButton={showLatestButton}
-      onScrollToLatest={handleScrollToLatest}
-    >
+    <PublicShell>
       {innerContent}
     </PublicShell>
   );

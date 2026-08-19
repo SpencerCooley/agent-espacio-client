@@ -61,6 +61,15 @@ function AssetViewerContent() {
 
     assetService.getAsset(assetId)
       .then((response) => {
+        // Embed-read allows GET for composer/gallery references, but the
+        // workspace asset page requires strict folder scope.
+        if (response.in_scope === false) {
+          setError('You do not have access to this asset');
+          setAsset(null);
+          setLoading(false);
+          return;
+        }
+
         setAsset(response);
         setIsPublic(response.is_public);
         setPublicMagicId(response.public_magic_id);

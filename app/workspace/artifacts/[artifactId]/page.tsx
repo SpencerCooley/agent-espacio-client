@@ -47,6 +47,15 @@ function ArtifactViewerContent() {
 
     artifactService.getArtifact(artifactId)
       .then((response) => {
+        // Embed-read allows GET for composer references, but the workspace
+        // artifact page requires strict folder scope.
+        if (response.in_scope === false) {
+          setError('You do not have access to this artifact');
+          setArtifact(null);
+          setLoading(false);
+          return;
+        }
+
         setArtifact(response);
         if (response.folder_id) {
           folderService.getFolderAncestors(response.folder_id)
@@ -288,7 +297,10 @@ function ArtifactViewerContent() {
           />
         }
       >
-        <ComposerEditor artifact={artifact} />
+        <ComposerEditor
+          artifact={artifact}
+          onArtifactUpdate={(updated) => setArtifact(updated)}
+        />
         <Snackbar
           open={!!successMessage}
           autoHideDuration={3000}

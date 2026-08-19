@@ -28,6 +28,8 @@ export interface Asset {
   created_at: string;
   updated_at: string;
   created_by_id: number | null;
+  /** Strict folder scope; false when readable only via embed reference. */
+  in_scope?: boolean | null;
 }
 
 export const DOWNLOAD_BASE_URL = `${API_BASE_URL}/assets`;

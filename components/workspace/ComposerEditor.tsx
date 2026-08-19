@@ -37,6 +37,7 @@ interface ComposerContent {
 
 interface ComposerEditorProps {
   artifact: Artifact;
+  onArtifactUpdate?: (updated: Artifact) => void;
 }
 
 interface PickerItem {
@@ -45,9 +46,11 @@ interface PickerItem {
   type: string;
   kind: 'artifact' | 'asset';
   mime_type?: string;
+  /** Strict folder scope; false when readable only via embed reference. */
+  in_scope?: boolean;
 }
 
-export default function ComposerEditor({ artifact }: ComposerEditorProps) {
+export default function ComposerEditor({ artifact, onArtifactUpdate }: ComposerEditorProps) {
   const [sections, setSections] = useState<ComposerSection[]>([]);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -84,7 +87,13 @@ export default function ComposerEditor({ artifact }: ComposerEditorProps) {
           try {
             const art = await artifactService.getArtifact(id);
             if (art.id !== artifact.id && art.type !== 'composer') {
-              items.push({ id: art.id, name: art.name, type: art.type, kind: 'artifact' as const });
+              items.push({
+                id: art.id,
+                name: art.name,
+                type: art.type,
+                kind: 'artifact' as const,
+                in_scope: art.in_scope === true,
+              });
             }
           } catch {
             try {
@@ -97,6 +106,7 @@ export default function ComposerEditor({ artifact }: ComposerEditorProps) {
                   type: 'asset',
                   kind: 'asset' as const,
                   mime_type: asset.mime_type,
+                  in_scope: asset.in_scope === true,
                 });
               }
             } catch {
@@ -145,6 +155,7 @@ export default function ComposerEditor({ artifact }: ComposerEditorProps) {
             name: item.name,
             type: item.type,
             kind: 'artifact' as const,
+            in_scope: true,
           }));
 
         const assetItems: PickerItem[] = (res.items || [])
@@ -159,6 +170,7 @@ export default function ComposerEditor({ artifact }: ComposerEditorProps) {
             type: 'asset',
             kind: 'asset' as const,
             mime_type: item.mime_type,
+            in_scope: true,
           }));
 
         const results = [...artifactItems, ...assetItems];
@@ -221,9 +233,10 @@ export default function ComposerEditor({ artifact }: ComposerEditorProps) {
     setSaveError(null);
     setSaveSuccess(false);
     try {
-      await artifactService.updateArtifact(artifact.id, {
+      const updated = await artifactService.updateArtifact(artifact.id, {
         content: { sections },
       });
+      onArtifactUpdate?.(updated);
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 3000);
     } catch (err: any) {
@@ -231,7 +244,7 @@ export default function ComposerEditor({ artifact }: ComposerEditorProps) {
     } finally {
       setSaving(false);
     }
-  }, [artifact.id, sections]);
+  }, [artifact.id, sections, onArtifactUpdate]);
 
   const getItemLabel = (id: string) => {
     const item = knownItems.find((i) => i.id === id);
@@ -328,13 +341,15 @@ export default function ComposerEditor({ artifact }: ComposerEditorProps) {
             >
               <DownIcon fontSize="small" />
             </IconButton>
-            <IconButton
-              size="small"
-              onClick={() => window.open(getSectionUrl(section.artifact_id), '_blank')}
-              title="Open in workspace"
-            >
-              <OpenIcon fontSize="small" />
-            </IconButton>
+            {knownItems.find((i) => i.id === section.artifact_id)?.in_scope === true && (
+              <IconButton
+                size="small"
+                onClick={() => window.open(getSectionUrl(section.artifact_id), '_blank')}
+                title="Open in workspace"
+              >
+                <OpenIcon fontSize="small" />
+              </IconButton>
+            )}
             <IconButton
               size="small"
               onClick={() => handleRemoveSection(index)}
