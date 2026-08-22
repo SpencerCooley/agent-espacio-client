@@ -29,6 +29,7 @@ export interface AuthToken {
 export interface ApiKey {
   id: number;
   name: string;
+  key?: string | null;
   prefix: string;
   is_active: boolean;
   created_at: string;
@@ -172,8 +173,11 @@ export const userService = {
 };
 
 export const apiKeyService = {
-  listApiKeys: () => 
-    apiClient.get<{ keys: (ApiKey & { key?: string })[]; total: number }>('/api-keys'),
+  listApiKeys: () =>
+    apiClient.get<{ keys: ApiKey[]; total: number }>('/api-keys'),
+
+  listMyApiKeys: () =>
+    apiClient.get<{ keys: ApiKey[]; total: number }>('/api-keys/me'),
   
   createApiKey: (name: string, userId?: number | null) => 
     apiClient.post<ApiKey & { key: string }>('/api-keys', {

@@ -8,7 +8,7 @@ import { useThemeContext } from '../../../context/ThemeContext';
 import { settingsService, PublicTheme } from '../../../services/settings';
 import { repoService, SshKey } from '../../../services/repos';
 import { Profile, getMyProfile, updateMyProfile, uploadAvatar } from '../../../services/profiles';
-import { userService, ApiError } from '../../../services/api';
+import { userService, apiKeyService, ApiKey, ApiError } from '../../../services/api';
 import {
   Typography,
   Paper,
@@ -35,6 +35,7 @@ import {
   DialogActions,
   Alert,
   CircularProgress,
+  Snackbar,
 } from '@mui/material';
 import {
   Brightness4 as DarkModeIcon,
@@ -48,6 +49,7 @@ import {
   Language as LanguageIcon,
   Image as ImageIcon,
   Info as InfoIcon,
+  ContentCopy as ContentCopyIcon,
 } from '@mui/icons-material';
 import Link from 'next/link';
 import ProfileEditor from '../../../components/workspace/ProfileEditor';
@@ -367,6 +369,82 @@ function SshKeysSection() {
   );
 }
 
+function ApiKeysSection() {
+  const [keys, setKeys] = useState<ApiKey[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    apiKeyService.listMyApiKeys()
+      .then((data) => setKeys(data.keys))
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
+
+  const handleCopy = (key: ApiKey) => {
+    if (!key.key) return;
+    navigator.clipboard.writeText(key.key);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <Paper sx={{ mb: 3 }}>
+      <Typography variant="h6" sx={{ px: 2, pt: 2, pb: 1 }} color="text.primary">
+        API Keys
+      </Typography>
+      <Typography variant="caption" sx={{ px: 2, pb: 1, display: 'block' }} color="text.secondary">
+        Agent keys assigned to you — send them in the X-Agent-Key header
+      </Typography>
+      <Divider />
+      {loading ? (
+        <Box sx={{ p: 3, textAlign: 'center' }}>
+          <CircularProgress size={24} />
+        </Box>
+      ) : (
+        <List>
+          {keys.length === 0 ? (
+            <ListItem>
+              <ListItemText
+                primary="No API keys assigned"
+                secondary="An admin can create one for you from the admin panel"
+              />
+            </ListItem>
+          ) : (
+            keys.map((key) => (
+              <ListItem
+                key={key.id}
+                secondaryAction={
+                  key.key ? (
+                    <IconButton edge="end" size="small" onClick={() => handleCopy(key)} title="Copy key">
+                      <ContentCopyIcon fontSize="small" />
+                    </IconButton>
+                  ) : undefined
+                }
+              >
+                <ListItemIcon>
+                  <KeyIcon />
+                </ListItemIcon>
+                <ListItemText
+                  primary={key.name}
+                  secondary={`${key.prefix}...`}
+                  secondaryTypographyProps={{ sx: { fontFamily: 'monospace' } }}
+                />
+              </ListItem>
+            ))
+          )}
+        </List>
+      )}
+      <Snackbar
+        open={copied}
+        autoHideDuration={2000}
+        onClose={() => setCopied(false)}
+        message="API key copied to clipboard"
+      />
+    </Paper>
+  );
+}
+
 function PasswordSection() {
   const { logout } = useApp();
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -638,6 +716,9 @@ function SettingsContent() {
 
       {/* SSH Keys */}
       <SshKeysSection />
+
+      {/* API Keys */}
+      <ApiKeysSection />
 
       {/* Appearance */}
       <Paper sx={{ mb: 3 }}>

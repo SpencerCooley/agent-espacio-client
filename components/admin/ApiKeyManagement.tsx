@@ -141,9 +141,11 @@ export default function ApiKeyManagement() {
         <DialogTitle>Create New API Key</DialogTitle>
         <DialogContent>
           <Typography variant="body2" color="textSecondary" sx={{ mb: 2 }}>
-            Create an API key for AI agents. The full key is shown only once.
+            Create an API key for AI agents.
             Optionally assign an editor so the key inherits that user&apos;s folder grants.
-            Leave unassigned for a global (unrestricted) key.
+            Leave unassigned for a global (unrestricted) key. The key is stored
+            encrypted and can be copied again anytime from this table or by the
+            assigned user from their settings.
           </Typography>
           <TextField
             margin="normal"
@@ -197,13 +199,13 @@ export default function ApiKeyManagement() {
       maxWidth="md" 
       fullWidth
     >
-      <DialogTitle sx={{ color: 'warning.main' }}>
-        Save Your API Key
+      <DialogTitle>
+        Your New API Key
       </DialogTitle>
       <DialogContent>
-        <Alert severity="warning" sx={{ mb: 2 }}>
-          This is the only time you will see the full API key. 
-          Please copy it now and store it securely. It cannot be retrieved later.
+        <Alert severity="info" sx={{ mb: 2 }}>
+          The key is stored encrypted and can be copied again anytime from the
+          table below, or by its assigned user from their settings page.
         </Alert>
         <Paper 
           sx={{ 
@@ -234,21 +236,21 @@ export default function ApiKeyManagement() {
         <Typography variant="body2" color="textSecondary" sx={{ mt: 2 }}>
           Use this key in the <code>X-Agent-Key</code> header when making API requests:
         </Typography>
-        <Paper sx={{ p: 2, mt: 1, backgroundColor: 'grey.100' }}>
-          <Typography variant="body2" component="code" sx={{ fontFamily: 'monospace' }}>
+        <Paper variant="outlined" sx={{ p: 2, mt: 1 }}>
+          <Typography variant="body2" component="code" sx={{ fontFamily: 'monospace', color: 'text.primary' }}>
             X-Agent-Key: {newlyCreatedKey?.slice(0, 20)}...
           </Typography>
         </Paper>
       </DialogContent>
       <DialogActions>
-        <Button 
+        <Button
           onClick={() => {
             setNewKeyDialogOpen(false);
             setNewlyCreatedKey(null);
-          }} 
+          }}
           variant="contained"
         >
-          I&apos;ve Saved The Key
+          Done
         </Button>
       </DialogActions>
     </Dialog>
@@ -332,7 +334,16 @@ export default function ApiKeyManagement() {
                     <span> | Last used: {new Date(key.last_used_at).toLocaleDateString()}</span>
                   )}
                 </Typography>
-                <Box sx={{ mt: 2 }}>
+                <Box sx={{ mt: 2, display: 'flex', gap: 0.5, alignItems: 'center' }}>
+                  {key.key && (
+                    <IconButton
+                      size="small"
+                      title="Copy key"
+                      onClick={() => copyToClipboard(key.key!)}
+                    >
+                      <ContentCopyIcon fontSize="small" />
+                    </IconButton>
+                  )}
                   {key.is_active ? (
                     <Button
                       size="small"
@@ -399,25 +410,36 @@ export default function ApiKeyManagement() {
                     />
                   </TableCell>
                   <TableCell>
-                    {key.is_active ? (
-                      <Button
-                        size="small"
-                        color="error"
-                        startIcon={<BlockIcon />}
-                        onClick={() => handleRevoke(key.id)}
-                      >
-                        Revoke
-                      </Button>
-                    ) : (
-                      <Button
-                        size="small"
-                        color="success"
-                        startIcon={<CheckCircleIcon />}
-                        onClick={() => handleActivate(key.id)}
-                      >
-                        Activate
-                      </Button>
-                    )}
+                    <Box sx={{ display: 'flex', gap: 0.5, alignItems: 'center' }}>
+                      {key.key && (
+                        <IconButton
+                          size="small"
+                          title="Copy key"
+                          onClick={() => copyToClipboard(key.key!)}
+                        >
+                          <ContentCopyIcon fontSize="small" />
+                        </IconButton>
+                      )}
+                      {key.is_active ? (
+                        <Button
+                          size="small"
+                          color="error"
+                          startIcon={<BlockIcon />}
+                          onClick={() => handleRevoke(key.id)}
+                        >
+                          Revoke
+                        </Button>
+                      ) : (
+                        <Button
+                          size="small"
+                          color="success"
+                          startIcon={<CheckCircleIcon />}
+                          onClick={() => handleActivate(key.id)}
+                        >
+                          Activate
+                        </Button>
+                      )}
+                    </Box>
                   </TableCell>
                 </TableRow>
               ))}
