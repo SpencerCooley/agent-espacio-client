@@ -146,8 +146,9 @@ export default function PublicShell({ children, logoText = 'Agent Espacio', full
             flex: 1,
             width: '100%',
             minWidth: 0,
+            minHeight: 0,
             overflowX: 'hidden',
-            ...(fullBleed ? { display: 'flex', flexDirection: 'column', overflow: 'hidden' } : {}),
+            ...(fullBleed ? { display: 'flex', flexDirection: 'column', overflow: 'hidden', minHeight: 0 } : {}),
           }}
         >
           {bgUrl && !fullBleed ? (
@@ -168,9 +169,11 @@ export default function PublicShell({ children, logoText = 'Agent Espacio', full
               sx={{
                 width: '100%',
                 bgcolor: 'background.paper',
-                minHeight: '100dvh',
+                flex: 1,
+                minHeight: 0,
                 display: 'flex',
                 flexDirection: 'column',
+                overflow: 'hidden',
               }}
             >
               {children}

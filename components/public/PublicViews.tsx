@@ -944,6 +944,7 @@ export function MapPublicView({ content, name, description, isPreview, themeMode
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
+          flexShrink: 0,
         }}
       >
         <Box>
@@ -965,7 +966,7 @@ export function MapPublicView({ content, name, description, isPreview, themeMode
       </Box>
 
       {/* Association list */}
-      <Box sx={{ flex: 1, overflowY: 'auto', p: 2, display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+      <Box sx={{ flex: 1, minHeight: 0, minWidth: 0, overflowY: 'auto', overflowX: 'hidden', p: 2, display: 'flex', flexDirection: 'column', gap: 1.5, WebkitOverflowScrolling: 'touch', overscrollBehavior: 'contain' }}>
         {associationPanel.associations.map((assoc: Association) => (
           <Box
             key={assoc.id}
@@ -980,6 +981,7 @@ export function MapPublicView({ content, name, description, isPreview, themeMode
               cursor: 'pointer',
               bgcolor: 'background.paper',
               transition: 'box-shadow 0.2s',
+              flexShrink: 0,
               '&:hover': { boxShadow: 2, borderColor: 'primary.main' },
             }}
             onClick={() => {
@@ -1035,8 +1037,8 @@ export function MapPublicView({ content, name, description, isPreview, themeMode
   );
 
   return (
-    <Box ref={tooltipContainerRef} sx={{ width: '100%', flex: 1, position: 'relative', display: 'flex', flexDirection: 'column' }}>
-      <Box ref={mapContainerRef} sx={{ flex: 1, width: '100%', position: 'relative', zIndex: 1 }} />
+    <Box ref={tooltipContainerRef} sx={{ width: '100%', flex: 1, minHeight: 0, minWidth: 0, position: 'relative', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+      <Box ref={mapContainerRef} sx={{ flex: 1, minHeight: 0, width: '100%', position: 'relative', zIndex: 1 }} />
       
       {/* Name and description card */}
       {(name || description) && (
@@ -1164,6 +1166,8 @@ export function MapPublicView({ content, name, description, isPreview, themeMode
             display: 'flex',
             flexDirection: 'column',
             overflow: 'hidden',
+            minHeight: 0,
+            height: '100%',
           }}
         >
           {associationContent}
@@ -1181,6 +1185,10 @@ export function MapPublicView({ content, name, description, isPreview, themeMode
             width: 320,
             maxWidth: '85vw',
             bgcolor: 'background.paper',
+            display: 'flex',
+            flexDirection: 'column',
+            overflow: 'hidden',
+            height: '100%',
           },
         }}
       >
