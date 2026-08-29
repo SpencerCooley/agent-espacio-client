@@ -14,9 +14,11 @@ interface PublicShellProps {
   children: ReactNode;
   logoText?: string;
   fullBleed?: boolean;
+  /** When true, ignore branding background centering — content gets full width. Used for custom homepage. */
+  noCenter?: boolean;
 }
 
-export default function PublicShell({ children, logoText = 'Agent Espacio', fullBleed = false }: PublicShellProps) {
+export default function PublicShell({ children, logoText = 'Agent Espacio', fullBleed = false, noCenter = false }: PublicShellProps) {
   const {
     branding,
     themeMode,
@@ -151,7 +153,7 @@ export default function PublicShell({ children, logoText = 'Agent Espacio', full
             ...(fullBleed ? { display: 'flex', flexDirection: 'column', overflow: 'hidden', minHeight: 0 } : {}),
           }}
         >
-          {bgUrl && !fullBleed ? (
+          {bgUrl && !fullBleed && !noCenter ? (
             <Box
               sx={{
                 maxWidth: 1400,
