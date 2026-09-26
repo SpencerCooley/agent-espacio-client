@@ -12,6 +12,7 @@ const ComposerViewMap = dynamic(() => import('./ComposerViewMap'), { ssr: false 
 const ComposerViewGallery = dynamic(() => import('./ComposerViewGallery'), { ssr: false });
 const ComposerViewWorkflow = dynamic(() => import('./ComposerViewWorkflow'), { ssr: false });
 const ComposerViewAsset = dynamic(() => import('./ComposerViewAsset'), { ssr: false });
+const ComposerViewMarkdown = dynamic(() => import('./ComposerViewMarkdown'), { ssr: false });
 const ComposerViewRepo = dynamic(() => import('./ComposerViewRepo'), { ssr: false });
 
 
@@ -85,6 +86,8 @@ function SectionView({
 
   // Assets have mime_type, artifacts have type
   const isAsset = !!item.mime_type;
+  const isMarkdownAsset =
+    item.mime_type === 'text/markdown' || item.mime_type === 'text/x-markdown';
 
   if (isAsset) {
     return (
@@ -98,7 +101,11 @@ function SectionView({
           borderColor: 'divider',
         }}
       >
-        <ComposerViewAsset item={item} isPreview={isPreview} isPublicView={isPublicView} />
+        {isMarkdownAsset ? (
+          <ComposerViewMarkdown item={item} isPreview={isPreview} isPublicView={isPublicView} />
+        ) : (
+          <ComposerViewAsset item={item} isPreview={isPreview} isPublicView={isPublicView} />
+        )}
         {section.caption && (
           <Typography
             variant="body2"

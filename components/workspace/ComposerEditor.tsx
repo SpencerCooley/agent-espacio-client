@@ -50,6 +50,17 @@ interface PickerItem {
   in_scope?: boolean;
 }
 
+/** Asset types allowed as composer sections: video, audio, GLB, and markdown. */
+function isComposerAssetAllowed(mime: string): boolean {
+  return (
+    mime.startsWith('video/') ||
+    mime.startsWith('audio/') ||
+    mime === 'model/gltf-binary' ||
+    mime === 'text/markdown' ||
+    mime === 'text/x-markdown'
+  );
+}
+
 export default function ComposerEditor({ artifact, onArtifactUpdate }: ComposerEditorProps) {
   const [sections, setSections] = useState<ComposerSection[]>([]);
   const [saving, setSaving] = useState(false);
@@ -99,7 +110,7 @@ export default function ComposerEditor({ artifact, onArtifactUpdate }: ComposerE
             try {
               const asset = await assetService.getAsset(id);
               const mime = asset.mime_type || '';
-              if (mime.startsWith('video/') || mime.startsWith('audio/') || mime === 'model/gltf-binary') {
+              if (isComposerAssetAllowed(mime)) {
                 items.push({
                   id: asset.id,
                   name: asset.name,
@@ -160,10 +171,7 @@ export default function ComposerEditor({ artifact, onArtifactUpdate }: ComposerE
 
         const assetItems: PickerItem[] = (res.items || [])
           .filter((item: any) => item.kind === 'asset')
-          .filter((item: any) => {
-            const mime = item.mime_type || '';
-            return mime.startsWith('video/') || mime.startsWith('audio/') || mime === 'model/gltf-binary';
-          })
+          .filter((item: any) => isComposerAssetAllowed(item.mime_type || ''))
           .map((item: any) => ({
             id: item.id,
             name: item.name,

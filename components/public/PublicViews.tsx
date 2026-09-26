@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { Box, Typography, Paper, Chip, Button, IconButton, Select, MenuItem, FormControl, Drawer, useTheme, useMediaQuery } from '@mui/material';
-import { Download as DownloadIcon, Close as CloseIcon, Article as ArticleIcon, Map as MapIcon, Movie as MovieIcon, Description as MarkdownIcon, DataObject as JsonIcon } from '@mui/icons-material';
+import { Download as DownloadIcon, Close as CloseIcon, Article as ArticleIcon, Map as MapIcon, Movie as MovieIcon, Description as MarkdownIcon, DataObject as JsonIcon, ContentCopy as CopyIcon, CheckCircle as CheckCircleIcon } from '@mui/icons-material';
 import InlineThumbnail from '../workspace/InlineThumbnail';
 import GlbViewer from '../workspace/GlbViewer';
 import { SmartVideoPlayer } from '../ui/SmartVideoPlayer';
@@ -11,6 +11,7 @@ import { marked } from 'marked';
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { highlightCode } from '../../lib/prism-highlight';
+import { markdownContentSx } from '../../lib/markdown-styles';
 import 'prismjs/themes/prism-tomorrow.css';
 import { API_BASE_URL } from '../../services/api';
 
@@ -68,6 +69,7 @@ export function PublicAssetView({
   const [rawContent, setRawContent] = useState<string | null>(null);
   const [loadingRaw, setLoadingRaw] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
+  const [copiedMarkdown, setCopiedMarkdown] = useState(false);
 
   useEffect(() => {
     if (isMarkdown) {
@@ -116,19 +118,50 @@ export function PublicAssetView({
     }
   };
 
+  const handleCopyMarkdown = async () => {
+    if (markdownContent == null) return;
+    try {
+      await navigator.clipboard.writeText(markdownContent);
+    } catch {
+      // Fallback for non-secure contexts
+      const textarea = document.createElement('textarea');
+      textarea.value = markdownContent;
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textarea);
+    }
+    setCopiedMarkdown(true);
+    setTimeout(() => setCopiedMarkdown(false), 2000);
+  };
+
   return (
     <Box sx={{ p: 3, maxWidth: 1200, mx: 'auto' }}>
       <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, alignItems: { xs: 'flex-start', sm: 'center' }, justifyContent: 'space-between', gap: { xs: 1, sm: 0 }, mb: 3 }}>
         <Typography variant="h5" sx={{ wordBreak: 'break-all' }}>{name}</Typography>
-        <Button
-          variant="outlined"
-          size="small"
-          startIcon={<DownloadIcon />}
-          onClick={handleDownload}
-          disabled={isDownloading}
-        >
-          {isDownloading ? 'Downloading...' : 'Download'}
-        </Button>
+        <Box sx={{ display: 'flex', gap: 1, flexShrink: 0 }}>
+          {isMarkdown && (
+            <Button
+              variant="outlined"
+              size="small"
+              startIcon={copiedMarkdown ? <CheckCircleIcon /> : <CopyIcon />}
+              onClick={handleCopyMarkdown}
+              disabled={markdownContent == null}
+              color={copiedMarkdown ? 'success' : 'primary'}
+            >
+              {copiedMarkdown ? 'Copied!' : 'Copy'}
+            </Button>
+          )}
+          <Button
+            variant="outlined"
+            size="small"
+            startIcon={<DownloadIcon />}
+            onClick={handleDownload}
+            disabled={isDownloading}
+          >
+            {isDownloading ? 'Downloading...' : 'Download'}
+          </Button>
+        </Box>
       </Box>
 
       {isImage ? (
@@ -179,27 +212,7 @@ export function PublicAssetView({
                 className="public-markdown"
                 sx={{
                   minWidth: 'fit-content',
-                  '& h1': { fontSize: '2em', fontWeight: 700, mb: 2, mt: 3 },
-                  '& h2': { fontSize: '1.5em', fontWeight: 600, mb: 2, mt: 3 },
-                  '& h3': { fontSize: '1.25em', fontWeight: 600, mb: 1, mt: 2 },
-                  '& p': { mb: 1.5, lineHeight: 1.6 },
-                  '& ul, & ol': { mb: 1.5, pl: 3 },
-                  '& li': { mb: 0.5 },
-                  '& blockquote': { borderLeft: '3px solid #ccc', pl: 2, ml: 0, color: 'text.secondary' },
-                  '& code': { bgcolor: 'rgba(0,0,0,0.05)', px: 0.5, borderRadius: 1, fontFamily: 'monospace' },
-                  '& pre': { bgcolor: 'rgba(0,0,0,0.05)', p: 2, borderRadius: 2, overflow: 'auto' },
-        '& img': (theme) => ({
-          width: '100%',
-          borderRadius: 1,
-          [theme.breakpoints.up('md')]: {
-            width: '80%',
-          },
-        }),
-                  '& table': { borderCollapse: 'collapse', width: '100%', mb: 2 },
-                  '& th, & td': { border: '1px solid #ddd', p: 1, textAlign: 'left' },
-                  '& th': { bgcolor: 'rgba(0,0,0,0.05)', fontWeight: 600 },
-                  '& a': { color: 'info.main', textDecoration: 'underline', cursor: 'pointer' },
-                  '& a:hover': { color: 'info.dark' },
+                  ...markdownContentSx,
                 }}
                 dangerouslySetInnerHTML={{ __html: marked.parse(markdownContent) as string }}
               />
