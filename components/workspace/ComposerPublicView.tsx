@@ -12,7 +12,7 @@ const ComposerViewMap = dynamic(() => import('./ComposerViewMap'), { ssr: false 
 const ComposerViewGallery = dynamic(() => import('./ComposerViewGallery'), { ssr: false });
 const ComposerViewWorkflow = dynamic(() => import('./ComposerViewWorkflow'), { ssr: false });
 const ComposerViewAsset = dynamic(() => import('./ComposerViewAsset'), { ssr: false });
-const ComposerViewMarkdown = dynamic(() => import('./ComposerViewMarkdown'), { ssr: false });
+const ComposerViewFile = dynamic(() => import('./ComposerViewFile'), { ssr: false });
 const ComposerViewRepo = dynamic(() => import('./ComposerViewRepo'), { ssr: false });
 
 
@@ -86,8 +86,11 @@ function SectionView({
 
   // Assets have mime_type, artifacts have type
   const isAsset = !!item.mime_type;
-  const isMarkdownAsset =
-    item.mime_type === 'text/markdown' || item.mime_type === 'text/x-markdown';
+  // Text-based files (markdown, JSON) render as truncated file cards
+  const isFileAsset =
+    item.mime_type === 'text/markdown' ||
+    item.mime_type === 'text/x-markdown' ||
+    item.mime_type === 'application/json';
 
   if (isAsset) {
     return (
@@ -101,8 +104,8 @@ function SectionView({
           borderColor: 'divider',
         }}
       >
-        {isMarkdownAsset ? (
-          <ComposerViewMarkdown item={item} isPreview={isPreview} isPublicView={isPublicView} />
+        {isFileAsset ? (
+          <ComposerViewFile item={item} isPreview={isPreview} isPublicView={isPublicView} />
         ) : (
           <ComposerViewAsset item={item} isPreview={isPreview} isPublicView={isPublicView} />
         )}

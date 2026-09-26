@@ -4,6 +4,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Box, Typography, IconButton, Tooltip, Button, CircularProgress } from '@mui/material';
 import {
   Description as MarkdownIcon,
+  DataObject as JsonIcon,
   ContentCopy as CopyIcon,
   CheckCircle as CheckCircleIcon,
   ExpandMore as ExpandMoreIcon,
@@ -12,16 +13,32 @@ import {
 import { marked } from 'marked';
 import { API_BASE_URL } from '../../services/api';
 import { markdownContentSx } from '../../lib/markdown-styles';
+import { highlightCode } from '../../lib/prism-highlight';
+import 'prismjs/themes/prism-tomorrow.css';
 
 const COLLAPSED_HEIGHT = 320;
 
-interface ComposerViewMarkdownProps {
+type FileKind = 'markdown' | 'json';
+
+function detectFileKind(mimeType: string | undefined): FileKind | null {
+  if (mimeType === 'text/markdown' || mimeType === 'text/x-markdown') return 'markdown';
+  if (mimeType === 'application/json') return 'json';
+  return null;
+}
+
+interface ComposerViewFileProps {
   item: any;
   isPreview?: boolean;
   isPublicView?: boolean;
 }
 
-export default function ComposerViewMarkdown({ item, isPreview, isPublicView }: ComposerViewMarkdownProps) {
+/**
+ * Truncated file card for text-based assets in a composition (markdown, JSON).
+ * Fixed max-height with a gradient fade, a copy button (raw source), and a
+ * "View full" button that expands the card inline. The asset name links to
+ * the asset's own page.
+ */
+export default function ComposerViewFile({ item, isPreview, isPublicView }: ComposerViewFileProps) {
   const [content, setContent] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -47,11 +64,11 @@ export default function ComposerViewMarkdown({ item, isPreview, isPublicView }: 
             headers: { Authorization: `Bearer ${token}` },
           });
         }
-        if (!res.ok) throw new Error('Failed to load markdown');
+        if (!res.ok) throw new Error('Failed to load file content');
         const text = await res.text();
         if (!cancelled) setContent(text);
       } catch (e: any) {
-        if (!cancelled) setError(e.message || 'Failed to load markdown');
+        if (!cancelled) setError(e.message || 'Failed to load file content');
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -85,17 +102,37 @@ export default function ComposerViewMarkdown({ item, isPreview, isPublicView }: 
     setTimeout(() => setCopied(false), 2000);
   };
 
-  if (!item) return null;
+  const kind = detectFileKind(item?.mime_type);
+  if (!item || !kind) return null;
+
+  const isMarkdown = kind === 'markdown';
+  const Icon = isMarkdown ? MarkdownIcon : JsonIcon;
+  const copyTooltip = isMarkdown ? 'Copy markdown' : 'Copy JSON';
 
   // Link to the asset's own page (public page in public view, workspace page otherwise)
   const viewUrl = isPublicView
     ? `/public/view/${item.public_magic_id || item.id}`
     : `/workspace/assets/${item.id}`;
 
+  // Rendered body: markdown → rendered HTML; JSON → Prism-highlighted pretty print.
+  // highlightCode detects language from the filename, so hint a .json name if needed.
+  const renderedBody = (() => {
+    if (content == null) return '';
+    if (isMarkdown) return marked.parse(content) as string;
+    const hintName = item.name?.toLowerCase().endsWith('.json') ? item.name : 'content.json';
+    let pretty = content;
+    try {
+      pretty = JSON.stringify(JSON.parse(content), null, 2);
+    } catch {
+      // Not parseable JSON — show raw
+    }
+    return highlightCode(pretty, hintName);
+  })();
+
   return (
     <Box>
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5 }}>
-        <MarkdownIcon sx={{ color: 'text.secondary', flexShrink: 0 }} />
+        <Icon sx={{ color: 'text.secondary', flexShrink: 0 }} />
         <Typography
           variant="h6"
           component="a"
@@ -114,7 +151,7 @@ export default function ComposerViewMarkdown({ item, isPreview, isPublicView }: 
         >
           {item.name}
         </Typography>
-        <Tooltip title={copied ? 'Copied!' : 'Copy markdown'}>
+        <Tooltip title={copied ? 'Copied!' : copyTooltip}>
           <span>
             <IconButton
               size="small"
@@ -144,11 +181,27 @@ export default function ComposerViewMarkdown({ item, isPreview, isPublicView }: 
                 overflow: 'hidden',
               }}
             >
-              <Box
-                className="composer-markdown"
-                sx={markdownContentSx}
-                dangerouslySetInnerHTML={{ __html: marked.parse(content || '') as string }}
-              />
+              {isMarkdown ? (
+                <Box
+                  className="composer-markdown"
+                  sx={markdownContentSx}
+                  dangerouslySetInnerHTML={{ __html: renderedBody }}
+                />
+              ) : (
+                <Box
+                  component="pre"
+                  className="composer-json"
+                  sx={{
+                    fontFamily: 'monospace',
+                    fontSize: 14,
+                    lineHeight: 1.5,
+                    margin: 0,
+                    whiteSpace: 'pre-wrap',
+                    wordBreak: 'break-word',
+                  }}
+                  dangerouslySetInnerHTML={{ __html: renderedBody }}
+                />
+              )}
             </Box>
             {!expanded && overflows && (
               <Box

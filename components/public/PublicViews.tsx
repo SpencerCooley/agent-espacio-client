@@ -69,7 +69,7 @@ export function PublicAssetView({
   const [rawContent, setRawContent] = useState<string | null>(null);
   const [loadingRaw, setLoadingRaw] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
-  const [copiedMarkdown, setCopiedMarkdown] = useState(false);
+  const [copiedContent, setCopiedContent] = useState(false);
 
   useEffect(() => {
     if (isMarkdown) {
@@ -118,21 +118,24 @@ export function PublicAssetView({
     }
   };
 
-  const handleCopyMarkdown = async () => {
-    if (markdownContent == null) return;
+  // Raw text content available for copy (markdown and JSON assets)
+  const copyableContent = isMarkdown ? markdownContent : isJson ? rawContent : null;
+
+  const handleCopyContent = async () => {
+    if (copyableContent == null) return;
     try {
-      await navigator.clipboard.writeText(markdownContent);
+      await navigator.clipboard.writeText(copyableContent);
     } catch {
       // Fallback for non-secure contexts
       const textarea = document.createElement('textarea');
-      textarea.value = markdownContent;
+      textarea.value = copyableContent;
       document.body.appendChild(textarea);
       textarea.select();
       document.execCommand('copy');
       document.body.removeChild(textarea);
     }
-    setCopiedMarkdown(true);
-    setTimeout(() => setCopiedMarkdown(false), 2000);
+    setCopiedContent(true);
+    setTimeout(() => setCopiedContent(false), 2000);
   };
 
   return (
@@ -140,16 +143,16 @@ export function PublicAssetView({
       <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, alignItems: { xs: 'flex-start', sm: 'center' }, justifyContent: 'space-between', gap: { xs: 1, sm: 0 }, mb: 3 }}>
         <Typography variant="h5" sx={{ wordBreak: 'break-all' }}>{name}</Typography>
         <Box sx={{ display: 'flex', gap: 1, flexShrink: 0 }}>
-          {isMarkdown && (
+          {(isMarkdown || isJson) && (
             <Button
               variant="outlined"
               size="small"
-              startIcon={copiedMarkdown ? <CheckCircleIcon /> : <CopyIcon />}
-              onClick={handleCopyMarkdown}
-              disabled={markdownContent == null}
-              color={copiedMarkdown ? 'success' : 'primary'}
+              startIcon={copiedContent ? <CheckCircleIcon /> : <CopyIcon />}
+              onClick={handleCopyContent}
+              disabled={copyableContent == null}
+              color={copiedContent ? 'success' : 'primary'}
             >
-              {copiedMarkdown ? 'Copied!' : 'Copy'}
+              {copiedContent ? 'Copied!' : 'Copy'}
             </Button>
           )}
           <Button

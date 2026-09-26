@@ -26,6 +26,7 @@ import { folderService, FolderContentsResponse, FolderItem } from '../../../../s
 import { assetService } from '../../../../services/assets';
 import { artifactService, ArtifactType } from '../../../../services/artifacts';
 import { useWebSocket } from '../../../../context/WebSocketContext';
+import { getSubtypeLabel } from '../../../../lib/subtype-labels';
 import SharePanel from '../../../../components/workspace/SharePanel';
 import UploadProgressPanel, { UploadItem } from '../../../../components/workspace/UploadProgressPanel';
 
@@ -502,12 +503,12 @@ function FolderExplorerContent() {
     if (activeFilter.kind === 'artifact') {
       const subtype = activeFilter.subtype;
       if (!subtype) return 'Artifacts';
-      return subtype.charAt(0).toUpperCase() + subtype.slice(1) + 's';
+      return getSubtypeLabel(subtype);
     }
     if (activeFilter.kind === 'asset') {
       const subtype = activeFilter.subtype;
       if (!subtype) return 'Assets';
-      return subtype.charAt(0).toUpperCase() + subtype.slice(1) + 's';
+      return getSubtypeLabel(subtype);
     }
     return '';
   };
@@ -781,7 +782,7 @@ function FolderExplorerContent() {
                       }}
                       selected={typeof activeFilter === 'object' && activeFilter.kind === 'artifact' && activeFilter.subtype === subtype}
                     >
-                      {subtype.charAt(0).toUpperCase() + subtype.slice(1)}s ({count})
+                      {getSubtypeLabel(subtype)} ({count})
                     </MenuItem>
                   ))}
               </Menu>
@@ -824,7 +825,7 @@ function FolderExplorerContent() {
                       }}
                       selected={typeof activeFilter === 'object' && activeFilter.kind === 'asset' && activeFilter.subtype === subtype}
                     >
-                      {subtype.charAt(0).toUpperCase() + subtype.slice(1)}s ({count})
+                      {getSubtypeLabel(subtype)} ({count})
                     </MenuItem>
                   ))}
               </Menu>

@@ -50,14 +50,15 @@ interface PickerItem {
   in_scope?: boolean;
 }
 
-/** Asset types allowed as composer sections: video, audio, GLB, and markdown. */
+/** Asset types allowed as composer sections: video, audio, GLB, markdown, and JSON. */
 function isComposerAssetAllowed(mime: string): boolean {
   return (
     mime.startsWith('video/') ||
     mime.startsWith('audio/') ||
     mime === 'model/gltf-binary' ||
     mime === 'text/markdown' ||
-    mime === 'text/x-markdown'
+    mime === 'text/x-markdown' ||
+    mime === 'application/json'
   );
 }
 

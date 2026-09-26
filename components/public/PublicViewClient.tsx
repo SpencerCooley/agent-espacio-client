@@ -13,6 +13,7 @@ import RepoPublicView from '@/components/workspace/RepoPublicView';
 import { PublicAssetView, NotePublicView, MapPublicView } from '@/components/public/PublicViews';
 import PublicShell from '@/components/public/PublicShell';
 import { API_BASE_URL } from '@/services/api';
+import { getSubtypeLabel } from '@/lib/subtype-labels';
 
 interface PublicItem {
   kind: string;
@@ -206,11 +207,11 @@ export default function PublicViewClient() {
     if (activeFilter.kind === 'folder') return 'Folders';
     if (activeFilter.kind === 'artifact') {
       const s = activeFilter.subtype;
-      return !s ? 'Artifacts' : s.charAt(0).toUpperCase() + s.slice(1) + 's';
+      return !s ? 'Artifacts' : getSubtypeLabel(s);
     }
     if (activeFilter.kind === 'asset') {
       const s = activeFilter.subtype;
-      return !s ? 'Assets' : s.charAt(0).toUpperCase() + s.slice(1) + 's';
+      return !s ? 'Assets' : getSubtypeLabel(s);
     }
     return '';
   };
@@ -412,7 +413,7 @@ export default function PublicViewClient() {
                               onClick={() => { setActiveFilter({ kind: 'artifact', subtype }); setArtifactFilterAnchor(null); }}
                               selected={typeof activeFilter === 'object' && activeFilter.kind === 'artifact' && activeFilter.subtype === subtype}
                             >
-                              {subtype.charAt(0).toUpperCase() + subtype.slice(1)}s ({count})
+                              {getSubtypeLabel(subtype)} ({count})
                             </MenuItem>
                           ))}
                       </Menu>
@@ -447,7 +448,7 @@ export default function PublicViewClient() {
                               onClick={() => { setActiveFilter({ kind: 'asset', subtype }); setAssetFilterAnchor(null); }}
                               selected={typeof activeFilter === 'object' && activeFilter.kind === 'asset' && activeFilter.subtype === subtype}
                             >
-                              {subtype.charAt(0).toUpperCase() + subtype.slice(1)}s ({count})
+                              {getSubtypeLabel(subtype)} ({count})
                             </MenuItem>
                           ))}
                       </Menu>
