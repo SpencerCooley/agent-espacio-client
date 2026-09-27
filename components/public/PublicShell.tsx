@@ -38,7 +38,9 @@ export default function PublicShell({ children, logoText = 'Agent Espacio', full
     ? branding.background_style === 'tile'
       ? {
           backgroundImage: `url(${bgUrl})`,
-          backgroundRepeat: 'repeat',
+          // `space` tiles as many whole copies as fit and distributes the
+          // leftover space between them — no clipped tiles at the edges.
+          backgroundRepeat: 'space',
           backgroundSize: 'auto',
         }
       : {
